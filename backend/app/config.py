@@ -1,0 +1,14 @@
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/coinoperated"
+    stripe_secret_key: str = ""
+    stripe_publishable_key: str = ""
+    secret_key: str = "change-me-in-production"
+    cors_origins: list[str] = ["http://localhost:5173"]
+
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+
+settings = Settings()
