@@ -1,0 +1,24 @@
+import type { TaskListResponse, TaskStatus } from "./types";
+
+export interface ListTasksParams {
+  status?: TaskStatus;
+  sort_by?: "pledge_total" | "created_at";
+  sort_order?: "asc" | "desc";
+  offset?: number;
+  limit?: number;
+}
+
+export async function listTasks(params: ListTasksParams = {}): Promise<TaskListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params.status) searchParams.set("status", params.status);
+  if (params.sort_by) searchParams.set("sort_by", params.sort_by);
+  if (params.sort_order) searchParams.set("sort_order", params.sort_order);
+  if (params.offset !== undefined) searchParams.set("offset", String(params.offset));
+  if (params.limit !== undefined) searchParams.set("limit", String(params.limit));
+
+  const query = searchParams.toString();
+  const url = `/api/tasks${query ? `?${query}` : ""}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch tasks: ${res.status}`);
+  return res.json();
+}
