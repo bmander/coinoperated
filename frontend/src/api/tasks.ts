@@ -1,4 +1,4 @@
-import type { TaskListResponse, TaskStatus } from "./types";
+import type { TaskDetailRead, TaskListResponse, TaskStatus } from "./types";
 
 export interface ListTasksParams {
   status?: TaskStatus;
@@ -20,5 +20,12 @@ export async function listTasks(params: ListTasksParams = {}): Promise<TaskListR
   const url = `/api/tasks${query ? `?${query}` : ""}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch tasks: ${res.status}`);
+  return res.json();
+}
+
+export async function getTask(taskId: string): Promise<TaskDetailRead> {
+  const res = await fetch(`/api/tasks/${taskId}`);
+  if (res.status === 404) throw new Error("Task not found");
+  if (!res.ok) throw new Error(`Failed to fetch task: ${res.status}`);
   return res.json();
 }

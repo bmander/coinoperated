@@ -1,4 +1,4 @@
-import type { TaskRead, TaskListResponse } from "../api/types";
+import type { TaskRead, TaskDetailRead, TaskListResponse, UpdateRead } from "../api/types";
 
 export function makeTask(overrides: Partial<TaskRead> = {}): TaskRead {
   return {
@@ -16,6 +16,24 @@ export function makeTask(overrides: Partial<TaskRead> = {}): TaskRead {
     accepted_at: null,
     completed_at: null,
     declined_at: null,
+    ...overrides,
+  };
+}
+
+export function makeTaskDetail(overrides: Partial<TaskDetailRead> = {}): TaskDetailRead {
+  return {
+    ...makeTask(overrides),
+    updates: [],
+    ...overrides,
+  };
+}
+
+export function makeUpdate(overrides: Partial<UpdateRead> = {}): UpdateRead {
+  return {
+    id: "upd-1",
+    task_id: "abc-123",
+    body: "Made some progress",
+    created_at: "2025-02-01T00:00:00Z",
     ...overrides,
   };
 }

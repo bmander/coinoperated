@@ -1,0 +1,152 @@
+import { screen } from "@testing-library/react";
+import { Route, Routes } from "react-router-dom";
+import TaskDetail from "./TaskDetail";
+import { getTask } from "../api/tasks";
+import { makeTaskDetail, makeUpdate } from "../test/factories";
+import { renderWithRouter } from "../test/render";
+
+vi.mock("../api/tasks");
+const mockGetTask = vi.mocked(getTask);
+
+function renderDetail(taskId = "abc-123") {
+  return renderWithRouter(
+    <Routes>
+      <Route path="/tasks/:taskId" element={<TaskDetail />} />
+    </Routes>,
+    [`/tasks/${taskId}`],
+  );
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe("TaskDetail", () => {
+  it("shows loading state initially", () => {
+    mockGetTask.mockReturnValue(new Promise(() => {}));
+    renderDetail();
+    expect(screen.getByText("Loading task...")).toBeInTheDocument();
+  });
+
+  it("renders task title and status", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ title: "Fix the bridge", status: "accepted" }));
+    renderDetail();
+    expect(await screen.findByText("Fix the bridge")).toBeInTheDocument();
+    expect(screen.getByText("ACCEPTED")).toBeInTheDocument();
+  });
+
+  it("renders description as markdown", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ description: "# Hello\n\nSome **bold** text" }));
+    renderDetail();
+    expect(await screen.findByText("Hello")).toBeInTheDocument();
+    expect(screen.getByText(/bold/)).toBeInTheDocument();
+  });
+
+  it("renders pledge stats", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ pledge_count: 3, pledge_total: 25000 }));
+    renderDetail();
+    expect(await screen.findByText(/3 backers/)).toBeInTheDocument();
+    expect(screen.getByText(/\$250 pledged/)).toBeInTheDocument();
+  });
+
+  it("uses singular 'backer' for count of 1", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ pledge_count: 1 }));
+    renderDetail();
+    expect(await screen.findByText(/1 backer/)).toBeInTheDocument();
+  });
+
+  it("renders delivery criteria when present", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ criteria: "Must pass all tests" }));
+    renderDetail();
+    expect(await screen.findByText("Delivery Criteria")).toBeInTheDocument();
+    expect(screen.getByText("Must pass all tests")).toBeInTheDocument();
+  });
+
+  it("hides delivery criteria when null", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ criteria: null }));
+    renderDetail();
+    await screen.findByText("Description");
+    expect(screen.queryByText("Delivery Criteria")).not.toBeInTheDocument();
+  });
+
+  it("renders progress updates", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({
+      updates: [
+        makeUpdate({ id: "u1", body: "Started work" }),
+        makeUpdate({ id: "u2", body: "Halfway done" }),
+      ],
+    }));
+    renderDetail();
+    expect(await screen.findByText("Progress Updates")).toBeInTheDocument();
+    expect(screen.getByText("Started work")).toBeInTheDocument();
+    expect(screen.getByText("Halfway done")).toBeInTheDocument();
+  });
+
+  it("hides progress updates when empty", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ updates: [] }));
+    renderDetail();
+    await screen.findByText("Description");
+    expect(screen.queryByText("Progress Updates")).not.toBeInTheDocument();
+  });
+
+  it("shows completion evidence for completed tasks", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({
+      status: "completed",
+      evidence: "See the deployed fix at example.com",
+    }));
+    renderDetail();
+    expect(await screen.findByText("Completion Evidence")).toBeInTheDocument();
+    expect(screen.getByText("See the deployed fix at example.com")).toBeInTheDocument();
+  });
+
+  it("hides evidence for non-completed tasks", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({
+      status: "open",
+      evidence: "Some evidence",
+    }));
+    renderDetail();
+    await screen.findByText("Description");
+    expect(screen.queryByText("Completion Evidence")).not.toBeInTheDocument();
+  });
+
+  it("shows Pledge button for open tasks", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
+    renderDetail();
+    expect(await screen.findByRole("link", { name: "Pledge" })).toBeInTheDocument();
+  });
+
+  it("shows Pledge button for accepted tasks", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "accepted" }));
+    renderDetail();
+    expect(await screen.findByRole("link", { name: "Pledge" })).toBeInTheDocument();
+  });
+
+  it("hides Pledge button for completed tasks", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "completed" }));
+    renderDetail();
+    await screen.findByText("Description");
+    expect(screen.queryByRole("link", { name: "Pledge" })).not.toBeInTheDocument();
+  });
+
+  it("shows collected stats for completed tasks", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({
+      status: "completed",
+      pledge_total: 50000,
+      collected_total: 45000,
+    }));
+    renderDetail();
+    expect(await screen.findByText(/Collected \$450 of \$500 pledged/)).toBeInTheDocument();
+  });
+
+  it("shows error state on API failure", async () => {
+    mockGetTask.mockRejectedValue(new Error("Failed to fetch task: 500"));
+    renderDetail();
+    expect(await screen.findByText("Error: Failed to fetch task: 500")).toBeInTheDocument();
+  });
+
+  it("shows error state for 404", async () => {
+    mockGetTask.mockRejectedValue(new Error("Task not found"));
+    renderDetail();
+    expect(await screen.findByText("Error: Task not found")).toBeInTheDocument();
+  });
+});

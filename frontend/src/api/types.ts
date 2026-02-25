@@ -17,6 +17,17 @@ export interface TaskRead {
   declined_at: string | null;
 }
 
+export interface UpdateRead {
+  id: string;
+  task_id: string;
+  body: string;
+  created_at: string;
+}
+
+export interface TaskDetailRead extends TaskRead {
+  updates: UpdateRead[];
+}
+
 export interface TaskListResponse {
   items: TaskRead[];
   total: number;
