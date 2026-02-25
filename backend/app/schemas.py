@@ -29,8 +29,8 @@ class PatronRead(BaseModel):
 
 
 class TaskCreate(BaseModel):
-    title: str
-    description: str
+    title: str = Field(min_length=1, max_length=500)
+    description: str = Field(min_length=1)
     criteria: str | None = None
     submitted_by: uuid.UUID | None = None
 
@@ -52,6 +52,17 @@ class TaskRead(BaseModel):
     accepted_at: datetime | None
     completed_at: datetime | None
     declined_at: datetime | None
+
+
+class TaskDetail(TaskRead):
+    updates: list["UpdateRead"] = []
+
+
+class TaskListResponse(BaseModel):
+    items: list[TaskRead]
+    total: int
+    offset: int
+    limit: int
 
 
 class TaskUpdate(BaseModel):
