@@ -1,0 +1,105 @@
+import uuid
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.models import PledgeStatus, TaskStatus
+
+
+# --- Patron ---
+
+
+class PatronCreate(BaseModel):
+    email: str
+    display_name: str | None = None
+    stripe_customer: str
+
+
+class PatronRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: str
+    display_name: str | None
+    stripe_customer: str
+    created_at: datetime
+
+
+# --- Task ---
+
+
+class TaskCreate(BaseModel):
+    title: str
+    description: str
+    criteria: str | None = None
+    submitted_by: uuid.UUID | None = None
+
+
+class TaskRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    title: str
+    description: str
+    criteria: str | None
+    submitted_by: uuid.UUID | None
+    status: TaskStatus
+    evidence: str | None
+    pledge_count: int
+    pledge_total: int
+    collected_total: int
+    created_at: datetime
+    accepted_at: datetime | None
+    completed_at: datetime | None
+    declined_at: datetime | None
+
+
+class TaskUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    criteria: str | None = None
+    status: TaskStatus | None = None
+    evidence: str | None = None
+
+
+# --- Pledge ---
+
+
+class PledgeCreate(BaseModel):
+    patron_id: uuid.UUID
+    task_id: uuid.UUID
+    amount: int = Field(ge=500)
+    payment_method: str
+    setup_intent: str
+
+
+class PledgeRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    patron_id: uuid.UUID
+    task_id: uuid.UUID
+    amount: int
+    payment_method: str
+    setup_intent: str
+    status: PledgeStatus
+    payment_intent: str | None
+    created_at: datetime
+    collected_at: datetime | None
+
+
+# --- Update ---
+
+
+class UpdateCreate(BaseModel):
+    task_id: uuid.UUID
+    body: str
+
+
+class UpdateRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    task_id: uuid.UUID
+    body: str
+    created_at: datetime

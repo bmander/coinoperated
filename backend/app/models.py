@@ -1,0 +1,144 @@
+import enum
+import uuid
+from datetime import datetime
+
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.sql import func
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+# --- Enums ---
+
+
+class TaskStatus(str, enum.Enum):
+    open = "open"
+    accepted = "accepted"
+    collecting = "collecting"
+    completed = "completed"
+    declined = "declined"
+
+
+class PledgeStatus(str, enum.Enum):
+    active = "active"
+    collected = "collected"
+    failed = "failed"
+    released = "released"
+
+
+# --- Models ---
+
+
+class Patron(Base):
+    __tablename__ = "patron"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    email: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    display_name: Mapped[str | None] = mapped_column(Text)
+    stripe_customer: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    pledges: Mapped[list["Pledge"]] = relationship(back_populates="patron")
+    submitted_tasks: Mapped[list["Task"]] = relationship(back_populates="submitted_by_patron")
+
+
+class Task(Base):
+    __tablename__ = "task"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    criteria: Mapped[str | None] = mapped_column(Text)
+    submitted_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("patron.id")
+    )
+    status: Mapped[TaskStatus] = mapped_column(
+        Enum(TaskStatus, name="task_status", native_enum=True),
+        nullable=False,
+        default=TaskStatus.open,
+        server_default="open",
+    )
+    evidence: Mapped[str | None] = mapped_column(Text)
+    pledge_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    pledge_total: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    collected_total: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    declined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    submitted_by_patron: Mapped[Patron | None] = relationship(back_populates="submitted_tasks")
+    pledges: Mapped[list["Pledge"]] = relationship(back_populates="task")
+    updates: Mapped[list["Update"]] = relationship(back_populates="task")
+
+
+class Pledge(Base):
+    __tablename__ = "pledge"
+    __table_args__ = (
+        UniqueConstraint("patron_id", "task_id"),
+        CheckConstraint("amount >= 500", name="pledge_minimum_amount"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    patron_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("patron.id"), nullable=False
+    )
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("task.id"), nullable=False
+    )
+    amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    payment_method: Mapped[str] = mapped_column(Text, nullable=False)
+    setup_intent: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[PledgeStatus] = mapped_column(
+        Enum(PledgeStatus, name="pledge_status", native_enum=True),
+        nullable=False,
+        default=PledgeStatus.active,
+        server_default="active",
+    )
+    payment_intent: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    collected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    patron: Mapped[Patron] = relationship(back_populates="pledges")
+    task: Mapped[Task] = relationship(back_populates="pledges")
+
+
+class Update(Base):
+    __tablename__ = "update"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("task.id"), nullable=False
+    )
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    task: Mapped[Task] = relationship(back_populates="updates")
