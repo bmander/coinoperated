@@ -1,13 +1,6 @@
 import { Link } from "react-router-dom";
 import type { TaskRead } from "../api/types";
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
-function statusLabel(status: string): string {
-  return status.toUpperCase();
-}
+import { formatCents, statusLabel } from "../utils/formatting";
 
 export default function TaskCard({ task }: { task: TaskRead }) {
   return (
