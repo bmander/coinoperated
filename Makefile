@@ -4,7 +4,11 @@ VENV := backend/.venv/bin
 
 # Start everything for local development
 dev:
-	$(MAKE) -j3 db dev-backend dev-frontend
+	trap 'kill 0' INT TERM; \
+	docker compose up db & \
+	(cd backend && $(CURDIR)/$(VENV)/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000) & \
+	(cd frontend && npm run dev) & \
+	wait
 
 # Start the FastAPI backend
 dev-backend:
@@ -18,8 +22,10 @@ dev-frontend:
 db:
 	docker compose up db
 
-# Run Alembic migrations
+# Run Alembic migrations (starts db container first)
 migrate:
+	docker compose up -d db
+	@until docker compose exec db pg_isready -U postgres > /dev/null 2>&1; do sleep 0.5; done
 	cd backend && $(CURDIR)/$(VENV)/alembic upgrade head
 
 # Install all dependencies
