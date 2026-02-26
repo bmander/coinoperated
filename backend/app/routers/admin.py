@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.dependencies import get_admin_patron, get_db
 from app.models import Patron, Pledge, Task, Update
+from app.routers.tasks import get_task_or_404
 from app.schemas import AdminPledgeRead, AdminTaskListResponse, AdminTaskRead, TaskRead, UpdateRead
 
 router = APIRouter(tags=["admin"])
@@ -60,9 +61,7 @@ async def create_update(
     _admin: Annotated[Patron, Depends(get_admin_patron)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    task = (await db.execute(select(Task).where(Task.id == task_id))).scalar_one_or_none()
-    if task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
+    await get_task_or_404(db, task_id)
 
     update = Update(task_id=task_id, body=payload.body)
     db.add(update)

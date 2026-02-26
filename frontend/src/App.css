@@ -565,22 +565,7 @@
 
 .admin-textarea {
   width: 100%;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  border: 1px solid #444;
-  background: #1a1a1a;
-  color: inherit;
-  font-family: inherit;
-  font-size: 0.9rem;
-  resize: vertical;
   box-sizing: border-box;
-}
-
-@media (prefers-color-scheme: light) {
-  .admin-textarea {
-    border-color: #ccc;
-    background: #fff;
-  }
 }
 
 .admin-error {

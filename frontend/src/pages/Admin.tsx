@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { fetchAdminTasks, patchTask, postUpdate } from "../api/admin";
 import type { AdminTaskRead } from "../api/types";
-import { formatCents } from "../utils/formatting";
+import { formatBackers, formatCents } from "../utils/formatting";
 import StatusBadge from "../components/StatusBadge";
 import useFetch from "../hooks/useFetch";
 
@@ -84,8 +84,7 @@ function AdminTaskCard({
         <StatusBadge status={task.status} />
         <span className="admin-task-title">{task.title}</span>
         <span className="admin-task-stats">
-          {formatCents(task.pledge_total)} &middot; {task.pledge_count}{" "}
-          {task.pledge_count === 1 ? "backer" : "backers"} &middot;{" "}
+          {formatCents(task.pledge_total)} &middot; {formatBackers(task.pledge_count)} &middot;{" "}
           {new Date(task.created_at).toLocaleDateString()}
         </span>
         <span className="admin-expand-icon">{expanded ? "\u25BC" : "\u25B6"}</span>
@@ -119,7 +118,7 @@ function AdminTaskCard({
 
             {task.status === "accepted" && (
               <>
-                <div className="admin-update-form">
+                <div className="admin-update-form form-field">
                   <textarea
                     className="admin-textarea"
                     placeholder="Post a progress update (Markdown)..."
@@ -136,7 +135,7 @@ function AdminTaskCard({
                   </button>
                 </div>
 
-                <div className="admin-complete-form">
+                <div className="admin-complete-form form-field">
                   <textarea
                     className="admin-textarea"
                     placeholder="Evidence of completion (Markdown)..."

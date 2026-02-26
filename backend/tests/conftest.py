@@ -8,7 +8,7 @@ from sqlalchemy.pool import NullPool
 from testcontainers.postgres import PostgresContainer
 
 from app.auth import create_jwt
-from app.models import Base, MagicLinkToken, Patron
+from app.models import Base, MagicLinkToken, Patron, Pledge, Task
 from app.dependencies import get_db
 from app.config import settings
 
@@ -114,3 +114,33 @@ async def create_patron(
         await session.commit()
         await session.refresh(patron)
         return patron
+
+
+async def create_task(session_maker, **kwargs) -> Task:
+    async with session_maker() as session:
+        task = Task(
+            title=kwargs.get("title", "Test task"),
+            description=kwargs.get("description", "A test task"),
+            status=kwargs.get("status", "open"),
+        )
+        session.add(task)
+        await session.commit()
+        await session.refresh(task)
+        return task
+
+
+async def create_pledge(
+    session_maker, patron_id, task_id, amount=1000
+) -> Pledge:
+    async with session_maker() as session:
+        pledge = Pledge(
+            patron_id=patron_id,
+            task_id=task_id,
+            amount=amount,
+            payment_method="pm_test",
+            setup_intent="si_test",
+        )
+        session.add(pledge)
+        await session.commit()
+        await session.refresh(pledge)
+        return pledge

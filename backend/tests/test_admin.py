@@ -1,18 +1,18 @@
+import uuid
 from unittest.mock import patch
 
 from app.auth import create_jwt
 from app.config import settings
-from app.models import Pledge, Task, Update
-from tests.conftest import create_patron
+from tests.conftest import create_patron, create_pledge, create_task
 
 ADMIN_EMAIL = "admin@example.com"
 
 
-def _admin_settings(**overrides):
+def _admin_settings():
     """Return a mock settings object with admin_email set."""
 
     class FakeSettings:
-        admin_email = overrides.get("admin_email", ADMIN_EMAIL)
+        admin_email = ADMIN_EMAIL
         secret_key = settings.secret_key
 
     return FakeSettings()
@@ -22,34 +22,6 @@ async def _make_admin(session_maker):
     patron = await create_patron(session_maker, ADMIN_EMAIL, "cus_admin")
     token = create_jwt(patron.id, settings.secret_key, 30)
     return patron, token
-
-
-async def _make_task(session_maker, **kwargs) -> Task:
-    async with session_maker() as session:
-        task = Task(
-            title=kwargs.get("title", "Test task"),
-            description=kwargs.get("description", "A test task"),
-            status=kwargs.get("status", "open"),
-        )
-        session.add(task)
-        await session.commit()
-        await session.refresh(task)
-        return task
-
-
-async def _make_pledge(session_maker, patron_id, task_id, amount=1000) -> Pledge:
-    async with session_maker() as session:
-        pledge = Pledge(
-            patron_id=patron_id,
-            task_id=task_id,
-            amount=amount,
-            payment_method="pm_test",
-            setup_intent="si_test",
-        )
-        session.add(pledge)
-        await session.commit()
-        await session.refresh(pledge)
-        return pledge
 
 
 # --- GET /api/admin/tasks ---
@@ -71,10 +43,10 @@ async def test_admin_tasks_rejects_non_admin(client, test_session_maker):
 
 async def test_admin_tasks_returns_tasks_with_pledges(client, test_session_maker):
     admin, token = await _make_admin(test_session_maker)
-    task = await _make_task(test_session_maker, title="Task with pledges")
+    task = await create_task(test_session_maker, title="Task with pledges")
 
     backer = await create_patron(test_session_maker, "backer@example.com", "cus_backer")
-    await _make_pledge(test_session_maker, backer.id, task.id, 2000)
+    await create_pledge(test_session_maker, backer.id, task.id, 2000)
 
     with patch("app.dependencies.settings", _admin_settings()):
         resp = await client.get("/api/admin/tasks", cookies={"session": token})
@@ -107,7 +79,7 @@ async def test_admin_tasks_empty(client, test_session_maker):
 
 
 async def test_post_update_requires_auth(client, test_session_maker):
-    task = await _make_task(test_session_maker)
+    task = await create_task(test_session_maker)
     resp = await client.post(f"/api/tasks/{task.id}/updates", json={"body": "hi"})
     assert resp.status_code == 401
 
@@ -115,7 +87,7 @@ async def test_post_update_requires_auth(client, test_session_maker):
 async def test_post_update_rejects_non_admin(client, test_session_maker):
     patron = await create_patron(test_session_maker, "user@example.com", "cus_user")
     token = create_jwt(patron.id, settings.secret_key, 30)
-    task = await _make_task(test_session_maker)
+    task = await create_task(test_session_maker)
 
     with patch("app.dependencies.settings", _admin_settings()):
         resp = await client.post(
@@ -128,7 +100,7 @@ async def test_post_update_rejects_non_admin(client, test_session_maker):
 
 async def test_post_update_creates_update(client, test_session_maker):
     _admin, token = await _make_admin(test_session_maker)
-    task = await _make_task(test_session_maker)
+    task = await create_task(test_session_maker)
 
     with patch("app.dependencies.settings", _admin_settings()):
         resp = await client.post(
@@ -147,9 +119,6 @@ async def test_post_update_creates_update(client, test_session_maker):
 
 async def test_post_update_task_not_found(client, test_session_maker):
     _admin, token = await _make_admin(test_session_maker)
-
-    import uuid
-
     fake_id = uuid.uuid4()
     with patch("app.dependencies.settings", _admin_settings()):
         resp = await client.post(
