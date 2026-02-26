@@ -33,6 +33,7 @@ class TaskStatus(str, enum.Enum):
 
 
 class PledgeStatus(str, enum.Enum):
+    pending = "pending"
     active = "active"
     collected = "collected"
     failed = "failed"
@@ -125,13 +126,13 @@ class Pledge(Base):
         UUID(as_uuid=True), ForeignKey("task.id"), nullable=False
     )
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
-    payment_method: Mapped[str] = mapped_column(Text, nullable=False)
+    payment_method: Mapped[str | None] = mapped_column(Text, nullable=True)
     setup_intent: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[PledgeStatus] = mapped_column(
         Enum(PledgeStatus, name="pledge_status", native_enum=True),
         nullable=False,
-        default=PledgeStatus.active,
-        server_default="active",
+        default=PledgeStatus.pending,
+        server_default="pending",
     )
     payment_intent: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(

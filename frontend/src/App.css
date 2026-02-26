@@ -366,3 +366,139 @@
 .signin-message {
   color: #888;
 }
+
+/* Pledge Page */
+.pledge-page {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 1rem 0;
+}
+
+.pledge-page h1 {
+  font-size: 1.3rem;
+  margin-bottom: 1.5rem;
+}
+
+.pledge-form h2 {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.amount-selector {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.amount-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: transparent;
+  color: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.amount-btn:hover {
+  border-color: #646cff;
+}
+
+.amount-btn.active {
+  background: #646cff;
+  border-color: #646cff;
+  color: #fff;
+}
+
+@media (prefers-color-scheme: light) {
+  .amount-btn {
+    border-color: #ccc;
+  }
+}
+
+.custom-amount {
+  margin-bottom: 1rem;
+}
+
+.custom-amount label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.custom-amount input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #1a1a1a;
+  color: inherit;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+@media (prefers-color-scheme: light) {
+  .custom-amount input {
+    border-color: #ccc;
+    background: #fff;
+  }
+}
+
+.card-element-container {
+  margin-bottom: 1rem;
+}
+
+.card-element-container label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.card-element-container .StripeElement {
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #1a1a1a;
+}
+
+@media (prefers-color-scheme: light) {
+  .card-element-container .StripeElement {
+    border-color: #ccc;
+    background: #fff;
+  }
+}
+
+.pledge-error {
+  color: #e55;
+  margin-bottom: 0.75rem;
+}
+
+.pledge-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.pledge-confirmed {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.pledge-confirmed h2 {
+  margin-bottom: 0.5rem;
+}
+
+.pledge-confirmed p {
+  color: #888;
+  margin-bottom: 1.5rem;
+}
+
+.my-pledge-status {
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}

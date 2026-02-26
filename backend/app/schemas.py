@@ -89,12 +89,39 @@ class PledgeRead(BaseReadSchema):
     patron_id: uuid.UUID
     task_id: uuid.UUID
     amount: int
-    payment_method: str
+    payment_method: str | None
     setup_intent: str
     status: PledgeStatus
     payment_intent: str | None
     created_at: datetime
     collected_at: datetime | None
+
+
+class PledgeCreateRequest(BaseModel):
+    amount: int = Field(ge=500)
+
+
+class PledgeCreateResponse(BaseModel):
+    pledge_id: uuid.UUID
+    client_secret: str
+    publishable_key: str
+
+
+class PledgeMyResponse(BaseReadSchema):
+    id: uuid.UUID
+    amount: int
+    status: PledgeStatus
+    created_at: datetime
+
+
+class PledgeUpdateRequest(BaseModel):
+    amount: int = Field(ge=500)
+
+
+class PledgeUpdateResponse(BaseModel):
+    pledge_id: uuid.UUID
+    client_secret: str
+    publishable_key: str
 
 
 # --- Update ---

@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
     magic_link_expiry_minutes: int = 15
     session_expiry_days: int = 30
+    stripe_webhook_secret: str = ""
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

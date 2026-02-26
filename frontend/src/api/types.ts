@@ -41,3 +41,18 @@ export interface PatronMe {
   display_name: string | null;
   is_admin: boolean;
 }
+
+export type PledgeStatus = "pending" | "active" | "collected" | "failed" | "released";
+
+export interface PledgeCreateResponse {
+  pledge_id: string;
+  client_secret: string;
+  publishable_key: string;
+}
+
+export interface PledgeMyResponse {
+  id: string;
+  amount: number;
+  status: PledgeStatus;
+  created_at: string;
+}

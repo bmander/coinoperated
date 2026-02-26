@@ -6,6 +6,12 @@ import { makeTaskDetail, makeUpdate } from "../test/factories";
 import { renderWithRouter } from "../test/render";
 
 vi.mock("../api/tasks");
+vi.mock("../contexts/AuthContext", () => ({
+  useAuth: () => ({ patron: null, loading: false, login: vi.fn(), logout: vi.fn() }),
+}));
+vi.mock("../api/pledges", () => ({
+  getMyPledge: vi.fn().mockResolvedValue(null),
+}));
 const mockGetTask = vi.mocked(getTask);
 
 function renderDetail(taskId = "abc-123") {

@@ -8,6 +8,7 @@ import Layout from './components/Layout'
 import TaskBoard from './pages/TaskBoard'
 import TaskDetail from './pages/TaskDetail'
 import SignIn from './pages/SignIn'
+import PledgePage from './pages/PledgePage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -17,6 +18,7 @@ createRoot(document.getElementById('root')!).render(
           <Route element={<Layout />}>
             <Route path="/" element={<TaskBoard />} />
             <Route path="/tasks/:taskId" element={<TaskDetail />} />
+            <Route path="/tasks/:taskId/pledge" element={<PledgePage />} />
             <Route path="/signin" element={<SignIn />} />
           </Route>
         </Routes>

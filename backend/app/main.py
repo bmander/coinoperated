@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import auth, tasks
+from app.routers import auth, pledges, tasks, webhooks
 
 
 def create_app() -> FastAPI:
@@ -20,10 +20,16 @@ def create_app() -> FastAPI:
 
     app.include_router(auth.router)
     app.include_router(tasks.router)
+    app.include_router(pledges.router)
+    app.include_router(webhooks.router)
 
     @app.get("/api/health")
     async def health_check():
         return {"status": "ok"}
+
+    @app.get("/api/config/stripe")
+    async def stripe_config():
+        return {"publishable_key": settings.stripe_publishable_key}
 
     return app
 
