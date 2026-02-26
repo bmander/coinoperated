@@ -10,6 +10,7 @@ export default function Layout() {
         <Link to="/" className="site-title">CoinOperatedBrandon</Link>
         {patron ? (
           <div className="header-user">
+            {patron.is_admin && <Link to="/admin" className="btn btn-secondary">Admin</Link>}
             <span className="header-user-name">{patron.display_name || patron.email}</span>
             <button onClick={logout} className="btn btn-secondary">Sign Out</button>
           </div>

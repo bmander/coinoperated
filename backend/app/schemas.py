@@ -100,6 +100,23 @@ class PledgeRead(BaseReadSchema):
 # --- Update ---
 
 
+class AdminPledgeRead(BaseReadSchema):
+    id: uuid.UUID
+    patron_email: str
+    amount: int
+    status: PledgeStatus
+    created_at: datetime
+
+
+class AdminTaskRead(TaskRead):
+    pledges: list[AdminPledgeRead] = []
+
+
+class AdminTaskListResponse(BaseModel):
+    items: list[AdminTaskRead]
+    total: int
+
+
 class UpdateCreate(BaseModel):
     task_id: uuid.UUID
     body: str

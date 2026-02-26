@@ -366,3 +366,171 @@
 .signin-message {
   color: #888;
 }
+
+/* Admin */
+.admin-page h1 {
+  margin-bottom: 1rem;
+}
+
+.admin-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-task-card {
+  border: 1px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+@media (prefers-color-scheme: light) {
+  .admin-task-card {
+    border-color: #ddd;
+  }
+}
+
+.admin-task-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-task-card-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+@media (prefers-color-scheme: light) {
+  .admin-task-card-header:hover {
+    background: rgba(0, 0, 0, 0.03);
+  }
+}
+
+.admin-task-title {
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-task-stats {
+  color: #888;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.admin-expand-icon {
+  font-size: 0.7rem;
+  color: #888;
+}
+
+.admin-task-detail {
+  padding: 0 1rem 1rem;
+  border-top: 1px solid #333;
+}
+
+@media (prefers-color-scheme: light) {
+  .admin-task-detail {
+    border-top-color: #ddd;
+  }
+}
+
+.admin-pledge-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.9rem;
+}
+
+.admin-pledge-table th,
+.admin-pledge-table td {
+  text-align: left;
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid #333;
+}
+
+@media (prefers-color-scheme: light) {
+  .admin-pledge-table th,
+  .admin-pledge-table td {
+    border-bottom-color: #ddd;
+  }
+}
+
+.admin-pledge-table th {
+  font-size: 0.8rem;
+  color: #888;
+  font-weight: 500;
+}
+
+.admin-no-pledges {
+  color: #888;
+  font-size: 0.9rem;
+  margin: 0.75rem 0;
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin-top: 0.75rem;
+}
+
+.btn-accept {
+  background: #2a7a2a;
+  color: #fff;
+}
+
+.btn-decline {
+  background: #a33;
+  color: #fff;
+}
+
+.admin-update-form,
+.admin-complete-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.admin-textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #1a1a1a;
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+@media (prefers-color-scheme: light) {
+  .admin-textarea {
+    border-color: #ccc;
+    background: #fff;
+  }
+}
+
+.admin-error {
+  color: #e55;
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+.admin-collecting-indicator {
+  color: #cc6;
+  font-weight: 500;
+}
+
+.admin-collection-results {
+  color: #4a4;
+  font-weight: 500;
+}

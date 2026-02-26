@@ -8,6 +8,8 @@ import Layout from './components/Layout'
 import TaskBoard from './pages/TaskBoard'
 import TaskDetail from './pages/TaskDetail'
 import SignIn from './pages/SignIn'
+import Admin from './pages/Admin'
+import RequireAdmin from './components/RequireAdmin'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -18,6 +20,9 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/" element={<TaskBoard />} />
             <Route path="/tasks/:taskId" element={<TaskDetail />} />
             <Route path="/signin" element={<SignIn />} />
+            <Route element={<RequireAdmin />}>
+              <Route path="/admin" element={<Admin />} />
+            </Route>
           </Route>
         </Routes>
       </AuthProvider>

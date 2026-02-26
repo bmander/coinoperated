@@ -41,3 +41,11 @@ async def get_optional_patron(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Patron | None:
     return await _resolve_patron(request, db)
+
+
+async def get_admin_patron(
+    patron: Annotated[Patron, Depends(get_current_patron)],
+) -> Patron:
+    if patron.email != settings.admin_email:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return patron
