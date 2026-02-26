@@ -7,8 +7,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.dependencies import get_db
-from app.models import Task, TaskStatus
+from app.dependencies import get_current_patron, get_db
+from app.models import Patron, Task, TaskStatus
 from app.schemas import TaskCreate, TaskDetail, TaskListResponse, TaskRead, TaskUpdate
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -73,12 +73,13 @@ async def get_task(
 async def create_task(
     payload: TaskCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    patron: Annotated[Patron, Depends(get_current_patron)],
 ):
     task = Task(
         title=payload.title,
         description=payload.description,
         criteria=payload.criteria,
-        submitted_by=payload.submitted_by,
+        submitted_by=patron.id,
     )
     db.add(task)
     await db.commit()

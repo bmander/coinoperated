@@ -46,19 +46,21 @@ export default function SignIn() {
     <div className="signin-page">
       <h1>Sign In</h1>
       {urlError && ERROR_MESSAGES[urlError] && (
-        <p className="signin-error">{ERROR_MESSAGES[urlError]}</p>
+        <p className="form-error">{ERROR_MESSAGES[urlError]}</p>
       )}
-      {error && <p className="signin-error">{error}</p>}
+      {error && <p className="form-error">{error}</p>}
       <form onSubmit={handleSubmit} className="signin-form">
-        <label htmlFor="email">Email address</label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          required
-        />
+        <div className="form-field">
+          <label htmlFor="email">Email address</label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            required
+          />
+        </div>
         <button type="submit" className="btn btn-primary">
           Send sign-in link
         </button>

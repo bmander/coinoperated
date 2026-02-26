@@ -1,4 +1,4 @@
-import type { TaskDetailRead, TaskListResponse, TaskStatus } from "./types";
+import type { TaskDetailRead, TaskListResponse, TaskRead, TaskStatus } from "./types";
 
 export interface ListTasksParams {
   status?: TaskStatus;
@@ -27,5 +27,22 @@ export async function getTask(taskId: string): Promise<TaskDetailRead> {
   const res = await fetch(`/api/tasks/${taskId}`);
   if (res.status === 404) throw new Error("Task not found");
   if (!res.ok) throw new Error(`Failed to fetch task: ${res.status}`);
+  return res.json();
+}
+
+export interface CreateTaskPayload {
+  title: string;
+  description: string;
+  criteria?: string;
+}
+
+export async function createTask(payload: CreateTaskPayload): Promise<TaskRead> {
+  const res = await fetch("/api/tasks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (res.status === 401) throw new Error("Not authenticated");
+  if (!res.ok) throw new Error(`Failed to create task: ${res.status}`);
   return res.json();
 }

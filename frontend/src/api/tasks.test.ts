@@ -1,4 +1,4 @@
-import { listTasks } from "./tasks";
+import { listTasks, createTask } from "./tasks";
 
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
@@ -40,5 +40,50 @@ describe("listTasks", () => {
     mockFetch.mockResolvedValue({ ok: false, status: 500 });
 
     await expect(listTasks()).rejects.toThrow("Failed to fetch tasks: 500");
+  });
+});
+
+describe("createTask", () => {
+  it("sends POST with JSON body", async () => {
+    const task = { id: "new-1", title: "New task", status: "open" };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: () => Promise.resolve(task),
+    });
+
+    const result = await createTask({ title: "New task", description: "Details" });
+
+    expect(mockFetch).toHaveBeenCalledWith("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "New task", description: "Details" }),
+    });
+    expect(result).toEqual(task);
+  });
+
+  it("includes criteria when provided", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: () => Promise.resolve({}),
+    });
+
+    await createTask({ title: "Task", description: "Desc", criteria: "Ship it" });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.criteria).toBe("Ship it");
+  });
+
+  it("throws on 401", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 401 });
+
+    await expect(createTask({ title: "T", description: "D" })).rejects.toThrow("Not authenticated");
+  });
+
+  it("throws on other errors", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 500 });
+
+    await expect(createTask({ title: "T", description: "D" })).rejects.toThrow("Failed to create task: 500");
   });
 });

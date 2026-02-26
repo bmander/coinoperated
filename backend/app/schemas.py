@@ -34,7 +34,6 @@ class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=500)
     description: str = Field(min_length=1)
     criteria: str | None = None
-    submitted_by: uuid.UUID | None = None
 
 
 class TaskRead(BaseReadSchema):
