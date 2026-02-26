@@ -3,20 +3,16 @@ import { userEvent } from "@testing-library/user-event";
 import { vi } from "vitest";
 import Layout from "./Layout";
 import { renderWithRouter } from "../test/render";
-
-const mockLogout = vi.fn();
+import { mockAuth } from "../test/auth";
 
 vi.mock("../contexts/AuthContext", () => ({
-  useAuth: vi.fn(() => ({
-    patron: null,
-    loading: false,
-    login: vi.fn(),
-    logout: mockLogout,
-  })),
+  useAuth: vi.fn(),
 }));
 
 import { useAuth } from "../contexts/AuthContext";
 const mockUseAuth = vi.mocked(useAuth);
+
+const mockLogout = vi.fn();
 
 describe("Layout", () => {
   afterEach(() => {
@@ -24,12 +20,7 @@ describe("Layout", () => {
   });
 
   it("renders Sign In link when not authenticated", () => {
-    mockUseAuth.mockReturnValue({
-      patron: null,
-      loading: false,
-      login: vi.fn(),
-      logout: mockLogout,
-    });
+    mockUseAuth.mockReturnValue(mockAuth());
     renderWithRouter(<Layout />);
 
     expect(screen.getByText("CoinOperatedBrandon")).toBeInTheDocument();
@@ -37,12 +28,9 @@ describe("Layout", () => {
   });
 
   it("renders user info and Sign Out when authenticated", () => {
-    mockUseAuth.mockReturnValue({
+    mockUseAuth.mockReturnValue(mockAuth({
       patron: { id: "1", email: "test@example.com", display_name: null, is_admin: false },
-      loading: false,
-      login: vi.fn(),
-      logout: mockLogout,
-    });
+    }));
     renderWithRouter(<Layout />);
 
     expect(screen.getByText("test@example.com")).toBeInTheDocument();
@@ -51,12 +39,9 @@ describe("Layout", () => {
   });
 
   it("shows display_name when available", () => {
-    mockUseAuth.mockReturnValue({
+    mockUseAuth.mockReturnValue(mockAuth({
       patron: { id: "1", email: "test@example.com", display_name: "Test User", is_admin: false },
-      loading: false,
-      login: vi.fn(),
-      logout: mockLogout,
-    });
+    }));
     renderWithRouter(<Layout />);
 
     expect(screen.getByText("Test User")).toBeInTheDocument();
@@ -64,12 +49,10 @@ describe("Layout", () => {
   });
 
   it("calls logout when Sign Out is clicked", async () => {
-    mockUseAuth.mockReturnValue({
+    mockUseAuth.mockReturnValue(mockAuth({
       patron: { id: "1", email: "test@example.com", display_name: null, is_admin: false },
-      loading: false,
-      login: vi.fn(),
       logout: mockLogout,
-    });
+    }));
     renderWithRouter(<Layout />);
 
     await userEvent.click(screen.getByRole("button", { name: "Sign Out" }));
@@ -77,12 +60,7 @@ describe("Layout", () => {
   });
 
   it("renders child route content via Outlet", () => {
-    mockUseAuth.mockReturnValue({
-      patron: null,
-      loading: false,
-      login: vi.fn(),
-      logout: mockLogout,
-    });
+    mockUseAuth.mockReturnValue(mockAuth());
     renderWithRouter(<Layout />, ["/"]);
 
     expect(screen.getByRole("main")).toBeInTheDocument();

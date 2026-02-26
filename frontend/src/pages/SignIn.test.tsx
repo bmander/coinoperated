@@ -3,22 +3,22 @@ import { userEvent } from "@testing-library/user-event";
 import { vi } from "vitest";
 import SignIn from "./SignIn";
 import { renderWithRouter } from "../test/render";
+import { mockAuth } from "../test/auth";
 
 const mockLogin = vi.fn();
 
 vi.mock("../contexts/AuthContext", () => ({
-  useAuth: vi.fn(() => ({
-    patron: null,
-    loading: false,
-    login: mockLogin,
-    logout: vi.fn(),
-  })),
+  useAuth: vi.fn(),
 }));
 
 import { useAuth } from "../contexts/AuthContext";
 const mockUseAuth = vi.mocked(useAuth);
 
 describe("SignIn", () => {
+  beforeEach(() => {
+    mockUseAuth.mockReturnValue(mockAuth({ login: mockLogin }));
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
   });
@@ -70,15 +70,11 @@ describe("SignIn", () => {
   });
 
   it("redirects to / when already signed in", () => {
-    mockUseAuth.mockReturnValue({
+    mockUseAuth.mockReturnValue(mockAuth({
       patron: { id: "1", email: "test@example.com", display_name: null, is_admin: false },
-      loading: false,
-      login: mockLogin,
-      logout: vi.fn(),
-    });
+    }));
     renderWithRouter(<SignIn />, ["/signin"]);
 
-    // Should not render the sign in form
     expect(screen.queryByText("Sign In")).not.toBeInTheDocument();
   });
 });

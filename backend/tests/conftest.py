@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
@@ -5,8 +7,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 from testcontainers.postgres import PostgresContainer
 
-from app.models import Base
+from app.models import Base, MagicLinkToken, Patron
 from app.dependencies import get_db
+from app.config import settings
 
 
 @pytest.fixture(scope="session")
@@ -64,3 +67,37 @@ async def client(test_session_maker):
         transport=ASGITransport(app=app), base_url="http://test"
     ) as c:
         yield c
+
+
+async def create_magic_token(
+    session_maker,
+    email: str,
+    token: str,
+    *,
+    expired: bool = False,
+    used: bool = False,
+) -> MagicLinkToken:
+    delta = timedelta(minutes=-1) if expired else timedelta(minutes=15)
+    async with session_maker() as session:
+        mlt = MagicLinkToken(
+            email=email,
+            token=token,
+            expires_at=datetime.now(timezone.utc) + delta,
+            used=used,
+        )
+        session.add(mlt)
+        await session.commit()
+        return mlt
+
+
+async def create_patron(
+    session_maker,
+    email: str,
+    stripe_customer: str = "cus_test",
+) -> Patron:
+    async with session_maker() as session:
+        patron = Patron(email=email, stripe_customer=stripe_customer)
+        session.add(patron)
+        await session.commit()
+        await session.refresh(patron)
+        return patron

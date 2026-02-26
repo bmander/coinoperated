@@ -20,6 +20,13 @@ from app.schemas import LoginRequest, PatronMe
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
+def _error_redirect(error_code: str) -> RedirectResponse:
+    return RedirectResponse(
+        url=f"{settings.frontend_url}/signin?error={error_code}",
+        status_code=302,
+    )
+
+
 @router.post("/login")
 async def login(
     payload: LoginRequest,
@@ -53,23 +60,11 @@ async def verify(
     )
     magic_token = result.scalar_one_or_none()
 
-    if magic_token is None:
-        return RedirectResponse(
-            url=f"{settings.frontend_url}/signin?error=invalid_token",
-            status_code=302,
-        )
-
-    if magic_token.used:
-        return RedirectResponse(
-            url=f"{settings.frontend_url}/signin?error=invalid_token",
-            status_code=302,
-        )
+    if magic_token is None or magic_token.used:
+        return _error_redirect("invalid_token")
 
     if magic_token.expires_at < datetime.now(timezone.utc):
-        return RedirectResponse(
-            url=f"{settings.frontend_url}/signin?error=expired_token",
-            status_code=302,
-        )
+        return _error_redirect("expired_token")
 
     magic_token.used = True
     await db.flush()

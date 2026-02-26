@@ -1,11 +1,11 @@
-import uuid
-from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from sqlalchemy import select
 
 from app.auth import create_jwt
+from app.config import settings
 from app.models import MagicLinkToken, Patron
+from tests.conftest import create_magic_token, create_patron
 
 
 async def test_login_returns_200_and_creates_token(client, test_session_maker):
@@ -31,15 +31,7 @@ async def test_login_invalid_email_returns_422(client):
 async def test_verify_valid_token_sets_cookie_creates_patron(
     mock_stripe, client, test_session_maker
 ):
-    # Create a magic link token
-    async with test_session_maker() as session:
-        mlt = MagicLinkToken(
-            email="new@example.com",
-            token="valid-test-token",
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
-        )
-        session.add(mlt)
-        await session.commit()
+    await create_magic_token(test_session_maker, "new@example.com", "valid-test-token")
 
     resp = await client.get(
         "/api/auth/verify", params={"token": "valid-test-token"}, follow_redirects=False
@@ -47,7 +39,6 @@ async def test_verify_valid_token_sets_cookie_creates_patron(
     assert resp.status_code == 302
     assert "session" in resp.cookies
 
-    # Verify patron was created
     async with test_session_maker() as session:
         result = await session.execute(
             select(Patron).where(Patron.email == "new@example.com")
@@ -59,14 +50,9 @@ async def test_verify_valid_token_sets_cookie_creates_patron(
 
 
 async def test_verify_expired_token_redirects_with_error(client, test_session_maker):
-    async with test_session_maker() as session:
-        mlt = MagicLinkToken(
-            email="expired@example.com",
-            token="expired-test-token",
-            expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
-        )
-        session.add(mlt)
-        await session.commit()
+    await create_magic_token(
+        test_session_maker, "expired@example.com", "expired-test-token", expired=True
+    )
 
     resp = await client.get(
         "/api/auth/verify",
@@ -78,15 +64,9 @@ async def test_verify_expired_token_redirects_with_error(client, test_session_ma
 
 
 async def test_verify_used_token_redirects_with_error(client, test_session_maker):
-    async with test_session_maker() as session:
-        mlt = MagicLinkToken(
-            email="used@example.com",
-            token="used-test-token",
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
-            used=True,
-        )
-        session.add(mlt)
-        await session.commit()
+    await create_magic_token(
+        test_session_maker, "used@example.com", "used-test-token", used=True
+    )
 
     resp = await client.get(
         "/api/auth/verify",
@@ -108,23 +88,14 @@ async def test_verify_nonexistent_token_redirects_with_error(client):
 
 
 async def test_me_with_valid_session(client, test_session_maker):
-    # Create patron directly
-    async with test_session_maker() as session:
-        patron = Patron(
-            email="me@example.com",
-            stripe_customer="cus_me",
-        )
-        session.add(patron)
-        await session.commit()
-        await session.refresh(patron)
-        patron_id = patron.id
+    patron = await create_patron(test_session_maker, "me@example.com", "cus_me")
 
-    token = create_jwt(patron_id, "change-me-in-production", 30)
+    token = create_jwt(patron.id, settings.secret_key, 30)
     resp = await client.get("/api/auth/me", cookies={"session": token})
     assert resp.status_code == 200
     data = resp.json()
     assert data["email"] == "me@example.com"
-    assert data["id"] == str(patron_id)
+    assert data["id"] == str(patron.id)
     assert data["is_admin"] is False
 
 
@@ -135,22 +106,13 @@ async def test_me_without_session(client):
 
 async def test_me_admin_email(client, test_session_maker):
     admin_email = "admin@example.com"
+    patron = await create_patron(test_session_maker, admin_email, "cus_admin")
 
-    async with test_session_maker() as session:
-        patron = Patron(
-            email=admin_email,
-            stripe_customer="cus_admin",
-        )
-        session.add(patron)
-        await session.commit()
-        await session.refresh(patron)
-        patron_id = patron.id
-
-    token = create_jwt(patron_id, "change-me-in-production", 30)
+    token = create_jwt(patron.id, settings.secret_key, 30)
 
     with patch("app.routers.auth.settings") as mock_settings:
         mock_settings.admin_email = admin_email
-        mock_settings.secret_key = "change-me-in-production"
+        mock_settings.secret_key = settings.secret_key
         resp = await client.get("/api/auth/me", cookies={"session": token})
 
     assert resp.status_code == 200
@@ -160,7 +122,6 @@ async def test_me_admin_email(client, test_session_maker):
 async def test_logout_clears_cookie(client):
     resp = await client.post("/api/auth/logout")
     assert resp.status_code == 200
-    # Cookie should be cleared (set with max-age=0 or deleted)
     assert "session" in resp.headers.get("set-cookie", "")
 
 
@@ -168,24 +129,10 @@ async def test_logout_clears_cookie(client):
 async def test_second_login_reuses_existing_patron(
     mock_stripe, client, test_session_maker
 ):
-    # Create existing patron
-    async with test_session_maker() as session:
-        patron = Patron(
-            email="existing@example.com",
-            stripe_customer="cus_existing",
-        )
-        session.add(patron)
-        await session.commit()
-
-    # Create a magic link token
-    async with test_session_maker() as session:
-        mlt = MagicLinkToken(
-            email="existing@example.com",
-            token="reuse-test-token",
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
-        )
-        session.add(mlt)
-        await session.commit()
+    await create_patron(test_session_maker, "existing@example.com", "cus_existing")
+    await create_magic_token(
+        test_session_maker, "existing@example.com", "reuse-test-token"
+    )
 
     resp = await client.get(
         "/api/auth/verify",
@@ -194,10 +141,8 @@ async def test_second_login_reuses_existing_patron(
     )
     assert resp.status_code == 302
 
-    # Should not have created a new Stripe customer
     mock_stripe.assert_not_called()
 
-    # Should still be only one patron with that email
     async with test_session_maker() as session:
         result = await session.execute(
             select(Patron).where(Patron.email == "existing@example.com")

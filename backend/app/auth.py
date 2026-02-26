@@ -5,8 +5,6 @@ from datetime import datetime, timedelta, timezone
 import jwt
 import stripe
 
-from app.config import settings
-
 
 def create_jwt(patron_id: uuid.UUID, secret_key: str, expiry_days: int) -> str:
     payload = {
@@ -36,6 +34,5 @@ def send_magic_link(email: str, link: str) -> None:
 
 
 def create_stripe_customer(email: str) -> str:
-    stripe.api_key = settings.stripe_secret_key
     customer = stripe.Customer.create(email=email)
     return customer.id
