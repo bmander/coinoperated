@@ -4,11 +4,13 @@ VENV := backend/.venv/bin
 
 # Start everything for local development
 dev:
-	trap 'kill 0' INT TERM; \
+	@bash -c '\
+	cleanup() { kill 0; wait; }; \
+	trap cleanup EXIT INT TERM; \
 	docker compose up db & \
 	(cd backend && $(CURDIR)/$(VENV)/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000) & \
 	(cd frontend && npm run dev) & \
-	wait
+	wait'
 
 # Start the FastAPI backend
 dev-backend:
