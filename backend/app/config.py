@@ -6,9 +6,9 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""
     secret_key: str = "change-me-in-production"
-    cors_origins: list[str] = ["http://localhost:5173"]
+    cors_origins: list[str] = ["http://localhost:5173", "https://localhost:5173"]
     admin_email: str = ""
-    frontend_url: str = "http://localhost:5173"
+    frontend_url: str = "https://localhost:5173"
     magic_link_expiry_minutes: int = 15
     session_expiry_days: int = 30
     stripe_webhook_secret: str = ""

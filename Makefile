@@ -1,15 +1,18 @@
 VENV := backend/.venv/bin
+STRIPE := $(or $(shell command -v stripe 2>/dev/null),$(HOME)/.local/bin/stripe)
 
 .PHONY: dev dev-backend dev-frontend db migrate install
 
 # Start everything for local development
-dev:
+dev: install
 	@bash -c '\
+	export STRIPE_WEBHOOK_SECRET=$$($(STRIPE) listen --print-secret); \
 	cleanup() { kill 0; wait; }; \
 	trap cleanup EXIT INT TERM; \
 	docker compose up db & \
 	(cd backend && $(CURDIR)/$(VENV)/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000) & \
 	(cd frontend && npm run dev) & \
+	$(STRIPE) listen --forward-to localhost:8000/api/webhooks/stripe & \
 	wait'
 
 # Start the FastAPI backend

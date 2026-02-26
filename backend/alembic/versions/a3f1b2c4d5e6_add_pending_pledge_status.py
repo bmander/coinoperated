@@ -18,8 +18,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add 'pending' to pledge_status enum
+    # Add 'pending' to pledge_status enum.
+    # Must run outside a transaction because ALTER TYPE ... ADD VALUE
+    # cannot be used inside a transaction, and the new value must be
+    # committed before it can be referenced.
+    op.execute("COMMIT")
     op.execute("ALTER TYPE pledge_status ADD VALUE IF NOT EXISTS 'pending'")
+    op.execute("BEGIN")
     # Make payment_method nullable
     op.alter_column('pledge', 'payment_method', nullable=True)
     # Update server_default to 'pending'
