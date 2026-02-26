@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 from testcontainers.postgres import PostgresContainer
 
+from app.auth import create_jwt
 from app.models import Base, MagicLinkToken, Patron
 from app.dependencies import get_db
 from app.config import settings
@@ -67,6 +68,14 @@ async def client(test_session_maker):
         transport=ASGITransport(app=app), base_url="http://test"
     ) as c:
         yield c
+
+
+@pytest.fixture
+async def authed_client(test_session_maker, client):
+    patron = await create_patron(test_session_maker, "test@example.com")
+    token = create_jwt(patron.id, settings.secret_key, expiry_days=30)
+    client.cookies.set("session", token)
+    yield client, patron
 
 
 async def create_magic_token(
