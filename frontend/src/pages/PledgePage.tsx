@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { getTask } from "../api/tasks";
 import { createPledge, getMyPledge, updatePledge, deletePledge } from "../api/pledges";
 import { formatCents } from "../utils/formatting";
+import { isLivePledge } from "../api/types";
 import type { TaskDetailRead, PledgeMyResponse } from "../api/types";
 
 const PRESET_AMOUNTS = [500, 2500, 10000];
@@ -28,7 +29,7 @@ function PledgeForm({
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState(false);
 
-  const isUpdate = existingPledge && (existingPledge.status === "active" || existingPledge.status === "pending");
+  const isUpdate = isLivePledge(existingPledge);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -7,6 +7,7 @@ import { formatBackers, formatCents } from "../utils/formatting";
 import StatusBadge from "../components/StatusBadge";
 import useFetch from "../hooks/useFetch";
 import { useAuth } from "../contexts/AuthContext";
+import { isLivePledge } from "../api/types";
 import type { PledgeMyResponse } from "../api/types";
 
 function MarkdownSection({ title, children }: { title: string; children: string }) {
@@ -86,15 +87,13 @@ export default function TaskDetail() {
 
       {canPledge && (
         <div className="task-detail-cta">
-          {myPledge && (myPledge.status === "active" || myPledge.status === "pending") && (
+          {isLivePledge(myPledge) && (
             <p className="my-pledge-status">
               You pledged {formatCents(myPledge.amount)} ({myPledge.status})
             </p>
           )}
           <Link to={`/tasks/${task.id}/pledge`} className="btn btn-primary">
-            {myPledge && (myPledge.status === "active" || myPledge.status === "pending")
-              ? "Update Pledge"
-              : "Pledge"}
+            {isLivePledge(myPledge) ? "Update Pledge" : "Pledge"}
           </Link>
         </div>
       )}

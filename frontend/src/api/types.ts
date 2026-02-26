@@ -73,3 +73,7 @@ export interface PledgeMyResponse {
   status: PledgeStatus;
   created_at: string;
 }
+
+export function isLivePledge(pledge: PledgeMyResponse | null): pledge is PledgeMyResponse {
+  return pledge !== null && (pledge.status === "active" || pledge.status === "pending");
+}

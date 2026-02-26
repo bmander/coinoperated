@@ -8,7 +8,7 @@ from sqlalchemy.pool import NullPool
 from testcontainers.postgres import PostgresContainer
 
 from app.auth import create_jwt
-from app.models import Base, MagicLinkToken, Patron, Pledge, Task
+from app.models import Base, MagicLinkToken, Patron, Pledge, PledgeStatus, Task
 from app.dependencies import get_db
 from app.config import settings
 
@@ -116,30 +116,29 @@ async def create_patron(
         return patron
 
 
-async def create_task(session_maker, **kwargs) -> Task:
+async def create_task(session_maker, **overrides) -> Task:
+    defaults = dict(title="Test task", description="A test task", status="open")
+    defaults.update(overrides)
     async with session_maker() as session:
-        task = Task(
-            title=kwargs.get("title", "Test task"),
-            description=kwargs.get("description", "A test task"),
-            status=kwargs.get("status", "open"),
-        )
+        task = Task(**defaults)
         session.add(task)
         await session.commit()
         await session.refresh(task)
         return task
 
 
-async def create_pledge(
-    session_maker, patron_id, task_id, amount=1000
-) -> Pledge:
+async def create_pledge(session_maker, *, patron_id, task_id, **overrides) -> Pledge:
+    defaults = dict(
+        patron_id=patron_id,
+        task_id=task_id,
+        amount=1000,
+        status=PledgeStatus.active,
+        setup_intent="si_test",
+        payment_method="pm_test",
+    )
+    defaults.update(overrides)
     async with session_maker() as session:
-        pledge = Pledge(
-            patron_id=patron_id,
-            task_id=task_id,
-            amount=amount,
-            payment_method="pm_test",
-            setup_intent="si_test",
-        )
+        pledge = Pledge(**defaults)
         session.add(pledge)
         await session.commit()
         await session.refresh(pledge)

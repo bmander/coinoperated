@@ -8,7 +8,7 @@ from app.auth import create_jwt
 from app.config import settings
 from app.models import Pledge, PledgeStatus, Task, TaskStatus
 
-from tests.conftest import create_patron
+from tests.conftest import create_patron, create_pledge, create_task
 
 
 # --- Helpers ---
@@ -17,35 +17,6 @@ from tests.conftest import create_patron
 def auth_cookies(patron_id: uuid.UUID) -> dict:
     token = create_jwt(patron_id, settings.secret_key, settings.session_expiry_days)
     return {"session": token}
-
-
-async def create_task_row(session_maker, **overrides) -> Task:
-    defaults = dict(title="Test Task", description="A test task", status=TaskStatus.open)
-    defaults.update(overrides)
-    async with session_maker() as session:
-        task = Task(**defaults)
-        session.add(task)
-        await session.commit()
-        await session.refresh(task)
-        return task
-
-
-async def create_pledge_row(session_maker, *, patron_id, task_id, **overrides) -> Pledge:
-    defaults = dict(
-        patron_id=patron_id,
-        task_id=task_id,
-        amount=1000,
-        setup_intent="si_test_123",
-        status=PledgeStatus.active,
-        payment_method="pm_test_123",
-    )
-    defaults.update(overrides)
-    async with session_maker() as session:
-        pledge = Pledge(**defaults)
-        session.add(pledge)
-        await session.commit()
-        await session.refresh(pledge)
-        return pledge
 
 
 def mock_setup_intent(si_id="si_new_123", client_secret="seti_secret_123"):
@@ -62,7 +33,7 @@ def mock_setup_intent(si_id="si_new_123", client_secret="seti_secret_123"):
 async def test_create_pledge(mock_si_create, client, test_session_maker):
     mock_si_create.return_value = mock_setup_intent()
     patron = await create_patron(test_session_maker, "alice@example.com", "cus_alice")
-    task = await create_task_row(test_session_maker)
+    task = await create_task(test_session_maker)
 
     resp = await client.post(
         f"/api/tasks/{task.id}/pledges",
@@ -78,7 +49,7 @@ async def test_create_pledge(mock_si_create, client, test_session_maker):
 
 
 async def test_create_pledge_requires_auth(client, test_session_maker):
-    task = await create_task_row(test_session_maker)
+    task = await create_task(test_session_maker)
     resp = await client.post(f"/api/tasks/{task.id}/pledges", json={"amount": 500})
     assert resp.status_code == 401
 
@@ -98,8 +69,8 @@ async def test_create_pledge_task_not_found(client, test_session_maker):
 async def test_create_pledge_duplicate_rejected(mock_si_create, client, test_session_maker):
     mock_si_create.return_value = mock_setup_intent()
     patron = await create_patron(test_session_maker, "carol@example.com", "cus_carol")
-    task = await create_task_row(test_session_maker)
-    await create_pledge_row(
+    task = await create_task(test_session_maker)
+    await create_pledge(
         test_session_maker, patron_id=patron.id, task_id=task.id, status=PledgeStatus.pending
     )
 
@@ -114,7 +85,7 @@ async def test_create_pledge_duplicate_rejected(mock_si_create, client, test_ses
 
 async def test_create_pledge_minimum_amount(client, test_session_maker):
     patron = await create_patron(test_session_maker, "dan@example.com", "cus_dan")
-    task = await create_task_row(test_session_maker)
+    task = await create_task(test_session_maker)
 
     resp = await client.post(
         f"/api/tasks/{task.id}/pledges",
@@ -126,7 +97,7 @@ async def test_create_pledge_minimum_amount(client, test_session_maker):
 
 async def test_create_pledge_task_not_pledgeable(client, test_session_maker):
     patron = await create_patron(test_session_maker, "eve@example.com", "cus_eve")
-    task = await create_task_row(test_session_maker, status=TaskStatus.completed)
+    task = await create_task(test_session_maker, status=TaskStatus.completed)
 
     resp = await client.post(
         f"/api/tasks/{task.id}/pledges",
@@ -141,8 +112,8 @@ async def test_create_pledge_task_not_pledgeable(client, test_session_maker):
 
 async def test_get_my_pledge(client, test_session_maker):
     patron = await create_patron(test_session_maker, "fiona@example.com", "cus_fiona")
-    task = await create_task_row(test_session_maker)
-    await create_pledge_row(test_session_maker, patron_id=patron.id, task_id=task.id)
+    task = await create_task(test_session_maker)
+    await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
 
     resp = await client.get(
         f"/api/tasks/{task.id}/pledges/me",
@@ -156,7 +127,7 @@ async def test_get_my_pledge(client, test_session_maker):
 
 async def test_get_my_pledge_not_found(client, test_session_maker):
     patron = await create_patron(test_session_maker, "george@example.com", "cus_george")
-    task = await create_task_row(test_session_maker)
+    task = await create_task(test_session_maker)
 
     resp = await client.get(
         f"/api/tasks/{task.id}/pledges/me",
@@ -167,8 +138,8 @@ async def test_get_my_pledge_not_found(client, test_session_maker):
 
 async def test_get_my_pledge_excludes_released(client, test_session_maker):
     patron = await create_patron(test_session_maker, "harry@example.com", "cus_harry")
-    task = await create_task_row(test_session_maker)
-    await create_pledge_row(
+    task = await create_task(test_session_maker)
+    await create_pledge(
         test_session_maker, patron_id=patron.id, task_id=task.id, status=PledgeStatus.released
     )
 
@@ -187,8 +158,8 @@ async def test_get_my_pledge_excludes_released(client, test_session_maker):
 async def test_update_pledge(mock_si_create, mock_si_cancel, client, test_session_maker):
     mock_si_create.return_value = mock_setup_intent("si_updated", "seti_updated_secret")
     patron = await create_patron(test_session_maker, "iris@example.com", "cus_iris")
-    task = await create_task_row(test_session_maker)
-    await create_pledge_row(
+    task = await create_task(test_session_maker)
+    await create_pledge(
         test_session_maker,
         patron_id=patron.id,
         task_id=task.id,
@@ -212,7 +183,7 @@ async def test_update_pledge(mock_si_create, mock_si_cancel, client, test_sessio
 async def test_update_active_pledge_decrements_task(mock_si_create, client, test_session_maker):
     mock_si_create.return_value = mock_setup_intent("si_upd2", "seti_upd2_secret")
     patron = await create_patron(test_session_maker, "jack@example.com", "cus_jack")
-    task = await create_task_row(test_session_maker)
+    task = await create_task(test_session_maker)
 
     # Manually set task counts as if pledge was active
     async with test_session_maker() as session:
@@ -221,7 +192,7 @@ async def test_update_active_pledge_decrements_task(mock_si_create, client, test
         t.pledge_total = 1000
         await session.commit()
 
-    await create_pledge_row(
+    await create_pledge(
         test_session_maker,
         patron_id=patron.id,
         task_id=task.id,
@@ -249,8 +220,8 @@ async def test_update_active_pledge_decrements_task(mock_si_create, client, test
 @patch("app.routers.pledges.stripe.SetupIntent.cancel")
 async def test_delete_pending_pledge(mock_si_cancel, client, test_session_maker):
     patron = await create_patron(test_session_maker, "kate@example.com", "cus_kate")
-    task = await create_task_row(test_session_maker)
-    await create_pledge_row(
+    task = await create_task(test_session_maker)
+    await create_pledge(
         test_session_maker,
         patron_id=patron.id,
         task_id=task.id,
@@ -269,7 +240,7 @@ async def test_delete_pending_pledge(mock_si_cancel, client, test_session_maker)
 
 async def test_delete_active_pledge_decrements_task(client, test_session_maker):
     patron = await create_patron(test_session_maker, "leo@example.com", "cus_leo")
-    task = await create_task_row(test_session_maker)
+    task = await create_task(test_session_maker)
 
     async with test_session_maker() as session:
         t = await session.get(Task, task.id)
@@ -277,7 +248,7 @@ async def test_delete_active_pledge_decrements_task(client, test_session_maker):
         t.pledge_total = 1500
         await session.commit()
 
-    await create_pledge_row(
+    await create_pledge(
         test_session_maker,
         patron_id=patron.id,
         task_id=task.id,
@@ -299,7 +270,7 @@ async def test_delete_active_pledge_decrements_task(client, test_session_maker):
 
 async def test_delete_pledge_not_found(client, test_session_maker):
     patron = await create_patron(test_session_maker, "mike@example.com", "cus_mike")
-    task = await create_task_row(test_session_maker)
+    task = await create_task(test_session_maker)
 
     resp = await client.delete(
         f"/api/tasks/{task.id}/pledges/me",
@@ -315,8 +286,8 @@ async def test_delete_pledge_not_found(client, test_session_maker):
 @patch("app.routers.webhooks.stripe.Webhook.construct_event")
 async def test_webhook_activates_pledge(mock_construct, mock_pm_attach, client, test_session_maker):
     patron = await create_patron(test_session_maker, "nora@example.com", "cus_nora")
-    task = await create_task_row(test_session_maker)
-    pledge = await create_pledge_row(
+    task = await create_task(test_session_maker)
+    pledge = await create_pledge(
         test_session_maker,
         patron_id=patron.id,
         task_id=task.id,
@@ -441,8 +412,8 @@ async def test_update_pledge_cancel_invalid_request_error_ignored(
         "No such setup intent", param=None
     )
     patron = await create_patron(test_session_maker, "pat_cancel@example.com", "cus_cancel")
-    task = await create_task_row(test_session_maker)
-    await create_pledge_row(
+    task = await create_task(test_session_maker)
+    await create_pledge(
         test_session_maker,
         patron_id=patron.id,
         task_id=task.id,
@@ -469,8 +440,8 @@ async def test_delete_pending_cancel_invalid_request_error_ignored(
         "No such setup intent", param=None
     )
     patron = await create_patron(test_session_maker, "pat_del_cancel@example.com", "cus_del_cancel")
-    task = await create_task_row(test_session_maker)
-    await create_pledge_row(
+    task = await create_task(test_session_maker)
+    await create_pledge(
         test_session_maker,
         patron_id=patron.id,
         task_id=task.id,
@@ -493,8 +464,8 @@ async def test_delete_pending_cancel_invalid_request_error_ignored(
 @patch("app.routers.pledges.stripe.SetupIntent.create")
 async def test_update_released_pledge_returns_404(mock_si_create, client, test_session_maker):
     patron = await create_patron(test_session_maker, "pat_rel@example.com", "cus_rel")
-    task = await create_task_row(test_session_maker)
-    await create_pledge_row(
+    task = await create_task(test_session_maker)
+    await create_pledge(
         test_session_maker,
         patron_id=patron.id,
         task_id=task.id,
@@ -511,8 +482,8 @@ async def test_update_released_pledge_returns_404(mock_si_create, client, test_s
 
 async def test_delete_released_pledge_returns_404(client, test_session_maker):
     patron = await create_patron(test_session_maker, "pat_rel2@example.com", "cus_rel2")
-    task = await create_task_row(test_session_maker)
-    await create_pledge_row(
+    task = await create_task(test_session_maker)
+    await create_pledge(
         test_session_maker,
         patron_id=patron.id,
         task_id=task.id,
@@ -541,19 +512,19 @@ async def test_stripe_config_returns_publishable_key(client):
 
 
 async def test_get_my_pledge_requires_auth(client, test_session_maker):
-    task = await create_task_row(test_session_maker)
+    task = await create_task(test_session_maker)
     resp = await client.get(f"/api/tasks/{task.id}/pledges/me")
     assert resp.status_code == 401
 
 
 async def test_update_pledge_requires_auth(client, test_session_maker):
-    task = await create_task_row(test_session_maker)
+    task = await create_task(test_session_maker)
     resp = await client.patch(f"/api/tasks/{task.id}/pledges/me", json={"amount": 1000})
     assert resp.status_code == 401
 
 
 async def test_delete_pledge_requires_auth(client, test_session_maker):
-    task = await create_task_row(test_session_maker)
+    task = await create_task(test_session_maker)
     resp = await client.delete(f"/api/tasks/{task.id}/pledges/me")
     assert resp.status_code == 401
 
@@ -565,7 +536,7 @@ async def test_delete_pledge_requires_auth(client, test_session_maker):
 async def test_create_pledge_on_accepted_task(mock_si_create, client, test_session_maker):
     mock_si_create.return_value = mock_setup_intent()
     patron = await create_patron(test_session_maker, "accepted@example.com", "cus_accepted")
-    task = await create_task_row(test_session_maker, status=TaskStatus.accepted)
+    task = await create_task(test_session_maker, status=TaskStatus.accepted)
 
     resp = await client.post(
         f"/api/tasks/{task.id}/pledges",
