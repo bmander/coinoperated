@@ -5,3 +5,7 @@ export function formatCents(cents: number): string {
 export function statusLabel(status: string): string {
   return status.toUpperCase();
 }
+
+export function formatBackers(count: number): string {
+  return `${count} ${count === 1 ? "backer" : "backers"}`;
+}

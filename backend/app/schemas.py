@@ -6,6 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.models import PledgeStatus, TaskStatus
 
 
+class BaseReadSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+
 # --- Patron ---
 
 
@@ -15,9 +19,7 @@ class PatronCreate(BaseModel):
     stripe_customer: str
 
 
-class PatronRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class PatronRead(BaseReadSchema):
     id: uuid.UUID
     email: str
     display_name: str | None
@@ -35,9 +37,7 @@ class TaskCreate(BaseModel):
     submitted_by: uuid.UUID | None = None
 
 
-class TaskRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class TaskRead(BaseReadSchema):
     id: uuid.UUID
     title: str
     description: str
@@ -84,9 +84,7 @@ class PledgeCreate(BaseModel):
     setup_intent: str
 
 
-class PledgeRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class PledgeRead(BaseReadSchema):
     id: uuid.UUID
     patron_id: uuid.UUID
     task_id: uuid.UUID
@@ -107,9 +105,7 @@ class UpdateCreate(BaseModel):
     body: str
 
 
-class UpdateRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class UpdateRead(BaseReadSchema):
     id: uuid.UUID
     task_id: uuid.UUID
     body: str

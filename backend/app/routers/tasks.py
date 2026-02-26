@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.database import async_session
+from app.dependencies import get_db
 from app.models import Task, TaskStatus
 from app.schemas import TaskCreate, TaskDetail, TaskListResponse, TaskRead, TaskUpdate
 
@@ -18,11 +18,6 @@ VALID_TRANSITIONS: dict[TaskStatus, set[TaskStatus]] = {
     TaskStatus.accepted: {TaskStatus.collecting, TaskStatus.open},
     TaskStatus.collecting: {TaskStatus.completed},
 }
-
-
-async def get_db():
-    async with async_session() as session:
-        yield session
 
 
 @router.get("", response_model=TaskListResponse)
@@ -54,20 +49,24 @@ async def list_tasks(
     return TaskListResponse(items=tasks, total=total, offset=offset, limit=limit)
 
 
+async def get_task_or_404(
+    db: AsyncSession, task_id: uuid.UUID, *, load_updates: bool = False
+) -> Task:
+    query = select(Task).where(Task.id == task_id)
+    if load_updates:
+        query = query.options(selectinload(Task.updates))
+    task = (await db.execute(query)).scalar_one_or_none()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+
 @router.get("/{task_id}", response_model=TaskDetail)
 async def get_task(
     task_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(
-        select(Task)
-        .where(Task.id == task_id)
-        .options(selectinload(Task.updates))
-    )
-    task = result.scalar_one_or_none()
-    if task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return task
+    return await get_task_or_404(db, task_id, load_updates=True)
 
 
 @router.post("", response_model=TaskRead, status_code=201)
@@ -93,10 +92,7 @@ async def update_task(
     payload: TaskUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(Task).where(Task.id == task_id))
-    task = result.scalar_one_or_none()
-    if task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
+    task = await get_task_or_404(db, task_id)
 
     if payload.status is not None and payload.status != task.status:
         allowed = VALID_TRANSITIONS.get(task.status, set())
@@ -119,14 +115,8 @@ async def update_task(
 
         task.status = payload.status
 
-    if payload.title is not None:
-        task.title = payload.title
-    if payload.description is not None:
-        task.description = payload.description
-    if payload.criteria is not None:
-        task.criteria = payload.criteria
-    if payload.evidence is not None:
-        task.evidence = payload.evidence
+    for field, value in payload.model_dump(exclude_unset=True, exclude={"status"}).items():
+        setattr(task, field, value)
 
     await db.commit()
     await db.refresh(task)

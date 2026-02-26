@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { listTasks } from "../api/tasks";
-import type { TaskRead, TaskStatus } from "../api/types";
+import type { TaskStatus } from "../api/types";
 import TaskCard from "../components/TaskCard";
+import useFetch from "../hooks/useFetch";
+import { useState } from "react";
 
 type SortOption = "most_pledged" | "newest" | "oldest";
 
@@ -22,39 +23,16 @@ const STATUS_OPTIONS: { value: TaskStatus | ""; label: string }[] = [
 ];
 
 export default function TaskBoard() {
-  const [tasks, setTasks] = useState<TaskRead[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [sort, setSort] = useState<SortOption>("most_pledged");
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "">("");
-  const fetchId = useRef(0);
 
-  useEffect(() => {
-    const id = ++fetchId.current;
-    let cancelled = false;
+  const { sort_by, sort_order } = SORT_MAP[sort];
+  const { data, loading, error } = useFetch(
+    () => listTasks({ sort_by, sort_order, status: statusFilter || undefined }),
+    [sort, statusFilter],
+  );
 
-    const { sort_by, sort_order } = SORT_MAP[sort];
-    listTasks({
-      sort_by,
-      sort_order,
-      status: statusFilter || undefined,
-    })
-      .then((data) => {
-        if (!cancelled && fetchId.current === id) {
-          setTasks(data.items);
-          setError(null);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled && fetchId.current === id) {
-          setError(err.message);
-          setLoading(false);
-        }
-      });
-
-    return () => { cancelled = true; };
-  }, [sort, statusFilter]);
+  const tasks = data?.items ?? [];
 
   return (
     <div className="task-board">
@@ -82,10 +60,10 @@ export default function TaskBoard() {
         </label>
       </div>
 
-      {loading && <p className="board-message">Loading tasks...</p>}
-      {error && <p className="board-message board-error">Error: {error}</p>}
+      {loading && <p className="page-message">Loading tasks...</p>}
+      {error && <p className="page-message page-error">Error: {error}</p>}
       {!loading && !error && tasks.length === 0 && (
-        <p className="board-message">No tasks found.</p>
+        <p className="page-message">No tasks found.</p>
       )}
 
       <div className="task-list">

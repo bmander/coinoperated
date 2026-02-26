@@ -1,19 +1,17 @@
 import { Link } from "react-router-dom";
 import type { TaskRead } from "../api/types";
-import { formatCents, statusLabel } from "../utils/formatting";
+import { formatBackers, formatCents } from "../utils/formatting";
+import StatusBadge from "./StatusBadge";
 
 export default function TaskCard({ task }: { task: TaskRead }) {
   return (
     <div className="task-card">
       <div className="task-card-header">
-        <span className={`status-badge status-${task.status}`}>
-          {task.status === "accepted" && "\u2605 "}
-          {statusLabel(task.status)}
-        </span>
+        <StatusBadge status={task.status} />
       </div>
       <h3 className="task-card-title">{task.title}</h3>
       <p className="task-card-stats">
-        {task.pledge_count} {task.pledge_count === 1 ? "backer" : "backers"} &middot;{" "}
+        {formatBackers(task.pledge_count)} &middot;{" "}
         {formatCents(task.pledge_total)} pledged
       </p>
       <div className="task-card-actions">

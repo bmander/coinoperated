@@ -61,13 +61,13 @@
   }
 }
 
-.board-message {
+.page-message {
   text-align: center;
   padding: 2rem 0;
   color: #888;
 }
 
-.board-error {
+.page-error {
   color: #e55;
 }
 

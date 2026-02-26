@@ -32,7 +32,7 @@ describe("TaskDetail", () => {
     mockGetTask.mockResolvedValue(makeTaskDetail({ title: "Fix the bridge", status: "accepted" }));
     renderDetail();
     expect(await screen.findByText("Fix the bridge")).toBeInTheDocument();
-    expect(screen.getByText("ACCEPTED")).toBeInTheDocument();
+    expect(screen.getByText(/ACCEPTED/)).toBeInTheDocument();
   });
 
   it("renders description as markdown", async () => {
