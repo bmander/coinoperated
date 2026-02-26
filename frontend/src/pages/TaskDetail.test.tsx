@@ -2,17 +2,20 @@ import { screen } from "@testing-library/react";
 import { Route, Routes } from "react-router-dom";
 import TaskDetail from "./TaskDetail";
 import { getTask } from "../api/tasks";
+import { getMyPledge } from "../api/pledges";
 import { makeTaskDetail, makeUpdate } from "../test/factories";
 import { renderWithRouter } from "../test/render";
 
 vi.mock("../api/tasks");
+vi.mock("../api/pledges");
+
+const mockUseAuth = vi.fn();
 vi.mock("../contexts/AuthContext", () => ({
-  useAuth: () => ({ patron: null, loading: false, login: vi.fn(), logout: vi.fn() }),
+  useAuth: (...args: unknown[]) => mockUseAuth(...args),
 }));
-vi.mock("../api/pledges", () => ({
-  getMyPledge: vi.fn().mockResolvedValue(null),
-}));
+
 const mockGetTask = vi.mocked(getTask);
+const mockGetMyPledge = vi.mocked(getMyPledge);
 
 function renderDetail(taskId = "abc-123") {
   return renderWithRouter(
@@ -22,6 +25,11 @@ function renderDetail(taskId = "abc-123") {
     [`/tasks/${taskId}`],
   );
 }
+
+beforeEach(() => {
+  mockUseAuth.mockReturnValue({ patron: null, loading: false, login: vi.fn(), logout: vi.fn() });
+  mockGetMyPledge.mockResolvedValue(null);
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -154,5 +162,42 @@ describe("TaskDetail", () => {
     mockGetTask.mockRejectedValue(new Error("Task not found"));
     renderDetail();
     expect(await screen.findByText("Error: Task not found")).toBeInTheDocument();
+  });
+
+  it("shows pledge status and Update Pledge button when patron has active pledge", async () => {
+    mockUseAuth.mockReturnValue({ patron: { id: "p1", email: "a@b.com", display_name: null, is_admin: false }, loading: false, login: vi.fn(), logout: vi.fn() });
+    mockGetMyPledge.mockResolvedValue({ id: "pl1", amount: 2500, status: "active", created_at: "2025-01-01T00:00:00Z" });
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
+    renderDetail();
+    expect(await screen.findByText(/You pledged \$25 \(active\)/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Update Pledge" })).toBeInTheDocument();
+  });
+
+  it("shows Update Pledge button for pending pledge", async () => {
+    mockUseAuth.mockReturnValue({ patron: { id: "p1", email: "a@b.com", display_name: null, is_admin: false }, loading: false, login: vi.fn(), logout: vi.fn() });
+    mockGetMyPledge.mockResolvedValue({ id: "pl1", amount: 500, status: "pending", created_at: "2025-01-01T00:00:00Z" });
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
+    renderDetail();
+    expect(await screen.findByText(/You pledged \$5 \(pending\)/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Update Pledge" })).toBeInTheDocument();
+  });
+
+  it("shows plain Pledge button when patron has no pledge", async () => {
+    mockUseAuth.mockReturnValue({ patron: { id: "p1", email: "a@b.com", display_name: null, is_admin: false }, loading: false, login: vi.fn(), logout: vi.fn() });
+    mockGetMyPledge.mockResolvedValue(null);
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
+    renderDetail();
+    expect(await screen.findByRole("link", { name: "Pledge" })).toBeInTheDocument();
+    expect(screen.queryByText(/You pledged/)).not.toBeInTheDocument();
+  });
+
+  it("does not show pledge status for released pledge", async () => {
+    mockUseAuth.mockReturnValue({ patron: { id: "p1", email: "a@b.com", display_name: null, is_admin: false }, loading: false, login: vi.fn(), logout: vi.fn() });
+    // getMyPledge returns null for released pledges (404 from API)
+    mockGetMyPledge.mockResolvedValue(null);
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
+    renderDetail();
+    expect(await screen.findByRole("link", { name: "Pledge" })).toBeInTheDocument();
+    expect(screen.queryByText(/You pledged/)).not.toBeInTheDocument();
   });
 });

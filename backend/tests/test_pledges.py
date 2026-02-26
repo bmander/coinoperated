@@ -2,6 +2,7 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
+import stripe as stripe_module
 
 from app.auth import create_jwt
 from app.config import settings
@@ -393,3 +394,182 @@ async def test_webhook_ignores_other_event_types(mock_construct, client, test_se
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
+
+
+# --- Webhook validation errors ---
+
+
+@patch("app.routers.webhooks.stripe.Webhook.construct_event")
+async def test_webhook_rejects_invalid_payload(mock_construct, client):
+    mock_construct.side_effect = ValueError("Invalid payload")
+
+    resp = await client.post(
+        "/api/webhooks/stripe",
+        content=b"bad_body",
+        headers={"stripe-signature": "sig_test"},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "Invalid payload"
+
+
+@patch("app.routers.webhooks.stripe.Webhook.construct_event")
+async def test_webhook_rejects_invalid_signature(mock_construct, client):
+    mock_construct.side_effect = stripe_module.error.SignatureVerificationError(
+        "bad sig", "sig_header"
+    )
+
+    resp = await client.post(
+        "/api/webhooks/stripe",
+        content=b"raw_body",
+        headers={"stripe-signature": "bad_sig"},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "Invalid signature"
+
+
+# --- SetupIntent.cancel InvalidRequestError ---
+
+
+@patch("app.routers.pledges.stripe.SetupIntent.cancel")
+@patch("app.routers.pledges.stripe.SetupIntent.create")
+async def test_update_pledge_cancel_invalid_request_error_ignored(
+    mock_si_create, mock_si_cancel, client, test_session_maker
+):
+    """SetupIntent.cancel raising InvalidRequestError should be silently ignored."""
+    mock_si_create.return_value = mock_setup_intent("si_new", "seti_new_secret")
+    mock_si_cancel.side_effect = stripe_module.error.InvalidRequestError(
+        "No such setup intent", param=None
+    )
+    patron = await create_patron(test_session_maker, "pat_cancel@example.com", "cus_cancel")
+    task = await create_task_row(test_session_maker)
+    await create_pledge_row(
+        test_session_maker,
+        patron_id=patron.id,
+        task_id=task.id,
+        status=PledgeStatus.pending,
+        payment_method=None,
+        setup_intent="si_already_gone",
+    )
+
+    resp = await client.patch(
+        f"/api/tasks/{task.id}/pledges/me",
+        json={"amount": 2000},
+        cookies=auth_cookies(patron.id),
+    )
+    assert resp.status_code == 200
+    mock_si_cancel.assert_called_once_with("si_already_gone")
+
+
+@patch("app.routers.pledges.stripe.SetupIntent.cancel")
+async def test_delete_pending_cancel_invalid_request_error_ignored(
+    mock_si_cancel, client, test_session_maker
+):
+    """SetupIntent.cancel raising InvalidRequestError on delete should be silently ignored."""
+    mock_si_cancel.side_effect = stripe_module.error.InvalidRequestError(
+        "No such setup intent", param=None
+    )
+    patron = await create_patron(test_session_maker, "pat_del_cancel@example.com", "cus_del_cancel")
+    task = await create_task_row(test_session_maker)
+    await create_pledge_row(
+        test_session_maker,
+        patron_id=patron.id,
+        task_id=task.id,
+        status=PledgeStatus.pending,
+        payment_method=None,
+        setup_intent="si_gone",
+    )
+
+    resp = await client.delete(
+        f"/api/tasks/{task.id}/pledges/me",
+        cookies=auth_cookies(patron.id),
+    )
+    assert resp.status_code == 204
+    mock_si_cancel.assert_called_once_with("si_gone")
+
+
+# --- PATCH/DELETE on released pledge ---
+
+
+@patch("app.routers.pledges.stripe.SetupIntent.create")
+async def test_update_released_pledge_returns_404(mock_si_create, client, test_session_maker):
+    patron = await create_patron(test_session_maker, "pat_rel@example.com", "cus_rel")
+    task = await create_task_row(test_session_maker)
+    await create_pledge_row(
+        test_session_maker,
+        patron_id=patron.id,
+        task_id=task.id,
+        status=PledgeStatus.released,
+    )
+
+    resp = await client.patch(
+        f"/api/tasks/{task.id}/pledges/me",
+        json={"amount": 2000},
+        cookies=auth_cookies(patron.id),
+    )
+    assert resp.status_code == 404
+
+
+async def test_delete_released_pledge_returns_404(client, test_session_maker):
+    patron = await create_patron(test_session_maker, "pat_rel2@example.com", "cus_rel2")
+    task = await create_task_row(test_session_maker)
+    await create_pledge_row(
+        test_session_maker,
+        patron_id=patron.id,
+        task_id=task.id,
+        status=PledgeStatus.released,
+    )
+
+    resp = await client.delete(
+        f"/api/tasks/{task.id}/pledges/me",
+        cookies=auth_cookies(patron.id),
+    )
+    assert resp.status_code == 404
+
+
+# --- GET /api/config/stripe ---
+
+
+async def test_stripe_config_returns_publishable_key(client):
+    resp = await client.get("/api/config/stripe")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "publishable_key" in data
+    assert data["publishable_key"] == settings.stripe_publishable_key
+
+
+# --- Auth required on GET/PATCH/DELETE ---
+
+
+async def test_get_my_pledge_requires_auth(client, test_session_maker):
+    task = await create_task_row(test_session_maker)
+    resp = await client.get(f"/api/tasks/{task.id}/pledges/me")
+    assert resp.status_code == 401
+
+
+async def test_update_pledge_requires_auth(client, test_session_maker):
+    task = await create_task_row(test_session_maker)
+    resp = await client.patch(f"/api/tasks/{task.id}/pledges/me", json={"amount": 1000})
+    assert resp.status_code == 401
+
+
+async def test_delete_pledge_requires_auth(client, test_session_maker):
+    task = await create_task_row(test_session_maker)
+    resp = await client.delete(f"/api/tasks/{task.id}/pledges/me")
+    assert resp.status_code == 401
+
+
+# --- Pledges allowed on accepted tasks ---
+
+
+@patch("app.routers.pledges.stripe.SetupIntent.create")
+async def test_create_pledge_on_accepted_task(mock_si_create, client, test_session_maker):
+    mock_si_create.return_value = mock_setup_intent()
+    patron = await create_patron(test_session_maker, "accepted@example.com", "cus_accepted")
+    task = await create_task_row(test_session_maker, status=TaskStatus.accepted)
+
+    resp = await client.post(
+        f"/api/tasks/{task.id}/pledges",
+        json={"amount": 500},
+        cookies=auth_cookies(patron.id),
+    )
+    assert resp.status_code == 201
