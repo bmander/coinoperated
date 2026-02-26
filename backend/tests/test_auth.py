@@ -1,5 +1,8 @@
+import uuid
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
+import jwt
 from sqlalchemy import select
 
 from app.auth import create_jwt
@@ -101,6 +104,29 @@ async def test_me_with_valid_session(client, test_session_maker):
 
 async def test_me_without_session(client):
     resp = await client.get("/api/auth/me")
+    assert resp.status_code == 401
+
+
+async def test_me_with_expired_jwt(client, test_session_maker):
+    patron = await create_patron(test_session_maker, "expired-jwt@example.com")
+    expired_token = jwt.encode(
+        {"sub": str(patron.id), "exp": datetime.now(timezone.utc) - timedelta(days=1)},
+        settings.secret_key,
+        algorithm="HS256",
+    )
+    resp = await client.get("/api/auth/me", cookies={"session": expired_token})
+    assert resp.status_code == 401
+
+
+async def test_me_with_garbage_jwt(client):
+    resp = await client.get("/api/auth/me", cookies={"session": "not-a-real-jwt"})
+    assert resp.status_code == 401
+
+
+async def test_me_with_valid_jwt_but_deleted_patron(client):
+    fake_id = uuid.uuid4()
+    token = create_jwt(fake_id, settings.secret_key, 30)
+    resp = await client.get("/api/auth/me", cookies={"session": token})
     assert resp.status_code == 401
 
 
