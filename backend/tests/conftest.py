@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 from testcontainers.postgres import PostgresContainer
 
-from app.models import Base, MagicLinkToken, Patron
+from app.auth import create_jwt
+from app.models import Base, MagicLinkToken, Patron, Pledge, Task
 from app.dependencies import get_db
 from app.config import settings
 
@@ -69,6 +70,18 @@ async def client(test_session_maker):
         yield c
 
 
+@pytest.fixture
+async def test_patron(test_session_maker):
+    return await create_patron(test_session_maker, "test@example.com")
+
+
+@pytest.fixture
+async def authed_client(test_patron, client):
+    token = create_jwt(test_patron.id, settings.secret_key, expiry_days=30)
+    client.cookies.set("session", token)
+    yield client
+
+
 async def create_magic_token(
     session_maker,
     email: str,
@@ -101,3 +114,33 @@ async def create_patron(
         await session.commit()
         await session.refresh(patron)
         return patron
+
+
+async def create_task(session_maker, **kwargs) -> Task:
+    async with session_maker() as session:
+        task = Task(
+            title=kwargs.get("title", "Test task"),
+            description=kwargs.get("description", "A test task"),
+            status=kwargs.get("status", "open"),
+        )
+        session.add(task)
+        await session.commit()
+        await session.refresh(task)
+        return task
+
+
+async def create_pledge(
+    session_maker, patron_id, task_id, amount=1000
+) -> Pledge:
+    async with session_maker() as session:
+        pledge = Pledge(
+            patron_id=patron_id,
+            task_id=task_id,
+            amount=amount,
+            payment_method="pm_test",
+            setup_intent="si_test",
+        )
+        session.add(pledge)
+        await session.commit()
+        await session.refresh(pledge)
+        return pledge

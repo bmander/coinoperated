@@ -34,7 +34,6 @@ class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=500)
     description: str = Field(min_length=1)
     criteria: str | None = None
-    submitted_by: uuid.UUID | None = None
 
 
 class TaskRead(BaseReadSchema):
@@ -125,6 +124,23 @@ class PledgeUpdateResponse(BaseModel):
 
 
 # --- Update ---
+
+
+class AdminPledgeRead(BaseReadSchema):
+    id: uuid.UUID
+    patron_email: str
+    amount: int
+    status: PledgeStatus
+    created_at: datetime
+
+
+class AdminTaskRead(TaskRead):
+    pledges: list[AdminPledgeRead] = []
+
+
+class AdminTaskListResponse(BaseModel):
+    items: list[AdminTaskRead]
+    total: int
 
 
 class UpdateCreate(BaseModel):

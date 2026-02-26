@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import auth, pledges, tasks, webhooks
+from app.routers import admin, auth, pledges, tasks, webhooks
 
 
 def create_app() -> FastAPI:
@@ -18,6 +18,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    app.include_router(admin.router)
     app.include_router(auth.router)
     app.include_router(tasks.router)
     app.include_router(pledges.router)

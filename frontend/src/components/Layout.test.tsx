@@ -65,4 +65,22 @@ describe("Layout", () => {
 
     expect(screen.getByRole("main")).toBeInTheDocument();
   });
+
+  it("shows Admin link for admin users", () => {
+    mockUseAuth.mockReturnValue(mockAuth({
+      patron: { id: "1", email: "admin@example.com", display_name: null, is_admin: true },
+    }));
+    renderWithRouter(<Layout />);
+
+    expect(screen.getByRole("link", { name: "Admin" })).toHaveAttribute("href", "/admin");
+  });
+
+  it("does not show Admin link for non-admin users", () => {
+    mockUseAuth.mockReturnValue(mockAuth({
+      patron: { id: "1", email: "user@example.com", display_name: null, is_admin: false },
+    }));
+    renderWithRouter(<Layout />);
+
+    expect(screen.queryByRole("link", { name: "Admin" })).not.toBeInTheDocument();
+  });
 });

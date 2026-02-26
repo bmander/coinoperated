@@ -73,7 +73,7 @@ export default function TaskBoard() {
       </div>
 
       <div className="board-footer">
-        <Link to="/submit" className="btn btn-primary">Submit a Task</Link>
+        <Link to="/tasks/new" className="btn btn-primary">Submit a Task</Link>
       </div>
     </div>
   );

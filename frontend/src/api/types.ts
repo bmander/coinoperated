@@ -35,14 +35,31 @@ export interface TaskListResponse {
   limit: number;
 }
 
+export type PledgeStatus = "pending" | "active" | "collected" | "failed" | "released";
+
+export interface AdminPledgeRead {
+  id: string;
+  patron_email: string;
+  amount: number;
+  status: PledgeStatus;
+  created_at: string;
+}
+
+export interface AdminTaskRead extends TaskRead {
+  pledges: AdminPledgeRead[];
+}
+
+export interface AdminTaskListResponse {
+  items: AdminTaskRead[];
+  total: number;
+}
+
 export interface PatronMe {
   id: string;
   email: string;
   display_name: string | null;
   is_admin: boolean;
 }
-
-export type PledgeStatus = "pending" | "active" | "collected" | "failed" | "released";
 
 export interface PledgeCreateResponse {
   pledge_id: string;
