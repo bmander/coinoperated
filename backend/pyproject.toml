@@ -11,6 +11,8 @@ dependencies = [
     "asyncpg>=0.30",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
+    "pyjwt>=2.0",
+    "stripe>=8.0",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +25,9 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
 
 [build-system]
 requires = ["setuptools>=75.0"]

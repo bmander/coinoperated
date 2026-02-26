@@ -44,7 +44,7 @@ async def setup_db(test_engine):
 async def clean_tables(test_engine):
     yield
     async with test_engine.begin() as conn:
-        for table in ("update", "pledge", "task", "patron"):
+        for table in ("magic_link_token", "update", "pledge", "task", "patron"):
             await conn.execute(text(f'DELETE FROM "{table}"'))
 
 

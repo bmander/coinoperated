@@ -110,3 +110,17 @@ class UpdateRead(BaseReadSchema):
     task_id: uuid.UUID
     body: str
     created_at: datetime
+
+
+# --- Auth ---
+
+
+class LoginRequest(BaseModel):
+    email: str
+
+
+class PatronMe(BaseReadSchema):
+    id: uuid.UUID
+    email: str
+    display_name: str | None
+    is_admin: bool

@@ -7,6 +7,10 @@ class Settings(BaseSettings):
     stripe_publishable_key: str = ""
     secret_key: str = "change-me-in-production"
     cors_origins: list[str] = ["http://localhost:5173"]
+    admin_email: str = ""
+    frontend_url: str = "http://localhost:5173"
+    magic_link_expiry_minutes: int = 15
+    session_expiry_days: int = 30
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

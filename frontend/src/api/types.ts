@@ -34,3 +34,10 @@ export interface TaskListResponse {
   offset: number;
   limit: number;
 }
+
+export interface PatronMe {
+  id: string;
+  email: string;
+  display_name: string | null;
+  is_admin: boolean;
+}

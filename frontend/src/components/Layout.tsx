@@ -1,11 +1,21 @@
 import { Link, Outlet } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Layout() {
+  const { patron, logout } = useAuth();
+
   return (
     <div className="layout">
       <header className="site-header">
         <Link to="/" className="site-title">CoinOperatedBrandon</Link>
-        <Link to="/signin" className="btn btn-secondary">Sign In</Link>
+        {patron ? (
+          <div className="header-user">
+            <span className="header-user-name">{patron.display_name || patron.email}</span>
+            <button onClick={logout} className="btn btn-secondary">Sign Out</button>
+          </div>
+        ) : (
+          <Link to="/signin" className="btn btn-secondary">Sign In</Link>
+        )}
       </header>
       <main>
         <Outlet />
