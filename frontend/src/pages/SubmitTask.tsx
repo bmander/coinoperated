@@ -1,16 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
 import { createTask } from "../api/tasks";
-
-type PreviewField = "description" | "criteria" | null;
+import MarkdownField from "../components/MarkdownField";
 
 export default function SubmitTask() {
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [criteria, setCriteria] = useState("");
-  const [preview, setPreview] = useState<PreviewField>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,10 +28,6 @@ export default function SubmitTask() {
     }
   }
 
-  function togglePreview(field: PreviewField) {
-    setPreview((prev) => (prev === field ? null : field));
-  }
-
   return (
     <div className="submit-task-page">
       <h1>Submit a Task</h1>
@@ -43,7 +36,7 @@ export default function SubmitTask() {
         what "done" looks like.
       </p>
 
-      {error && <p className="submit-task-error">{error}</p>}
+      {error && <p className="form-error">{error}</p>}
 
       <form onSubmit={handleSubmit} className="submit-task-form">
         <div className="form-field">
@@ -59,66 +52,24 @@ export default function SubmitTask() {
           />
         </div>
 
-        <div className="form-field">
-          <div className="form-field-header">
-            <label htmlFor="description">Description *</label>
-            <button
-              type="button"
-              className="preview-toggle"
-              onClick={() => togglePreview("description")}
-            >
-              {preview === "description" ? "Edit" : "Preview"}
-            </button>
-          </div>
-          {preview === "description" ? (
-            <div className="markdown-preview markdown-body">
-              {description ? (
-                <ReactMarkdown>{description}</ReactMarkdown>
-              ) : (
-                <p className="preview-empty">Nothing to preview</p>
-              )}
-            </div>
-          ) : (
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Full description of the task (Markdown supported)"
-              required
-              rows={8}
-            />
-          )}
-        </div>
+        <MarkdownField
+          id="description"
+          label="Description *"
+          value={description}
+          onChange={setDescription}
+          placeholder="Full description of the task (Markdown supported)"
+          required
+          rows={8}
+        />
 
-        <div className="form-field">
-          <div className="form-field-header">
-            <label htmlFor="criteria">Delivery Criteria</label>
-            <button
-              type="button"
-              className="preview-toggle"
-              onClick={() => togglePreview("criteria")}
-            >
-              {preview === "criteria" ? "Edit" : "Preview"}
-            </button>
-          </div>
-          {preview === "criteria" ? (
-            <div className="markdown-preview markdown-body">
-              {criteria ? (
-                <ReactMarkdown>{criteria}</ReactMarkdown>
-              ) : (
-                <p className="preview-empty">Nothing to preview</p>
-              )}
-            </div>
-          ) : (
-            <textarea
-              id="criteria"
-              value={criteria}
-              onChange={(e) => setCriteria(e.target.value)}
-              placeholder="What does &quot;done&quot; look like? (Markdown supported)"
-              rows={4}
-            />
-          )}
-        </div>
+        <MarkdownField
+          id="criteria"
+          label="Delivery Criteria"
+          value={criteria}
+          onChange={setCriteria}
+          placeholder='What does "done" look like? (Markdown supported)'
+          rows={4}
+        />
 
         <button
           type="submit"

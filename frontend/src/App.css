@@ -67,8 +67,13 @@
   color: #888;
 }
 
-.page-error {
+.page-error,
+.form-error {
   color: #e55;
+}
+
+.form-error {
+  margin-bottom: 0.5rem;
 }
 
 /* Task List */
@@ -321,11 +326,6 @@
   margin-bottom: 1.5rem;
 }
 
-.submit-task-error {
-  color: #e55;
-  margin-bottom: 1rem;
-}
-
 .submit-task-form {
   display: flex;
   flex-direction: column;
@@ -425,32 +425,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-}
-
-.signin-form label {
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.signin-form input {
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  border: 1px solid #444;
-  background: #1a1a1a;
-  color: inherit;
-  font-size: 1rem;
-}
-
-@media (prefers-color-scheme: light) {
-  .signin-form input {
-    border-color: #ccc;
-    background: #fff;
-  }
-}
-
-.signin-error {
-  color: #e55;
-  margin-bottom: 0.5rem;
 }
 
 .signin-message {

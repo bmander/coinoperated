@@ -1,7 +1,5 @@
 import uuid
 
-import pytest
-
 
 # --- Helpers ---
 
@@ -35,9 +33,8 @@ async def test_list_tasks_empty(client):
 
 
 async def test_list_tasks_returns_items(authed_client):
-    client, _ = authed_client
-    await seed_tasks(client)
-    resp = await client.get("/api/tasks")
+    await seed_tasks(authed_client)
+    resp = await authed_client.get("/api/tasks")
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] == 3
@@ -45,9 +42,8 @@ async def test_list_tasks_returns_items(authed_client):
 
 
 async def test_list_tasks_filter_by_status(authed_client):
-    client, _ = authed_client
-    await seed_tasks(client)
-    resp = await client.get("/api/tasks", params={"status": "declined"})
+    await seed_tasks(authed_client)
+    resp = await authed_client.get("/api/tasks", params={"status": "declined"})
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] == 1
@@ -55,9 +51,8 @@ async def test_list_tasks_filter_by_status(authed_client):
 
 
 async def test_list_tasks_sort_by_pledge_total(authed_client):
-    client, _ = authed_client
-    await seed_tasks(client)
-    resp = await client.get(
+    await seed_tasks(authed_client)
+    resp = await authed_client.get(
         "/api/tasks", params={"sort_by": "pledge_total", "sort_order": "desc"}
     )
     data = resp.json()
@@ -66,9 +61,8 @@ async def test_list_tasks_sort_by_pledge_total(authed_client):
 
 
 async def test_list_tasks_pagination(authed_client):
-    client, _ = authed_client
-    await seed_tasks(client)
-    resp = await client.get("/api/tasks", params={"offset": 0, "limit": 2})
+    await seed_tasks(authed_client)
+    resp = await authed_client.get("/api/tasks", params={"offset": 0, "limit": 2})
     data = resp.json()
     assert data["total"] == 3
     assert len(data["items"]) == 2
@@ -85,9 +79,8 @@ async def test_list_tasks_invalid_sort_by(client):
 
 
 async def test_get_task(authed_client):
-    client, _ = authed_client
-    task = await create_task(client, criteria="Bus works")
-    resp = await client.get(f"/api/tasks/{task['id']}")
+    task = await create_task(authed_client, criteria="Bus works")
+    resp = await authed_client.get(f"/api/tasks/{task['id']}")
     assert resp.status_code == 200
     data = resp.json()
     assert data["title"] == "Fix the bus"
@@ -114,9 +107,8 @@ async def test_create_task_requires_auth(client):
     assert resp.status_code == 401
 
 
-async def test_create_task_basic(authed_client):
-    client, patron = authed_client
-    resp = await client.post(
+async def test_create_task_basic(authed_client, test_patron):
+    resp = await authed_client.post(
         "/api/tasks",
         json={"title": "New task", "description": "Do something useful"},
     )
@@ -124,12 +116,11 @@ async def test_create_task_basic(authed_client):
     data = resp.json()
     assert data["title"] == "New task"
     assert data["status"] == "open"
-    assert data["submitted_by"] == str(patron.id)
+    assert data["submitted_by"] == str(test_patron.id)
 
 
 async def test_create_task_with_criteria(authed_client):
-    client, _ = authed_client
-    resp = await client.post(
+    resp = await authed_client.post(
         "/api/tasks",
         json={
             "title": "Another task",
@@ -142,16 +133,14 @@ async def test_create_task_with_criteria(authed_client):
 
 
 async def test_create_task_validation_empty_title(authed_client):
-    client, _ = authed_client
-    resp = await client.post(
+    resp = await authed_client.post(
         "/api/tasks", json={"title": "", "description": "Has a description"}
     )
     assert resp.status_code == 422
 
 
 async def test_create_task_validation_missing_description(authed_client):
-    client, _ = authed_client
-    resp = await client.post("/api/tasks", json={"title": "No description"})
+    resp = await authed_client.post("/api/tasks", json={"title": "No description"})
     assert resp.status_code == 422
 
 
@@ -159,9 +148,8 @@ async def test_create_task_validation_missing_description(authed_client):
 
 
 async def test_update_task_accept(authed_client):
-    client, _ = authed_client
-    task = await create_task(client)
-    resp = await client.patch(
+    task = await create_task(authed_client)
+    resp = await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "accepted"}
     )
     assert resp.status_code == 200
@@ -171,9 +159,8 @@ async def test_update_task_accept(authed_client):
 
 
 async def test_update_task_decline(authed_client):
-    client, _ = authed_client
-    task = await create_task(client)
-    resp = await client.patch(
+    task = await create_task(authed_client)
+    resp = await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "declined"}
     )
     assert resp.status_code == 200
@@ -183,11 +170,10 @@ async def test_update_task_decline(authed_client):
 
 
 async def test_update_task_abandon(authed_client):
-    client, _ = authed_client
-    task = await create_task(client)
-    await client.patch(f"/api/tasks/{task['id']}", json={"status": "accepted"})
+    task = await create_task(authed_client)
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "accepted"})
 
-    resp = await client.patch(
+    resp = await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "open"}
     )
     assert resp.status_code == 200
@@ -197,11 +183,10 @@ async def test_update_task_abandon(authed_client):
 
 
 async def test_update_task_collecting(authed_client):
-    client, _ = authed_client
-    task = await create_task(client)
-    await client.patch(f"/api/tasks/{task['id']}", json={"status": "accepted"})
+    task = await create_task(authed_client)
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "accepted"})
 
-    resp = await client.patch(
+    resp = await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "collecting"}
     )
     assert resp.status_code == 200
@@ -209,9 +194,8 @@ async def test_update_task_collecting(authed_client):
 
 
 async def test_update_task_invalid_transition(authed_client):
-    client, _ = authed_client
-    task = await create_task(client)
-    resp = await client.patch(
+    task = await create_task(authed_client)
+    resp = await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "completed"}
     )
     assert resp.status_code == 400
@@ -219,9 +203,8 @@ async def test_update_task_invalid_transition(authed_client):
 
 
 async def test_update_task_edit_evidence(authed_client):
-    client, _ = authed_client
-    task = await create_task(client)
-    resp = await client.patch(
+    task = await create_task(authed_client)
+    resp = await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"evidence": "Merged PR #42"}
     )
     assert resp.status_code == 200
@@ -229,9 +212,8 @@ async def test_update_task_edit_evidence(authed_client):
 
 
 async def test_update_task_edit_fields(authed_client):
-    client, _ = authed_client
-    task = await create_task(client)
-    resp = await client.patch(
+    task = await create_task(authed_client)
+    resp = await authed_client.patch(
         f"/api/tasks/{task['id']}",
         json={"title": "Updated title", "description": "Updated desc"},
     )
@@ -249,28 +231,26 @@ async def test_update_task_not_found(client):
 
 
 async def test_declined_is_terminal(authed_client):
-    client, _ = authed_client
-    task = await create_task(client)
-    await client.patch(f"/api/tasks/{task['id']}", json={"status": "declined"})
+    task = await create_task(authed_client)
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "declined"})
 
-    resp = await client.patch(
+    resp = await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "open"}
     )
     assert resp.status_code == 400
 
 
 async def test_completed_is_terminal(authed_client):
-    client, _ = authed_client
-    task = await create_task(client)
-    await client.patch(f"/api/tasks/{task['id']}", json={"status": "accepted"})
-    await client.patch(
+    task = await create_task(authed_client)
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "accepted"})
+    await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "collecting"}
     )
-    await client.patch(
+    await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "completed"}
     )
 
-    resp = await client.patch(
+    resp = await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "open"}
     )
     assert resp.status_code == 400

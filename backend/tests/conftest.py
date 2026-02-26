@@ -71,11 +71,15 @@ async def client(test_session_maker):
 
 
 @pytest.fixture
-async def authed_client(test_session_maker, client):
-    patron = await create_patron(test_session_maker, "test@example.com")
-    token = create_jwt(patron.id, settings.secret_key, expiry_days=30)
+async def test_patron(test_session_maker):
+    return await create_patron(test_session_maker, "test@example.com")
+
+
+@pytest.fixture
+async def authed_client(test_patron, client):
+    token = create_jwt(test_patron.id, settings.secret_key, expiry_days=30)
     client.cookies.set("session", token)
-    yield client, patron
+    yield client
 
 
 async def create_magic_token(
