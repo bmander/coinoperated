@@ -2,8 +2,15 @@ import { Link } from "react-router-dom";
 import type { TaskRead } from "../api/types";
 import { formatBackers, formatCents } from "../utils/formatting";
 import StatusBadge from "./StatusBadge";
+import PledgeWidget from "./PledgeWidget";
 
-export default function TaskCard({ task }: { task: TaskRead }) {
+export default function TaskCard({
+  task,
+  onPledge,
+}: {
+  task: TaskRead;
+  onPledge?: () => void;
+}) {
   return (
     <div className="task-card">
       <div className="task-card-content">
@@ -20,9 +27,7 @@ export default function TaskCard({ task }: { task: TaskRead }) {
           </p>
         </div>
         <div className="task-card-pledge">
-          <Link to={`/tasks/${task.id}/pledge`} className="btn btn-primary btn-sm">
-            Pledge
-          </Link>
+          <PledgeWidget task={task} onPledge={onPledge} />
         </div>
       </div>
     </div>

@@ -3,7 +3,7 @@ import { listTasks } from "../api/tasks";
 import type { TaskStatus } from "../api/types";
 import TaskCard from "../components/TaskCard";
 import useFetch from "../hooks/useFetch";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 type SortOption = "most_pledged" | "newest" | "oldest";
 
@@ -25,12 +25,15 @@ const STATUS_OPTIONS: { value: TaskStatus | ""; label: string }[] = [
 export default function TaskBoard() {
   const [sort, setSort] = useState<SortOption>("most_pledged");
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "">("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const { sort_by, sort_order } = SORT_MAP[sort];
   const { data, loading, error } = useFetch(
     () => listTasks({ sort_by, sort_order, status: statusFilter || undefined }),
-    [sort, statusFilter],
+    [sort, statusFilter, refreshKey],
   );
+
+  const handlePledge = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const tasks = data?.items ?? [];
 
@@ -68,7 +71,7 @@ export default function TaskBoard() {
 
       <div className="task-list">
         {tasks.map((task) => (
-          <TaskCard key={task.id} task={task} />
+          <TaskCard key={task.id} task={task} onPledge={handlePledge} />
         ))}
       </div>
 

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.models import MIN_PLEDGE_CENTS, NotificationType, PledgeStatus, TaskStatus
 
@@ -226,6 +226,12 @@ class PatronMe(BaseReadSchema):
     display_name: str | None
     is_admin: bool
     is_banned: bool
+    default_payment_method: str | None
+
+    @computed_field
+    @property
+    def has_payment_method(self) -> bool:
+        return self.default_payment_method is not None
 
 
 class AdminPatronRead(BaseReadSchema):

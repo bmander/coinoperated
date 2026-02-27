@@ -4,6 +4,10 @@ import type { TaskRead } from "../api/types";
 import { makeTask } from "../test/factories";
 import { renderWithRouter } from "../test/render";
 
+vi.mock("../contexts/AuthContext", () => ({
+  useAuth: () => ({ patron: null, loading: false, login: vi.fn(), logout: vi.fn() }),
+}));
+
 function renderCard(task: TaskRead) {
   return renderWithRouter(<TaskCard task={task} />);
 }
@@ -36,11 +40,16 @@ describe("TaskCard", () => {
     expect(screen.getByText(/★/)).toBeInTheDocument();
   });
 
-  it("renders title link and Pledge link with correct URLs", () => {
+  it("renders title link and Pledge button for pledgeable tasks", () => {
     const task = makeTask({ id: "task-42", title: "My Task" });
     renderCard(task);
     expect(screen.getByRole("link", { name: "My Task" })).toHaveAttribute("href", "/tasks/task-42");
-    expect(screen.getByRole("link", { name: "Pledge" })).toHaveAttribute("href", "/tasks/task-42/pledge");
-    expect(screen.queryByRole("link", { name: "View" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pledge" })).toBeInTheDocument();
+  });
+
+  it("hides Pledge widget for non-pledgeable tasks", () => {
+    const task = makeTask({ status: "completed" });
+    renderCard(task);
+    expect(screen.queryByRole("button", { name: "Pledge" })).not.toBeInTheDocument();
   });
 });

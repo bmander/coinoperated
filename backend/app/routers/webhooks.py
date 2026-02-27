@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.dependencies import get_db
-from app.models import Pledge, PledgeStatus, Task
+from app.models import Patron, Pledge, PledgeStatus, Task
 from app.notifications import notify_charge_failed, notify_charge_succeeded
 from app.routers.pledges import maybe_detach_pm
 
@@ -60,11 +60,21 @@ async def stripe_webhook(
         if pledge is None:
             return {"status": "ignored"}
 
-        # Attach payment method to customer
-        stripe.PaymentMethod.attach(payment_method_id, customer=customer_id)
+        # Attach payment method to customer (may already be attached)
+        try:
+            stripe.PaymentMethod.attach(payment_method_id, customer=customer_id)
+        except stripe.error.InvalidRequestError:
+            pass  # Already attached
 
         pledge.status = PledgeStatus.active
         pledge.payment_method = payment_method_id
+
+        # Save default payment method on patron
+        patron = (
+            await db.execute(select(Patron).where(Patron.id == pledge.patron_id))
+        ).scalar_one_or_none()
+        if patron:
+            patron.default_payment_method = payment_method_id
 
         # Increment task counters
         task = (

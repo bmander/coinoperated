@@ -688,6 +688,100 @@ async def test_webhook_payment_intent_failed_unknown(mock_construct, client):
     assert resp.json()["status"] == "ignored"
 
 
+# --- Webhook saves default_payment_method on patron ---
+
+
+@patch("app.routers.webhooks.stripe.PaymentMethod.attach")
+@patch("app.routers.webhooks.stripe.Webhook.construct_event")
+async def test_webhook_saves_default_payment_method_on_patron(
+    mock_construct, mock_pm_attach, client, test_session_maker
+):
+    patron = await create_patron(test_session_maker, "save_dpm@example.com", "cus_save_dpm")
+    task = await create_task(test_session_maker)
+    await create_pledge(
+        test_session_maker,
+        patron_id=patron.id,
+        task_id=task.id,
+        status=PledgeStatus.pending,
+        payment_method=None,
+        setup_intent="si_save_dpm",
+    )
+
+    mock_construct.return_value = {
+        "type": "setup_intent.succeeded",
+        "data": {
+            "object": {
+                "id": "si_save_dpm",
+                "payment_method": "pm_saved_on_patron",
+                "customer": "cus_save_dpm",
+            }
+        },
+    }
+
+    resp = await client.post(
+        "/api/webhooks/stripe",
+        content=b"raw_body",
+        headers={"stripe-signature": "sig_test"},
+    )
+    assert resp.status_code == 200
+
+    from app.models import Patron as PatronModel
+    async with test_session_maker() as session:
+        p = await session.get(PatronModel, patron.id)
+        assert p.default_payment_method == "pm_saved_on_patron"
+
+
+@patch("app.routers.webhooks.stripe.PaymentMethod.attach")
+@patch("app.routers.webhooks.stripe.Webhook.construct_event")
+async def test_webhook_handles_already_attached_pm(
+    mock_construct, mock_pm_attach, client, test_session_maker
+):
+    """PaymentMethod.attach raising InvalidRequestError should be silently ignored."""
+    mock_pm_attach.side_effect = stripe_module.error.InvalidRequestError(
+        "The payment method you provided has already been attached", param=None
+    )
+    patron = await create_patron(test_session_maker, "already_att@example.com", "cus_already")
+    task = await create_task(test_session_maker)
+    pledge = await create_pledge(
+        test_session_maker,
+        patron_id=patron.id,
+        task_id=task.id,
+        status=PledgeStatus.pending,
+        payment_method=None,
+        setup_intent="si_already_att",
+    )
+
+    mock_construct.return_value = {
+        "type": "setup_intent.succeeded",
+        "data": {
+            "object": {
+                "id": "si_already_att",
+                "payment_method": "pm_already_att",
+                "customer": "cus_already",
+            }
+        },
+    }
+
+    resp = await client.post(
+        "/api/webhooks/stripe",
+        content=b"raw_body",
+        headers={"stripe-signature": "sig_test"},
+    )
+    assert resp.status_code == 200
+
+    # Pledge should still be activated despite the attach error
+    async with test_session_maker() as session:
+        p = await session.get(Pledge, pledge.id)
+        assert p.status == PledgeStatus.active
+        assert p.payment_method == "pm_already_att"
+
+    # Patron should still get default_payment_method set
+    from app.models import Patron as PatronModel
+    async with test_session_maker() as session:
+        pat = await session.get(PatronModel, patron.id)
+        assert pat.default_payment_method == "pm_already_att"
+
+
 # --- Saved payment method pledge creation ---
 
 

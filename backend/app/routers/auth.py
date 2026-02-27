@@ -110,6 +110,7 @@ async def me(
         display_name=patron.display_name,
         is_admin=patron.email == settings.admin_email,
         is_banned=patron.is_banned,
+        default_payment_method=patron.default_payment_method,
     )
 
 
