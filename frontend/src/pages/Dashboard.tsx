@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchMyPledges, fetchMyNotifications } from "../api/patron";
-import type { PatronPledgeRead, NotificationRead } from "../api/types";
+import { fetchMyPledges, fetchMyNotifications, fetchPaymentMethods, deletePaymentMethod } from "../api/patron";
+import type { PatronPledgeRead, NotificationRead, SavedPaymentMethod } from "../api/types";
 import useFetch from "../hooks/useFetch";
 import StatusBadge from "../components/StatusBadge";
 import { formatCents } from "../utils/formatting";
@@ -12,6 +13,56 @@ function eventLabel(event: string): string {
     case "task_declined": return "Declined";
     default: return event;
   }
+}
+
+function SavedPaymentMethods() {
+  const { data: methods, loading, error, refetch } = useFetch<SavedPaymentMethod[]>(fetchPaymentMethods, []);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+
+  async function handleDelete(pmId: string) {
+    if (!confirm("Remove this payment method?")) return;
+    setDeleting(pmId);
+    setDeleteError("");
+    try {
+      await deletePaymentMethod(pmId);
+      refetch();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to remove card");
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  return (
+    <section className="dashboard-section">
+      <h2>Saved Payment Methods</h2>
+      {loading && <p className="page-message">Loading payment methods...</p>}
+      {error && <p className="page-message page-error">Error: {error}</p>}
+      {deleteError && <p className="page-message page-error">{deleteError}</p>}
+      {methods && methods.length === 0 && <p className="page-message">No saved payment methods.</p>}
+      {methods && methods.length > 0 && (
+        <div className="payment-method-list">
+          {methods.map((pm) => (
+            <div key={pm.id} className="payment-method-list-item">
+              <div className="payment-method-info">
+                <span className="pm-brand">{pm.brand.charAt(0).toUpperCase() + pm.brand.slice(1)}</span>
+                <span className="pm-last4">....{pm.last4}</span>
+                <span className="pm-expiry">Expires {String(pm.exp_month).padStart(2, "0")}/{pm.exp_year}</span>
+              </div>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => handleDelete(pm.id)}
+                disabled={deleting === pm.id}
+              >
+                {deleting === pm.id ? "Removing..." : "Remove"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
 
 export default function Dashboard() {
@@ -49,6 +100,8 @@ export default function Dashboard() {
           </div>
         )}
       </section>
+
+      <SavedPaymentMethods />
 
       <section className="dashboard-section">
         <h2>Notifications</h2>

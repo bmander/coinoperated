@@ -4,11 +4,13 @@ import { Route, Routes } from "react-router-dom";
 import PledgePage from "./PledgePage";
 import { getTask } from "../api/tasks";
 import { getMyPledge, createPledge } from "../api/pledges";
+import { fetchPaymentMethods } from "../api/patron";
 import { makeTaskDetail } from "../test/factories";
 import { renderWithRouter } from "../test/render";
 
 vi.mock("../api/tasks");
 vi.mock("../api/pledges");
+vi.mock("../api/patron");
 
 const mockUseAuth = vi.fn();
 vi.mock("../contexts/AuthContext", () => ({
@@ -32,6 +34,7 @@ vi.mock("@stripe/stripe-js", () => ({
 const mockGetTask = vi.mocked(getTask);
 const mockGetMyPledge = vi.mocked(getMyPledge);
 const mockCreatePledge = vi.mocked(createPledge);
+const mockFetchPaymentMethods = vi.mocked(fetchPaymentMethods);
 
 function renderPledgePage(taskId = "abc-123") {
   // Mock fetch for /api/config/stripe
@@ -48,6 +51,7 @@ function renderPledgePage(taskId = "abc-123") {
 }
 
 beforeEach(() => {
+  vi.clearAllMocks();
   mockUseAuth.mockReturnValue({
     patron: { id: "p1", email: "a@b.com", display_name: null, is_admin: false },
     loading: false,
@@ -55,6 +59,7 @@ beforeEach(() => {
     logout: vi.fn(),
   });
   mockGetMyPledge.mockResolvedValue(null);
+  mockFetchPaymentMethods.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -106,7 +111,7 @@ describe("PledgePage", () => {
     await userEvent.click(screen.getByRole("button", { name: "Pledge" }));
 
     await waitFor(() => {
-      expect(mockCreatePledge).toHaveBeenCalledWith("abc-123", 100);
+      expect(mockCreatePledge).toHaveBeenCalledWith("abc-123", 100, { saveCard: true });
     });
   });
 
@@ -120,5 +125,62 @@ describe("PledgePage", () => {
     const input = screen.getByLabelText("Amount (USD)");
     expect(input).toHaveAttribute("min", "1");
     expect(input).toHaveAttribute("placeholder", "1.00");
+  });
+
+  it("shows saved payment methods as radio options", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
+    mockFetchPaymentMethods.mockResolvedValue([
+      { id: "pm_1", brand: "visa", last4: "4242", exp_month: 12, exp_year: 2028 },
+      { id: "pm_2", brand: "mastercard", last4: "5555", exp_month: 6, exp_year: 2027 },
+    ]);
+    renderPledgePage();
+
+    expect(await screen.findByText(/Visa \.\.\.\.4242/)).toBeInTheDocument();
+    expect(screen.getByText(/Mastercard \.\.\.\.5555/)).toBeInTheDocument();
+    expect(screen.getByText("New card")).toBeInTheDocument();
+  });
+
+  it("hides card element when saved PM is selected", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
+    mockFetchPaymentMethods.mockResolvedValue([
+      { id: "pm_1", brand: "visa", last4: "4242", exp_month: 12, exp_year: 2028 },
+    ]);
+    renderPledgePage();
+
+    // With saved PM selected (default), card element should not be visible
+    await screen.findByText(/Visa \.\.\.\.4242/);
+    expect(screen.queryByTestId("card-element")).not.toBeInTheDocument();
+  });
+
+  it("shows card element when 'New card' is selected", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
+    mockFetchPaymentMethods.mockResolvedValue([
+      { id: "pm_1", brand: "visa", last4: "4242", exp_month: 12, exp_year: 2028 },
+    ]);
+    renderPledgePage();
+
+    await screen.findByText("New card");
+    await userEvent.click(screen.getByLabelText("New card"));
+
+    expect(screen.getByTestId("card-element")).toBeInTheDocument();
+    expect(screen.getByLabelText("Save this card for future pledges")).toBeInTheDocument();
+  });
+
+  it("submits with saved PM, no Stripe confirmation needed", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
+    mockFetchPaymentMethods.mockResolvedValue([
+      { id: "pm_saved", brand: "visa", last4: "4242", exp_month: 12, exp_year: 2028 },
+    ]);
+    mockCreatePledge.mockResolvedValue({ pledge_id: "pl1", client_secret: null, publishable_key: "pk_test" });
+    renderPledgePage();
+
+    await screen.findByText(/Visa \.\.\.\.4242/);
+    await userEvent.click(screen.getByRole("button", { name: "Pledge" }));
+
+    await waitFor(() => {
+      expect(mockCreatePledge).toHaveBeenCalledWith("abc-123", 100, { paymentMethodId: "pm_saved" });
+    });
+    expect(mockConfirmCardSetup).not.toHaveBeenCalled();
+    expect(await screen.findByText("Pledge confirmed!")).toBeInTheDocument();
   });
 });

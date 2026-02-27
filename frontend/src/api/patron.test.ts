@@ -1,4 +1,4 @@
-import { fetchMyPledges, fetchMyNotifications } from "./patron";
+import { fetchMyPledges, fetchMyNotifications, fetchPaymentMethods, deletePaymentMethod } from "./patron";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -47,5 +47,54 @@ describe("fetchMyNotifications", () => {
     } as Response);
 
     await expect(fetchMyNotifications()).rejects.toThrow("Failed to fetch notifications: 500");
+  });
+});
+
+describe("fetchPaymentMethods", () => {
+  it("fetches from /api/patron/payment-methods", async () => {
+    const mockData = [{ id: "pm_1", brand: "visa", last4: "4242", exp_month: 12, exp_year: 2028 }];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockData),
+    } as Response);
+
+    const result = await fetchPaymentMethods();
+    expect(fetch).toHaveBeenCalledWith("/api/patron/payment-methods");
+    expect(result).toEqual(mockData);
+  });
+
+  it("throws on non-ok response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 401,
+    } as Response);
+
+    await expect(fetchPaymentMethods()).rejects.toThrow("Failed to fetch payment methods: 401");
+  });
+});
+
+describe("deletePaymentMethod", () => {
+  it("sends DELETE to /api/patron/payment-methods/{id}", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 204,
+    } as Response);
+
+    await deletePaymentMethod("pm_123");
+    expect(fetch).toHaveBeenCalledWith("/api/patron/payment-methods/pm_123", {
+      method: "DELETE",
+    });
+  });
+
+  it("throws with detail on error", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: () => Promise.resolve({ detail: "Payment method is in use by an active pledge" }),
+    } as Response);
+
+    await expect(deletePaymentMethod("pm_123")).rejects.toThrow(
+      "Payment method is in use by an active pledge",
+    );
   });
 });

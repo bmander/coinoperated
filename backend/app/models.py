@@ -139,7 +139,8 @@ class Pledge(Base):
     )
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
     payment_method: Mapped[str | None] = mapped_column(Text, nullable=True)
-    setup_intent: Mapped[str] = mapped_column(Text, nullable=False)
+    setup_intent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    save_card: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     status: Mapped[PledgeStatus] = mapped_column(
         Enum(PledgeStatus, name="pledge_status", native_enum=True),
         nullable=False,

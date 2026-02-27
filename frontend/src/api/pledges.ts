@@ -1,14 +1,22 @@
 import type { PledgeCreateResponse, PledgeMyResponse } from "./types";
 
-export async function createPledge(taskId: string, amount: number): Promise<PledgeCreateResponse> {
+export async function createPledge(
+  taskId: string,
+  amount: number,
+  opts?: { paymentMethodId?: string; saveCard?: boolean },
+): Promise<PledgeCreateResponse> {
+  const body: Record<string, unknown> = { amount };
+  if (opts?.paymentMethodId) body.payment_method_id = opts.paymentMethodId;
+  if (opts?.saveCard !== undefined) body.save_card = opts.saveCard;
+
   const res = await fetch(`/api/tasks/${taskId}/pledges`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.detail ?? `Failed to create pledge: ${res.status}`);
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.detail ?? `Failed to create pledge: ${res.status}`);
   }
   return res.json();
 }

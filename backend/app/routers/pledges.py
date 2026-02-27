@@ -50,6 +50,26 @@ def _decrement_task_counts(task: Task, amount: int) -> None:
     task.pledge_total = max(0, task.pledge_total - amount)
 
 
+async def _maybe_detach_pm(
+    db: AsyncSession, payment_method_id: str, exclude_pledge_id: uuid.UUID
+) -> None:
+    """Detach a payment method if no other live pledges reference it."""
+    other = (
+        await db.execute(
+            select(Pledge).where(
+                Pledge.payment_method == payment_method_id,
+                Pledge.id != exclude_pledge_id,
+                Pledge.status.in_(LIVE_PLEDGE_STATUSES),
+            )
+        )
+    ).scalar_one_or_none()
+    if other is None:
+        try:
+            stripe.PaymentMethod.detach(payment_method_id)
+        except stripe.error.InvalidRequestError:
+            pass
+
+
 @router.post("", response_model=PledgeCreateResponse, status_code=201)
 async def create_pledge(
     task_id: uuid.UUID,
@@ -65,6 +85,38 @@ async def create_pledge(
     if existing:
         raise HTTPException(status_code=400, detail="You already have a pledge on this task")
 
+    if payload.payment_method_id:
+        # Reuse a saved payment method
+        pm = stripe.PaymentMethod.retrieve(payload.payment_method_id)
+        if pm.customer != patron.stripe_customer:
+            raise HTTPException(
+                status_code=400, detail="Payment method does not belong to you"
+            )
+
+        pledge = Pledge(
+            patron_id=patron.id,
+            task_id=task_id,
+            amount=payload.amount,
+            setup_intent=None,
+            status=PledgeStatus.active,
+            payment_method=payload.payment_method_id,
+            save_card=True,
+        )
+        db.add(pledge)
+
+        task.pledge_count += 1
+        task.pledge_total += payload.amount
+
+        await db.commit()
+        await db.refresh(pledge)
+
+        return PledgeCreateResponse(
+            pledge_id=pledge.id,
+            client_secret=None,
+            publishable_key=settings.stripe_publishable_key,
+        )
+
+    # New card — existing SetupIntent flow
     si = stripe.SetupIntent.create(
         customer=patron.stripe_customer,
         metadata={"pledge_task_id": str(task_id), "pledge_patron_id": str(patron.id)},
@@ -77,6 +129,7 @@ async def create_pledge(
         setup_intent=si.id,
         status=PledgeStatus.pending,
         payment_method=None,
+        save_card=payload.save_card,
     )
     db.add(pledge)
     await db.commit()
@@ -169,8 +222,12 @@ async def delete_my_pledge(
         task = await get_task_or_404(db, task_id)
         _decrement_task_counts(task, pledge.amount)
 
-    if pledge.status == PledgeStatus.pending:
+    if pledge.status == PledgeStatus.pending and pledge.setup_intent:
         _cancel_setup_intent(pledge.setup_intent)
+
+    # Detach unsaved PM if no other live pledges use it
+    if not pledge.save_card and pledge.payment_method:
+        await _maybe_detach_pm(db, pledge.payment_method, exclude_pledge_id=pledge.id)
 
     pledge.status = PledgeStatus.released
     await db.commit()

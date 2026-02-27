@@ -90,8 +90,16 @@ export interface AdminPatronListResponse {
 
 export interface PledgeCreateResponse {
   pledge_id: string;
-  client_secret: string;
+  client_secret: string | null;
   publishable_key: string;
+}
+
+export interface SavedPaymentMethod {
+  id: string;
+  brand: string;
+  last4: string;
+  exp_month: number;
+  exp_year: number;
 }
 
 export interface PledgeMyResponse {

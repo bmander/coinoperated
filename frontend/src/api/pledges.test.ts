@@ -24,6 +24,36 @@ describe("createPledge", () => {
     expect(result).toEqual(body);
   });
 
+  it("includes payment_method_id when provided", async () => {
+    const body = { pledge_id: "p1", client_secret: null, publishable_key: "pk_test" };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(body),
+    });
+
+    await createPledge("task-1", 500, { paymentMethodId: "pm_saved_123" });
+    expect(mockFetch).toHaveBeenCalledWith("/api/tasks/task-1/pledges", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: 500, payment_method_id: "pm_saved_123" }),
+    });
+  });
+
+  it("includes save_card when provided", async () => {
+    const body = { pledge_id: "p1", client_secret: "cs_123", publishable_key: "pk_test" };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(body),
+    });
+
+    await createPledge("task-1", 500, { saveCard: false });
+    expect(mockFetch).toHaveBeenCalledWith("/api/tasks/task-1/pledges", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: 500, save_card: false }),
+    });
+  });
+
   it("throws with detail from error response", async () => {
     mockFetch.mockResolvedValue({
       ok: false,
