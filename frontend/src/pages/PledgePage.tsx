@@ -199,6 +199,7 @@ function PledgeForm({
           <label>Card details</label>
           <CardElement
             options={{
+              disableLink: true,
               style: {
                 base: {
                   fontSize: "16px",
