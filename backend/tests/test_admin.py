@@ -2,6 +2,7 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 import stripe as stripe_module
+from sqlalchemy import select
 
 from app.auth import create_jwt
 from app.config import settings
@@ -180,8 +181,6 @@ async def test_collect_charges_active_pledges(mock_pi_create, client, test_sessi
     # Verify pledges updated
     async with test_session_maker() as session:
         for backer_id in [backer1.id, backer2.id]:
-            from sqlalchemy import select
-
             p = (
                 await session.execute(
                     select(Pledge).where(
@@ -332,6 +331,11 @@ async def test_collect_idempotent_no_double_charge(mock_pi_create, client, test_
     assert data["collected_total"] == 1000
     # PaymentIntent.create should NOT have been called again
     mock_pi_create.assert_not_called()
+
+    # Task should still transition to completed
+    async with test_session_maker() as session:
+        t = await session.get(Task, task.id)
+        assert t.status == TaskStatus.completed
 
 
 @patch("app.routers.admin.stripe.PaymentIntent.create")

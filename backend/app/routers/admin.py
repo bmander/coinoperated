@@ -80,6 +80,15 @@ async def create_update(
     return update
 
 
+def _pledge_result(pledge: Pledge) -> PledgeCollectResult:
+    return PledgeCollectResult(
+        pledge_id=pledge.id,
+        patron_email=pledge.patron.email,
+        amount=pledge.amount,
+        status=pledge.status,
+    )
+
+
 @router.post("/api/tasks/{task_id}/collect", response_model=CollectResponse)
 async def collect_payments(
     task_id: uuid.UUID,
@@ -113,27 +122,6 @@ async def collect_payments(
     )
     already_processed = already_result.scalars().all()
 
-    # If all pledges were already processed, just return the existing results
-    if not active_pledges and already_processed:
-        collected = [p for p in already_processed if p.status == PledgeStatus.collected]
-        failed = [p for p in already_processed if p.status == PledgeStatus.failed]
-        results = [
-            PledgeCollectResult(
-                pledge_id=p.id,
-                patron_email=p.patron.email,
-                amount=p.amount,
-                status=p.status,
-            )
-            for p in already_processed
-        ]
-        return CollectResponse(
-            collected_count=len(collected),
-            failed_count=len(failed),
-            collected_total=task.collected_total,
-            pledge_total=task.pledge_total,
-            results=results,
-        )
-
     results: list[PledgeCollectResult] = []
     collected_total = 0
 
@@ -151,47 +139,14 @@ async def collect_payments(
             pledge.status = PledgeStatus.collected
             pledge.collected_at = datetime.now(timezone.utc)
             collected_total += pledge.amount
-            results.append(
-                PledgeCollectResult(
-                    pledge_id=pledge.id,
-                    patron_email=pledge.patron.email,
-                    amount=pledge.amount,
-                    status=PledgeStatus.collected,
-                )
-            )
-        except stripe.error.CardError:
+        except (stripe.error.CardError, stripe.error.InvalidRequestError):
             pledge.status = PledgeStatus.failed
-            results.append(
-                PledgeCollectResult(
-                    pledge_id=pledge.id,
-                    patron_email=pledge.patron.email,
-                    amount=pledge.amount,
-                    status=PledgeStatus.failed,
-                )
-            )
-        except stripe.error.InvalidRequestError:
-            pledge.status = PledgeStatus.failed
-            results.append(
-                PledgeCollectResult(
-                    pledge_id=pledge.id,
-                    patron_email=pledge.patron.email,
-                    amount=pledge.amount,
-                    status=PledgeStatus.failed,
-                )
-            )
+        results.append(_pledge_result(pledge))
 
-    # Include already-processed pledges in totals
     for p in already_processed:
         if p.status == PledgeStatus.collected:
             collected_total += p.amount
-        results.append(
-            PledgeCollectResult(
-                pledge_id=p.id,
-                patron_email=p.patron.email,
-                amount=p.amount,
-                status=p.status,
-            )
-        )
+        results.append(_pledge_result(p))
 
     task.collected_total = collected_total
     task.status = TaskStatus.completed
