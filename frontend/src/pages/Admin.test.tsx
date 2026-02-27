@@ -59,6 +59,18 @@ function makeTask(overrides: Partial<AdminTaskListResponse["items"][0]> = {}) {
   };
 }
 
+async function renderAndExpandTask(overrides?: Partial<AdminTaskListResponse["items"][0]>) {
+  mockFetchAdminTasks.mockResolvedValue({
+    items: [makeTask(overrides)],
+    total: 1,
+  });
+  renderAdmin();
+  await waitFor(() => {
+    expect(screen.getByText("Test Task")).toBeInTheDocument();
+  });
+  fireEvent.click(screen.getByText("Test Task"));
+}
+
 describe("Admin", () => {
   beforeEach(() => {
     mockFetchAdminPatrons.mockResolvedValue({ items: [] });
@@ -102,32 +114,14 @@ describe("Admin", () => {
   });
 
   it("shows accept/decline for open tasks", async () => {
-    mockFetchAdminTasks.mockResolvedValue({
-      items: [makeTask({ status: "open" })],
-      total: 1,
-    });
-    renderAdmin();
-    await waitFor(() => {
-      expect(screen.getByText("Test Task")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("Test Task"));
+    await renderAndExpandTask({ status: "open" });
 
     expect(screen.getByText("Accept")).toBeInTheDocument();
     expect(screen.getByText("Decline")).toBeInTheDocument();
   });
 
   it("shows update form and complete for accepted tasks", async () => {
-    mockFetchAdminTasks.mockResolvedValue({
-      items: [makeTask({ status: "accepted" })],
-      total: 1,
-    });
-    renderAdmin();
-    await waitFor(() => {
-      expect(screen.getByText("Test Task")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("Test Task"));
+    await renderAndExpandTask({ status: "accepted" });
 
     expect(screen.getByPlaceholderText(/progress update/i)).toBeInTheDocument();
     expect(screen.getByText("Post Update")).toBeInTheDocument();
@@ -136,37 +130,19 @@ describe("Admin", () => {
   });
 
   it("shows collecting indicator", async () => {
-    mockFetchAdminTasks.mockResolvedValue({
-      items: [makeTask({ status: "collecting" })],
-      total: 1,
-    });
-    renderAdmin();
-    await waitFor(() => {
-      expect(screen.getByText("Test Task")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("Test Task"));
+    await renderAndExpandTask({ status: "collecting" });
 
     expect(screen.getByText("Collect Payments")).toBeInTheDocument();
   });
 
   it("posts an update on accepted task", async () => {
-    mockFetchAdminTasks.mockResolvedValue({
-      items: [makeTask({ status: "accepted" })],
-      total: 1,
-    });
     mockPostUpdate.mockResolvedValue({
       id: "u1",
       task_id: "task-1",
       body: "Progress!",
       created_at: "2025-01-02T00:00:00Z",
     });
-    renderAdmin();
-    await waitFor(() => {
-      expect(screen.getByText("Test Task")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("Test Task"));
+    await renderAndExpandTask({ status: "accepted" });
 
     const textarea = screen.getByPlaceholderText(/progress update/i);
     fireEvent.change(textarea, { target: { value: "Progress!" } });
@@ -178,34 +154,16 @@ describe("Admin", () => {
   });
 
   it("shows delete button when expanded", async () => {
-    mockFetchAdminTasks.mockResolvedValue({
-      items: [makeTask()],
-      total: 1,
-    });
-    renderAdmin();
-    await waitFor(() => {
-      expect(screen.getByText("Test Task")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("Test Task"));
+    await renderAndExpandTask();
 
     expect(screen.getByText("Delete Task")).toBeInTheDocument();
   });
 
   it("calls deleteTask on confirm", async () => {
-    mockFetchAdminTasks.mockResolvedValue({
-      items: [makeTask()],
-      total: 1,
-    });
     mockDeleteTask.mockResolvedValue(undefined);
     vi.spyOn(window, "confirm").mockReturnValue(true);
 
-    renderAdmin();
-    await waitFor(() => {
-      expect(screen.getByText("Test Task")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("Test Task"));
+    await renderAndExpandTask();
     fireEvent.click(screen.getByText("Delete Task"));
 
     await waitFor(() => {
@@ -216,18 +174,9 @@ describe("Admin", () => {
   });
 
   it("does not call deleteTask when confirm is cancelled", async () => {
-    mockFetchAdminTasks.mockResolvedValue({
-      items: [makeTask()],
-      total: 1,
-    });
     vi.spyOn(window, "confirm").mockReturnValue(false);
 
-    renderAdmin();
-    await waitFor(() => {
-      expect(screen.getByText("Test Task")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("Test Task"));
+    await renderAndExpandTask();
     fireEvent.click(screen.getByText("Delete Task"));
 
     expect(mockDeleteTask).not.toHaveBeenCalled();
@@ -236,16 +185,7 @@ describe("Admin", () => {
   });
 
   it("shows pledge breakdown table when expanded", async () => {
-    mockFetchAdminTasks.mockResolvedValue({
-      items: [makeTask()],
-      total: 1,
-    });
-    renderAdmin();
-    await waitFor(() => {
-      expect(screen.getByText("Test Task")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("Test Task"));
+    await renderAndExpandTask();
 
     expect(screen.getByText("backer@test.com")).toBeInTheDocument();
     expect(screen.getByText("$50")).toBeInTheDocument();
