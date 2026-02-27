@@ -92,6 +92,7 @@ async def test_task_accepted_creates_notification(mock_send, client, test_sessio
         assert len(notifications) == 1
         assert notifications[0].patron_id == patron.id
         assert "accepted" in notifications[0].subject.lower()
+        assert notifications[0].email_sent is True
 
     mock_send.assert_called_once()
 
@@ -118,6 +119,7 @@ async def test_task_collecting_creates_completed_notification(mock_send, client,
         notifications = result.scalars().all()
         assert len(notifications) == 1
         assert "$10.00" in notifications[0].body  # 1000 cents = $10.00
+        assert notifications[0].email_sent is True
 
     mock_send.assert_called_once()
 
@@ -189,6 +191,16 @@ async def test_email_failure_does_not_break_api(mock_send, client, test_session_
     assert resp.status_code == 200
     assert resp.json()["status"] == "accepted"
 
+    # email_sent should be False since send_email returned False
+    async with test_session_maker() as session:
+        from sqlalchemy import select
+        result = await session.execute(
+            select(Notification).where(Notification.task_id == task.id)
+        )
+        notification = result.scalars().first()
+        assert notification is not None
+        assert notification.email_sent is False
+
     mock_send.assert_called_once()
 
 
@@ -225,7 +237,7 @@ async def test_webhook_payment_succeeded_creates_notification(
 ):
     patron = await create_patron(test_session_maker, "charge_ok@example.com", "cus_charge_ok")
     task = await create_task(test_session_maker, status=TaskStatus.collecting)
-    await create_pledge(
+    pledge = await create_pledge(
         test_session_maker,
         patron_id=patron.id,
         task_id=task.id,
@@ -255,6 +267,19 @@ async def test_webhook_payment_succeeded_creates_notification(
         notifications = result.scalars().all()
         assert len(notifications) == 1
         assert notifications[0].patron_id == patron.id
+        assert notifications[0].email_sent is True
+
+    # Verify pledge state updated
+    async with test_session_maker() as session:
+        from app.models import Pledge as PledgeModel
+        p = await session.get(PledgeModel, pledge.id)
+        assert p.status == PledgeStatus.collected
+        assert p.collected_at is not None
+
+    # Verify task.collected_total incremented
+    async with test_session_maker() as session:
+        t = await session.get(Task, task.id)
+        assert t.collected_total == pledge.amount
 
     mock_send.assert_called_once()
 
@@ -266,7 +291,7 @@ async def test_webhook_payment_failed_creates_notification(
 ):
     patron = await create_patron(test_session_maker, "charge_fail@example.com", "cus_charge_fail")
     task = await create_task(test_session_maker, status=TaskStatus.collecting)
-    await create_pledge(
+    pledge = await create_pledge(
         test_session_maker,
         patron_id=patron.id,
         task_id=task.id,
@@ -296,6 +321,13 @@ async def test_webhook_payment_failed_creates_notification(
         notifications = result.scalars().all()
         assert len(notifications) == 1
         assert notifications[0].patron_id == patron.id
+        assert notifications[0].email_sent is True
+
+    # Verify pledge state updated
+    async with test_session_maker() as session:
+        from app.models import Pledge as PledgeModel
+        p = await session.get(PledgeModel, pledge.id)
+        assert p.status == PledgeStatus.failed
 
     mock_send.assert_called_once()
 
@@ -316,3 +348,103 @@ async def test_webhook_payment_succeeded_unknown_pledge_ignored(
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "ignored"
+
+
+@patch("app.routers.webhooks.stripe.Webhook.construct_event")
+async def test_webhook_payment_failed_unknown_pledge_ignored(
+    mock_construct, client, test_session_maker
+):
+    mock_construct.return_value = {
+        "type": "payment_intent.payment_failed",
+        "data": {"object": {"id": "pi_unknown_fail"}},
+    }
+
+    resp = await client.post(
+        "/api/webhooks/stripe",
+        content=b"raw_body",
+        headers={"stripe-signature": "sig_test"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ignored"
+
+
+# --- Pending pledgers are excluded from notifications ---
+
+
+@patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
+async def test_pending_pledger_not_notified(mock_send, client, test_session_maker):
+    patron = await create_patron(test_session_maker, "pending@example.com", "cus_pending")
+    task = await create_task(test_session_maker)
+    await create_pledge(
+        test_session_maker,
+        patron_id=patron.id,
+        task_id=task.id,
+        status=PledgeStatus.pending,
+        payment_method=None,
+    )
+
+    resp = await client.patch(
+        f"/api/tasks/{task.id}", json={"status": "accepted"}
+    )
+    assert resp.status_code == 200
+
+    async with test_session_maker() as session:
+        from sqlalchemy import select
+        result = await session.execute(
+            select(Notification).where(Notification.task_id == task.id)
+        )
+        assert result.scalars().all() == []
+
+    mock_send.assert_not_called()
+
+
+# --- send_email() direct tests ---
+
+
+async def test_send_email_dev_noop():
+    """When smtp_host is empty, send_email logs and returns True."""
+    from app.email import send_email
+    result = await send_email("test@example.com", "Test subject", "Test body")
+    assert result is True
+
+
+@patch("app.email.aiosmtplib.send", new_callable=AsyncMock)
+async def test_send_email_smtp_path(mock_smtp_send):
+    """When smtp_host is set, send_email calls aiosmtplib.send."""
+    from app.email import send_email
+
+    with patch.object(settings, "smtp_host", "smtp.example.com"):
+        result = await send_email("to@example.com", "Subject", "Body")
+        assert result is True
+        mock_smtp_send.assert_called_once()
+        msg = mock_smtp_send.call_args[0][0]
+        assert msg["To"] == "to@example.com"
+        assert msg["Subject"] == "Subject"
+
+
+@patch("app.email.aiosmtplib.send", new_callable=AsyncMock, side_effect=ConnectionError("refused"))
+async def test_send_email_exception_returns_false(mock_smtp_send):
+    """When SMTP raises, send_email catches and returns False."""
+    from app.email import send_email
+
+    with patch.object(settings, "smtp_host", "smtp.example.com"):
+        result = await send_email("to@example.com", "Subject", "Body")
+        assert result is False
+
+
+# --- Magic link email ---
+
+
+@patch("app.email.send_email", new_callable=AsyncMock, return_value=True)
+async def test_magic_link_sends_email_with_link(mock_send, client, test_session_maker):
+    resp = await client.post("/api/auth/login", json={"email": "magic@example.com"})
+    assert resp.status_code == 200
+
+    mock_send.assert_called_once()
+    call_args = mock_send.call_args
+    to = call_args[0][0]
+    subject = call_args[0][1]
+    body = call_args[0][2]
+    assert to == "magic@example.com"
+    assert "sign" in subject.lower()
+    assert "/api/auth/verify?token=" in body

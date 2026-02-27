@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from sqlalchemy import select
@@ -83,18 +82,11 @@ async def _get_active_pledgers(db: AsyncSession, task_id) -> list[Pledge]:
     return list(result.scalars().all())
 
 
-def _fire_email(patron_email: str, subject: str, body: str, notification: Notification) -> None:
-    async def _deliver():
-        ok = await send_email(patron_email, subject, body)
-        if ok:
-            notification.email_sent = True
-            logger.info("Email delivered for notification %s", notification.id)
-
-    try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(_deliver())
-    except RuntimeError:
-        logger.warning("No running event loop; skipping email delivery")
+async def _send_and_record(
+    patron_email: str, subject: str, body: str, notification: Notification
+) -> None:
+    ok = await send_email(patron_email, subject, body)
+    notification.email_sent = ok
 
 
 def _create_notification(
@@ -127,7 +119,7 @@ async def notify_task_accepted(db: AsyncSession, task: Task) -> None:
             db, pledge.patron, task, NotificationType.task_accepted, subject, body
         )
         await db.flush()
-        _fire_email(pledge.patron.email, subject, body, notification)
+        await _send_and_record(pledge.patron.email, subject, body, notification)
 
 
 async def notify_task_completed(db: AsyncSession, task: Task) -> None:
@@ -138,7 +130,7 @@ async def notify_task_completed(db: AsyncSession, task: Task) -> None:
             db, pledge.patron, task, NotificationType.task_completed, subject, body
         )
         await db.flush()
-        _fire_email(pledge.patron.email, subject, body, notification)
+        await _send_and_record(pledge.patron.email, subject, body, notification)
 
 
 async def notify_task_declined(db: AsyncSession, task: Task) -> None:
@@ -149,7 +141,7 @@ async def notify_task_declined(db: AsyncSession, task: Task) -> None:
             db, pledge.patron, task, NotificationType.task_declined, subject, body
         )
         await db.flush()
-        _fire_email(pledge.patron.email, subject, body, notification)
+        await _send_and_record(pledge.patron.email, subject, body, notification)
 
 
 async def notify_charge_succeeded(
@@ -160,7 +152,7 @@ async def notify_charge_succeeded(
         db, patron, task, NotificationType.charge_succeeded, subject, body
     )
     await db.flush()
-    _fire_email(patron.email, subject, body, notification)
+    await _send_and_record(patron.email, subject, body, notification)
 
 
 async def notify_charge_failed(
@@ -171,4 +163,4 @@ async def notify_charge_failed(
         db, patron, task, NotificationType.charge_failed, subject, body
     )
     await db.flush()
-    _fire_email(patron.email, subject, body, notification)
+    await _send_and_record(patron.email, subject, body, notification)
