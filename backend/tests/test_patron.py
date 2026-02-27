@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from tests.conftest import auth_cookies, create_notification, create_patron, create_pledge, create_task
@@ -263,3 +263,77 @@ class TestNotificationCreation:
             "/api/patron/notifications", cookies=auth_cookies(test_patron)
         )
         assert len(notif_resp.json()) == 0
+
+
+@pytest.mark.asyncio
+class TestPaymentMethods:
+    @patch("app.routers.patron.stripe.PaymentMethod.list")
+    async def test_list_payment_methods(
+        self, mock_pm_list, client, test_session_maker, test_patron
+    ):
+        pm = MagicMock()
+        pm.id = "pm_test_111"
+        pm.card.brand = "visa"
+        pm.card.last4 = "4242"
+        pm.card.exp_month = 12
+        pm.card.exp_year = 2028
+        mock_pm_list.return_value = MagicMock(data=[pm])
+
+        resp = await client.get(
+            "/api/patron/payment-methods", cookies=auth_cookies(test_patron)
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["id"] == "pm_test_111"
+        assert data[0]["brand"] == "visa"
+        assert data[0]["last4"] == "4242"
+        assert data[0]["exp_month"] == 12
+        assert data[0]["exp_year"] == 2028
+        mock_pm_list.assert_called_once_with(
+            customer=test_patron.stripe_customer, type="card"
+        )
+
+    async def test_list_payment_methods_requires_auth(self, client):
+        resp = await client.get("/api/patron/payment-methods")
+        assert resp.status_code == 401
+
+    @patch("app.routers.patron.stripe.PaymentMethod.detach")
+    @patch("app.routers.patron.stripe.PaymentMethod.retrieve")
+    async def test_delete_payment_method(
+        self, mock_pm_retrieve, mock_pm_detach, client, test_session_maker, test_patron
+    ):
+        mock_pm = MagicMock()
+        mock_pm.customer = test_patron.stripe_customer
+        mock_pm_retrieve.return_value = mock_pm
+
+        resp = await client.delete(
+            "/api/patron/payment-methods/pm_to_delete",
+            cookies=auth_cookies(test_patron),
+        )
+        assert resp.status_code == 204
+        mock_pm_detach.assert_called_once_with("pm_to_delete")
+
+    @patch("app.routers.patron.stripe.PaymentMethod.retrieve")
+    async def test_delete_payment_method_in_use(
+        self, mock_pm_retrieve, client, test_session_maker, test_patron
+    ):
+        mock_pm = MagicMock()
+        mock_pm.customer = test_patron.stripe_customer
+        mock_pm_retrieve.return_value = mock_pm
+
+        task = await create_task(test_session_maker)
+        await create_pledge(
+            test_session_maker,
+            patron_id=test_patron.id,
+            task_id=task.id,
+            payment_method="pm_in_use",
+            status=PledgeStatus.active,
+        )
+
+        resp = await client.delete(
+            "/api/patron/payment-methods/pm_in_use",
+            cookies=auth_cookies(test_patron),
+        )
+        assert resp.status_code == 409
+        assert "in use" in resp.json()["detail"].lower()

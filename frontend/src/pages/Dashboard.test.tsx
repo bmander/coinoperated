@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
 import Dashboard from "./Dashboard";
-import { fetchMyPledges, fetchMyNotifications } from "../api/patron";
+import { fetchMyPledges, fetchMyNotifications, fetchPaymentMethods, deletePaymentMethod } from "../api/patron";
 import { makePatronPledge, makeNotification } from "../test/factories";
 import { renderWithRouter } from "../test/render";
 
@@ -11,6 +12,12 @@ vi.mock("../contexts/AuthContext", () => ({
 
 const mockFetchPledges = vi.mocked(fetchMyPledges);
 const mockFetchNotifications = vi.mocked(fetchMyNotifications);
+const mockFetchPaymentMethods = vi.mocked(fetchPaymentMethods);
+const mockDeletePaymentMethod = vi.mocked(deletePaymentMethod);
+
+beforeEach(() => {
+  mockFetchPaymentMethods.mockResolvedValue([]);
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -82,6 +89,7 @@ describe("Dashboard", () => {
     renderWithRouter(<Dashboard />);
     expect(await screen.findByText("No pledges yet.")).toBeInTheDocument();
     expect(screen.getByText("No notifications yet.")).toBeInTheDocument();
+    expect(screen.getByText("No saved payment methods.")).toBeInTheDocument();
   });
 
   it("shows error state when API fails", async () => {
@@ -91,5 +99,55 @@ describe("Dashboard", () => {
     renderWithRouter(<Dashboard />);
     expect(await screen.findByText("Error: Failed to fetch pledges: 500")).toBeInTheDocument();
     expect(screen.getByText("Error: Failed to fetch notifications: 500")).toBeInTheDocument();
+  });
+
+  it("renders saved payment methods", async () => {
+    mockFetchPledges.mockResolvedValue([]);
+    mockFetchNotifications.mockResolvedValue([]);
+    mockFetchPaymentMethods.mockResolvedValue([
+      { id: "pm_1", brand: "visa", last4: "4242", exp_month: 12, exp_year: 2028 },
+      { id: "pm_2", brand: "mastercard", last4: "5555", exp_month: 3, exp_year: 2027 },
+    ]);
+
+    renderWithRouter(<Dashboard />);
+    expect(await screen.findByText("Visa")).toBeInTheDocument();
+    expect(screen.getByText("....4242")).toBeInTheDocument();
+    expect(screen.getByText("Expires 12/2028")).toBeInTheDocument();
+    expect(screen.getByText("Mastercard")).toBeInTheDocument();
+    expect(screen.getByText("....5555")).toBeInTheDocument();
+    expect(screen.getByText("Expires 03/2027")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(2);
+  });
+
+  it("deletes a payment method on confirm", async () => {
+    mockFetchPledges.mockResolvedValue([]);
+    mockFetchNotifications.mockResolvedValue([]);
+    mockFetchPaymentMethods.mockResolvedValue([
+      { id: "pm_del", brand: "visa", last4: "9999", exp_month: 1, exp_year: 2030 },
+    ]);
+    mockDeletePaymentMethod.mockResolvedValue(undefined);
+    vi.spyOn(globalThis, "confirm").mockReturnValue(true);
+
+    renderWithRouter(<Dashboard />);
+    await screen.findByText("....9999");
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(mockDeletePaymentMethod).toHaveBeenCalledWith("pm_del");
+  });
+
+  it("shows error when deleting a PM that is in use", async () => {
+    mockFetchPledges.mockResolvedValue([]);
+    mockFetchNotifications.mockResolvedValue([]);
+    mockFetchPaymentMethods.mockResolvedValue([
+      { id: "pm_used", brand: "visa", last4: "1111", exp_month: 6, exp_year: 2029 },
+    ]);
+    mockDeletePaymentMethod.mockRejectedValue(new Error("Payment method is in use by an active pledge"));
+    vi.spyOn(globalThis, "confirm").mockReturnValue(true);
+
+    renderWithRouter(<Dashboard />);
+    await screen.findByText("....1111");
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(await screen.findByText("Payment method is in use by an active pledge")).toBeInTheDocument();
   });
 });
