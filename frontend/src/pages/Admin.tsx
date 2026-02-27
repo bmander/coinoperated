@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { banPatron, collectPayments, fetchAdminPatrons, fetchAdminTasks, patchTask, postUpdate, unbanPatron } from "../api/admin";
+import { banPatron, collectPayments, deleteTask, fetchAdminPatrons, fetchAdminTasks, patchTask, postUpdate, unbanPatron } from "../api/admin";
 import type { AdminPatronRead, AdminTaskRead, CollectResponse } from "../api/types";
 import { formatBackers, formatCents } from "../utils/formatting";
 import StatusBadge from "../components/StatusBadge";
@@ -198,6 +198,19 @@ function AdminTaskCard({
               </p>
             )}
           </div>
+
+          <hr />
+          <button
+            className="btn btn-decline"
+            disabled={busy}
+            onClick={() => {
+              if (window.confirm(`Delete "${task.title}"? This cannot be undone.`)) {
+                handleAction(() => deleteTask(task.id));
+              }
+            }}
+          >
+            Delete Task
+          </button>
         </div>
       )}
     </div>

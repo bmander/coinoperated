@@ -9,12 +9,14 @@ vi.mock("../api/admin", () => ({
   fetchAdminTasks: vi.fn(),
   patchTask: vi.fn(),
   postUpdate: vi.fn(),
+  deleteTask: vi.fn(),
 }));
 
-import { fetchAdminTasks, patchTask, postUpdate } from "../api/admin";
+import { fetchAdminTasks, patchTask, postUpdate, deleteTask } from "../api/admin";
 const mockFetchAdminTasks = vi.mocked(fetchAdminTasks);
 const mockPatchTask = vi.mocked(patchTask);
 const mockPostUpdate = vi.mocked(postUpdate);
+const mockDeleteTask = vi.mocked(deleteTask);
 
 function renderAdmin() {
   return render(
@@ -165,6 +167,64 @@ describe("Admin", () => {
     await waitFor(() => {
       expect(mockPostUpdate).toHaveBeenCalledWith("task-1", "Progress!");
     });
+  });
+
+  it("shows delete button when expanded", async () => {
+    mockFetchAdminTasks.mockResolvedValue({
+      items: [makeTask()],
+      total: 1,
+    });
+    renderAdmin();
+    await waitFor(() => {
+      expect(screen.getByText("Test Task")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Test Task"));
+
+    expect(screen.getByText("Delete Task")).toBeInTheDocument();
+  });
+
+  it("calls deleteTask on confirm", async () => {
+    mockFetchAdminTasks.mockResolvedValue({
+      items: [makeTask()],
+      total: 1,
+    });
+    mockDeleteTask.mockResolvedValue(undefined);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    renderAdmin();
+    await waitFor(() => {
+      expect(screen.getByText("Test Task")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Test Task"));
+    fireEvent.click(screen.getByText("Delete Task"));
+
+    await waitFor(() => {
+      expect(mockDeleteTask).toHaveBeenCalledWith("task-1");
+    });
+
+    vi.mocked(window.confirm).mockRestore();
+  });
+
+  it("does not call deleteTask when confirm is cancelled", async () => {
+    mockFetchAdminTasks.mockResolvedValue({
+      items: [makeTask()],
+      total: 1,
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+
+    renderAdmin();
+    await waitFor(() => {
+      expect(screen.getByText("Test Task")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Test Task"));
+    fireEvent.click(screen.getByText("Delete Task"));
+
+    expect(mockDeleteTask).not.toHaveBeenCalled();
+
+    vi.mocked(window.confirm).mockRestore();
   });
 
   it("shows pledge breakdown table when expanded", async () => {

@@ -5,12 +5,12 @@ from typing import Annotated
 import stripe
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.dependencies import get_admin_patron, get_db
-from app.models import Patron, Pledge, PledgeStatus, Task, TaskStatus, Update
+from app.models import Notification, Patron, Pledge, PledgeStatus, Task, TaskStatus, Update
 from app.routers.tasks import get_task_or_404
 from app.schemas import (
     AdminPatronListResponse,
@@ -208,3 +208,18 @@ async def collect_payments(
         pledge_total=task.pledge_total,
         results=results,
     )
+
+
+@router.delete("/api/tasks/{task_id}", status_code=204)
+async def delete_task(
+    task_id: uuid.UUID,
+    _admin: Annotated[Patron, Depends(get_admin_patron)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    await get_task_or_404(db, task_id)
+
+    await db.execute(delete(Notification).where(Notification.task_id == task_id))
+    await db.execute(delete(Update).where(Update.task_id == task_id))
+    await db.execute(delete(Pledge).where(Pledge.task_id == task_id))
+    await db.execute(delete(Task).where(Task.id == task_id))
+    await db.commit()

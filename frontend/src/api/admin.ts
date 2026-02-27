@@ -42,6 +42,13 @@ export async function collectPayments(
   return res.json();
 }
 
+export async function deleteTask(taskId: string): Promise<void> {
+  const res = await fetch(`/api/tasks/${taskId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`Failed to delete task: ${res.status}`);
+}
+
 export async function fetchAdminPatrons(): Promise<AdminPatronListResponse> {
   const res = await fetch("/api/admin/patrons");
   if (!res.ok) throw new Error(`Failed to fetch patrons: ${res.status}`);
