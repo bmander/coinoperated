@@ -8,7 +8,7 @@ from sqlalchemy.pool import NullPool
 from testcontainers.postgres import PostgresContainer
 
 from app.auth import create_jwt
-from app.models import Base, MagicLinkToken, Patron, Pledge, PledgeStatus, Task
+from app.models import Base, MagicLinkToken, Notification, NotificationType, Patron, Pledge, PledgeStatus, Task
 from app.dependencies import get_db
 from app.config import settings
 
@@ -48,7 +48,7 @@ async def setup_db(test_engine):
 async def clean_tables(test_engine):
     yield
     async with test_engine.begin() as conn:
-        for table in ("magic_link_token", "update", "pledge", "task", "patron"):
+        for table in ("notification", "magic_link_token", "update", "pledge", "task", "patron"):
             await conn.execute(text(f'DELETE FROM "{table}"'))
 
 
@@ -143,3 +143,24 @@ async def create_pledge(session_maker, *, patron_id, task_id, **overrides) -> Pl
         await session.commit()
         await session.refresh(pledge)
         return pledge
+
+
+async def create_notification(
+    session_maker,
+    *,
+    patron_id,
+    task_id,
+    event=NotificationType.task_accepted,
+    message="Test notification",
+) -> Notification:
+    async with session_maker() as session:
+        notification = Notification(
+            patron_id=patron_id,
+            task_id=task_id,
+            event=event,
+            message=message,
+        )
+        session.add(notification)
+        await session.commit()
+        await session.refresh(notification)
+        return notification

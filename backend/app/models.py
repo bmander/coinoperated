@@ -40,6 +40,12 @@ class PledgeStatus(str, enum.Enum):
     released = "released"
 
 
+class NotificationType(str, enum.Enum):
+    task_accepted = "task_accepted"
+    task_completed = "task_completed"
+    task_declined = "task_declined"
+
+
 # --- Models ---
 
 
@@ -73,6 +79,7 @@ class Patron(Base):
 
     pledges: Mapped[list["Pledge"]] = relationship(back_populates="patron")
     submitted_tasks: Mapped[list["Task"]] = relationship(back_populates="submitted_by_patron")
+    notifications: Mapped[list["Notification"]] = relationship(back_populates="patron")
 
 
 class Task(Base):
@@ -159,3 +166,28 @@ class Update(Base):
     )
 
     task: Mapped[Task] = relationship(back_populates="updates")
+
+
+class Notification(Base):
+    __tablename__ = "notification"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    patron_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("patron.id"), nullable=False
+    )
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("task.id"), nullable=False
+    )
+    event: Mapped[NotificationType] = mapped_column(
+        Enum(NotificationType, name="notification_type", native_enum=True),
+        nullable=False,
+    )
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    patron: Mapped[Patron] = relationship(back_populates="notifications")
+    task: Mapped[Task] = relationship()

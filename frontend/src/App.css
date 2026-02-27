@@ -719,3 +719,162 @@
   color: #4a4;
   font-weight: 500;
 }
+
+/* Dashboard */
+.dashboard-page h1 {
+  margin-bottom: 1rem;
+}
+
+.dashboard-section {
+  margin-bottom: 2rem;
+}
+
+.dashboard-section h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #333;
+  padding-bottom: 0.3rem;
+}
+
+@media (prefers-color-scheme: light) {
+  .dashboard-section h2 {
+    border-bottom-color: #ddd;
+  }
+}
+
+.pledge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pledge-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border: 1px solid #333;
+  border-radius: 8px;
+  gap: 1rem;
+}
+
+@media (prefers-color-scheme: light) {
+  .pledge-list-item {
+    border-color: #ddd;
+  }
+}
+
+.pledge-list-item-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.pledge-task-title {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pledge-task-title:hover {
+  text-decoration: underline;
+}
+
+.pledge-list-item-details {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.pledge-amount {
+  font-weight: 600;
+}
+
+.pledge-status {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #888;
+}
+
+.btn-sm {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.notification-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.notification-item {
+  padding: 0.75rem 1rem;
+  border: 1px solid #333;
+  border-radius: 8px;
+}
+
+@media (prefers-color-scheme: light) {
+  .notification-item {
+    border-color: #ddd;
+  }
+}
+
+.notification-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.notification-event {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.notification-event-task_accepted {
+  color: #88f;
+}
+
+.notification-event-task_completed {
+  color: #4a4;
+}
+
+.notification-event-task_declined {
+  color: #a66;
+}
+
+@media (prefers-color-scheme: light) {
+  .notification-event-task_accepted {
+    color: #44c;
+  }
+  .notification-event-task_completed {
+    color: #1a5a1a;
+  }
+  .notification-event-task_declined {
+    color: #a33;
+  }
+}
+
+.notification-time {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.notification-message {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+@media (prefers-color-scheme: light) {
+  .notification-message {
+    color: #555;
+  }
+}

@@ -77,3 +77,28 @@ export interface PledgeMyResponse {
 export function isLivePledge(pledge: PledgeMyResponse | null): pledge is PledgeMyResponse {
   return pledge !== null && (pledge.status === "active" || pledge.status === "pending");
 }
+
+export type NotificationEvent = "task_accepted" | "task_completed" | "task_declined";
+
+export interface PatronPledgeTaskSummary {
+  id: string;
+  title: string;
+  status: TaskStatus;
+}
+
+export interface PatronPledgeRead {
+  id: string;
+  amount: number;
+  status: PledgeStatus;
+  created_at: string;
+  task: PatronPledgeTaskSummary;
+}
+
+export interface NotificationRead {
+  id: string;
+  task_id: string;
+  task_title: string;
+  event: NotificationEvent;
+  message: string;
+  created_at: string;
+}

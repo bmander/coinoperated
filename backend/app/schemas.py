@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models import PledgeStatus, TaskStatus
+from app.models import NotificationType, PledgeStatus, TaskStatus
 
 
 class BaseReadSchema(BaseModel):
@@ -115,6 +115,32 @@ class PledgeMyResponse(BaseReadSchema):
 
 class PledgeUpdateRequest(BaseModel):
     amount: int = Field(ge=500)
+
+
+# --- Patron Dashboard ---
+
+
+class PatronPledgeTaskSummary(BaseReadSchema):
+    id: uuid.UUID
+    title: str
+    status: TaskStatus
+
+
+class PatronPledgeRead(BaseReadSchema):
+    id: uuid.UUID
+    amount: int
+    status: PledgeStatus
+    created_at: datetime
+    task: PatronPledgeTaskSummary
+
+
+class NotificationRead(BaseReadSchema):
+    id: uuid.UUID
+    task_id: uuid.UUID
+    task_title: str
+    event: NotificationType
+    message: str
+    created_at: datetime
 
 
 class PledgeUpdateResponse(BaseModel):

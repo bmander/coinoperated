@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.dependencies import get_current_patron, get_db
-from app.models import Patron, Task, TaskStatus
+from app.models import Notification, NotificationType, Patron, Pledge, PledgeStatus, Task, TaskStatus
 from app.schemas import TaskCreate, TaskDetail, TaskListResponse, TaskRead, TaskUpdate
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -115,6 +115,32 @@ async def update_task(
             task.accepted_at = None
 
         task.status = payload.status
+
+        # Create notifications for patrons with live pledges
+        event_map = {
+            TaskStatus.accepted: NotificationType.task_accepted,
+            TaskStatus.completed: NotificationType.task_completed,
+            TaskStatus.declined: NotificationType.task_declined,
+        }
+        if payload.status in event_map:
+            live_pledges = (
+                await db.execute(
+                    select(Pledge).where(
+                        Pledge.task_id == task_id,
+                        Pledge.status.in_([PledgeStatus.active, PledgeStatus.pending]),
+                    )
+                )
+            ).scalars().all()
+
+            event = event_map[payload.status]
+            message = f"Task \"{task.title}\" has been {payload.status.value}"
+            for pledge in live_pledges:
+                db.add(Notification(
+                    patron_id=pledge.patron_id,
+                    task_id=task_id,
+                    event=event,
+                    message=message,
+                ))
 
     for field, value in payload.model_dump(exclude_unset=True, exclude={"status"}).items():
         setattr(task, field, value)

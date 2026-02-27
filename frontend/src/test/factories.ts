@@ -1,4 +1,4 @@
-import type { TaskRead, TaskDetailRead, TaskListResponse, UpdateRead } from "../api/types";
+import type { TaskRead, TaskDetailRead, TaskListResponse, UpdateRead, PatronPledgeRead, NotificationRead } from "../api/types";
 
 export function makeTask(overrides: Partial<TaskRead> = {}): TaskRead {
   return {
@@ -40,4 +40,31 @@ export function makeUpdate(overrides: Partial<UpdateRead> = {}): UpdateRead {
 
 export function makeResponse(items: TaskRead[] = []): TaskListResponse {
   return { items, total: items.length, offset: 0, limit: 20 };
+}
+
+export function makePatronPledge(overrides: Partial<PatronPledgeRead> = {}): PatronPledgeRead {
+  return {
+    id: "pledge-1",
+    amount: 2500,
+    status: "active",
+    created_at: "2025-01-15T00:00:00Z",
+    task: {
+      id: "abc-123",
+      title: "Fix the bridge",
+      status: "open",
+    },
+    ...overrides,
+  };
+}
+
+export function makeNotification(overrides: Partial<NotificationRead> = {}): NotificationRead {
+  return {
+    id: "notif-1",
+    task_id: "abc-123",
+    task_title: "Fix the bridge",
+    event: "task_accepted",
+    message: 'Task "Fix the bridge" has been accepted',
+    created_at: "2025-02-01T00:00:00Z",
+    ...overrides,
+  };
 }
