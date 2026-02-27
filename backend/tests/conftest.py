@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 from testcontainers.postgres import PostgresContainer
 
+from unittest.mock import MagicMock
+
 from app.auth import create_jwt
 from app.models import Base, MagicLinkToken, Notification, NotificationType, Patron, Pledge, PledgeStatus, Task
 from app.dependencies import get_db
@@ -80,6 +82,13 @@ async def authed_client(test_patron, client):
     token = create_jwt(test_patron.id, settings.secret_key, expiry_days=30)
     client.cookies.set("session", token)
     yield client
+
+
+def mock_setup_intent(si_id="si_test_123", client_secret="seti_test_secret"):
+    si = MagicMock()
+    si.id = si_id
+    si.client_secret = client_secret
+    return si
 
 
 async def create_magic_token(

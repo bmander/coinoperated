@@ -1,10 +1,10 @@
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from app.config import settings
-from tests.conftest import auth_cookies, create_patron as create_patron_db
+from tests.conftest import auth_cookies, create_patron as create_patron_db, mock_setup_intent
 
 
 # --- Helpers ---
@@ -21,13 +21,6 @@ def _admin_settings():
         stripe_publishable_key = settings.stripe_publishable_key
 
     return FakeSettings()
-
-
-def mock_setup_intent(si_id="si_task_123", client_secret="seti_task_secret"):
-    si = MagicMock()
-    si.id = si_id
-    si.client_secret = client_secret
-    return si
 
 
 @pytest.fixture(autouse=True)
@@ -239,7 +232,7 @@ async def test_create_task_non_admin_with_pledge(
     assert data["title"] == "My task"
     assert data["status"] == "open"
     assert data["pledge_id"] is not None
-    assert data["client_secret"] == "seti_task_secret"
+    assert data["client_secret"] == "seti_test_secret"
     assert data["publishable_key"] == settings.stripe_publishable_key
     mock_si_create.assert_called_once()
 
@@ -261,7 +254,7 @@ async def test_create_task_admin_with_optional_pledge(
     assert resp.status_code == 201
     data = resp.json()
     assert data["pledge_id"] is not None
-    assert data["client_secret"] == "seti_task_secret"
+    assert data["client_secret"] == "seti_test_secret"
     mock_si_create.assert_called_once()
 
 

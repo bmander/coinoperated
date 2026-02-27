@@ -8,7 +8,7 @@ from app.auth import create_jwt
 from app.config import settings
 from app.models import Pledge, PledgeStatus, Task, TaskStatus
 
-from tests.conftest import create_patron, create_pledge, create_task
+from tests.conftest import create_patron, create_pledge, create_task, mock_setup_intent
 
 
 # --- Helpers ---
@@ -17,13 +17,6 @@ from tests.conftest import create_patron, create_pledge, create_task
 def auth_cookies(patron_id: uuid.UUID) -> dict:
     token = create_jwt(patron_id, settings.secret_key, settings.session_expiry_days)
     return {"session": token}
-
-
-def mock_setup_intent(si_id="si_new_123", client_secret="seti_secret_123"):
-    si = MagicMock()
-    si.id = si_id
-    si.client_secret = client_secret
-    return si
 
 
 # --- POST /api/tasks/{task_id}/pledges ---
@@ -43,7 +36,7 @@ async def test_create_pledge(mock_si_create, client, test_session_maker):
     assert resp.status_code == 201
     data = resp.json()
     assert "pledge_id" in data
-    assert data["client_secret"] == "seti_secret_123"
+    assert data["client_secret"] == "seti_test_secret"
     assert data["publishable_key"] == settings.stripe_publishable_key
     mock_si_create.assert_called_once()
 
@@ -763,7 +756,7 @@ async def test_create_pledge_save_card_false(mock_si_create, client, test_sessio
     )
     assert resp.status_code == 201
     data = resp.json()
-    assert data["client_secret"] == "seti_secret_123"
+    assert data["client_secret"] == "seti_test_secret"
 
     async with test_session_maker() as session:
         p = await session.get(Pledge, uuid.UUID(data["pledge_id"]))

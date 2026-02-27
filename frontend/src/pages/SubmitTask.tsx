@@ -5,10 +5,60 @@ import { Elements, CardElement, useStripe, useElements } from "@stripe/react-str
 import { createTask } from "../api/tasks";
 import MarkdownField from "../components/MarkdownField";
 import { useAuth } from "../contexts/AuthContext";
+import { MIN_PLEDGE_CENTS, PRESET_AMOUNTS } from "../constants";
 import { formatCents } from "../utils/formatting";
 
-const MIN_PLEDGE_CENTS = 100;
-const PRESET_AMOUNTS = [MIN_PLEDGE_CENTS, 500, 2500];
+function TaskFormFields({
+  title,
+  setTitle,
+  description,
+  setDescription,
+  criteria,
+  setCriteria,
+}: {
+  title: string;
+  setTitle: (v: string) => void;
+  description: string;
+  setDescription: (v: string) => void;
+  criteria: string;
+  setCriteria: (v: string) => void;
+}) {
+  return (
+    <>
+      <div className="form-field">
+        <label htmlFor="title">Title *</label>
+        <input
+          id="title"
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Short, descriptive title"
+          required
+          maxLength={500}
+        />
+      </div>
+
+      <MarkdownField
+        id="description"
+        label="Description *"
+        value={description}
+        onChange={setDescription}
+        placeholder="Full description of the task (Markdown supported)"
+        required
+        rows={8}
+      />
+
+      <MarkdownField
+        id="criteria"
+        label="Delivery Criteria"
+        value={criteria}
+        onChange={setCriteria}
+        placeholder='What does "done" look like? (Markdown supported)'
+        rows={4}
+      />
+    </>
+  );
+}
 
 function PledgedTaskForm() {
   const stripe = useStripe();
@@ -73,36 +123,10 @@ function PledgedTaskForm() {
 
   return (
     <form onSubmit={handleSubmit} className="submit-task-form">
-      <div className="form-field">
-        <label htmlFor="title">Title *</label>
-        <input
-          id="title"
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Short, descriptive title"
-          required
-          maxLength={500}
-        />
-      </div>
-
-      <MarkdownField
-        id="description"
-        label="Description *"
-        value={description}
-        onChange={setDescription}
-        placeholder="Full description of the task (Markdown supported)"
-        required
-        rows={8}
-      />
-
-      <MarkdownField
-        id="criteria"
-        label="Delivery Criteria"
-        value={criteria}
-        onChange={setCriteria}
-        placeholder='What does "done" look like? (Markdown supported)'
-        rows={4}
+      <TaskFormFields
+        title={title} setTitle={setTitle}
+        description={description} setDescription={setDescription}
+        criteria={criteria} setCriteria={setCriteria}
       />
 
       <div className="form-field">
@@ -198,36 +222,10 @@ function AdminTaskForm() {
 
   return (
     <form onSubmit={handleSubmit} className="submit-task-form">
-      <div className="form-field">
-        <label htmlFor="title">Title *</label>
-        <input
-          id="title"
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Short, descriptive title"
-          required
-          maxLength={500}
-        />
-      </div>
-
-      <MarkdownField
-        id="description"
-        label="Description *"
-        value={description}
-        onChange={setDescription}
-        placeholder="Full description of the task (Markdown supported)"
-        required
-        rows={8}
-      />
-
-      <MarkdownField
-        id="criteria"
-        label="Delivery Criteria"
-        value={criteria}
-        onChange={setCriteria}
-        placeholder='What does "done" look like? (Markdown supported)'
-        rows={4}
+      <TaskFormFields
+        title={title} setTitle={setTitle}
+        description={description} setDescription={setDescription}
+        criteria={criteria} setCriteria={setCriteria}
       />
 
       {error && <p className="form-error">{error}</p>}
@@ -246,10 +244,11 @@ function AdminTaskForm() {
 export default function SubmitTask() {
   const { patron } = useAuth();
   const isAdmin = patron?.is_admin ?? false;
+  const isBanned = patron?.is_banned ?? false;
   const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
 
   useEffect(() => {
-    if (isAdmin || patron?.is_banned) return;
+    if (isAdmin || isBanned) return;
 
     fetch("/api/config/stripe")
       .then((r) => r.json())
@@ -258,9 +257,9 @@ export default function SubmitTask() {
           setStripePromise(loadStripe(config.publishable_key));
         }
       });
-  }, [isAdmin]);
+  }, [isAdmin, isBanned]);
 
-  if (patron?.is_banned) {
+  if (isBanned) {
     return (
       <div className="submit-task-page">
         <h1>Submit a Task</h1>

@@ -1,0 +1,2 @@
+export const MIN_PLEDGE_CENTS = 100;
+export const PRESET_AMOUNTS = [MIN_PLEDGE_CENTS, 500, 2500];

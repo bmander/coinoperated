@@ -6,12 +6,10 @@ import { useAuth } from "../contexts/AuthContext";
 import { getTask } from "../api/tasks";
 import { createPledge, getMyPledge, updatePledge, deletePledge } from "../api/pledges";
 import { fetchPaymentMethods } from "../api/patron";
+import { MIN_PLEDGE_CENTS, PRESET_AMOUNTS } from "../constants";
 import { capitalize, formatCents } from "../utils/formatting";
 import { isLivePledge } from "../api/types";
 import type { TaskDetailRead, PledgeMyResponse, SavedPaymentMethod } from "../api/types";
-
-const MIN_PLEDGE_CENTS = 100;
-const PRESET_AMOUNTS = [MIN_PLEDGE_CENTS, 500, 2500];
 
 function PledgeForm({
   task,
