@@ -7,13 +7,17 @@ import type { AdminTaskListResponse } from "../api/types";
 
 vi.mock("../api/admin", () => ({
   fetchAdminTasks: vi.fn(),
+  fetchAdminPatrons: vi.fn(),
   patchTask: vi.fn(),
   postUpdate: vi.fn(),
   deleteTask: vi.fn(),
+  banPatron: vi.fn(),
+  unbanPatron: vi.fn(),
 }));
 
-import { fetchAdminTasks, patchTask, postUpdate, deleteTask } from "../api/admin";
+import { fetchAdminTasks, fetchAdminPatrons, patchTask, postUpdate, deleteTask } from "../api/admin";
 const mockFetchAdminTasks = vi.mocked(fetchAdminTasks);
+const mockFetchAdminPatrons = vi.mocked(fetchAdminPatrons);
 const mockPatchTask = vi.mocked(patchTask);
 const mockPostUpdate = vi.mocked(postUpdate);
 const mockDeleteTask = vi.mocked(deleteTask);
@@ -56,6 +60,10 @@ function makeTask(overrides: Partial<AdminTaskListResponse["items"][0]> = {}) {
 }
 
 describe("Admin", () => {
+  beforeEach(() => {
+    mockFetchAdminPatrons.mockResolvedValue({ items: [] });
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
   });
@@ -63,7 +71,7 @@ describe("Admin", () => {
   it("shows loading state", () => {
     mockFetchAdminTasks.mockReturnValue(new Promise(() => {}));
     renderAdmin();
-    expect(screen.getByText("Loading tasks...")).toBeInTheDocument();
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
   });
 
   it("shows error state", async () => {

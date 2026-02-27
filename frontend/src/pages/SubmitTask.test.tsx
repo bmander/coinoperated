@@ -15,6 +15,15 @@ vi.mock("react-router-dom", async () => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
+vi.mock("../contexts/AuthContext", () => ({
+  useAuth: () => ({
+    patron: { id: "p1", email: "test@example.com", display_name: null, is_admin: false, is_banned: false },
+    loading: false,
+    login: vi.fn(),
+    logout: vi.fn(),
+  }),
+}));
+
 afterEach(() => {
   vi.clearAllMocks();
 });
