@@ -141,6 +141,7 @@ async def create_pledge(session_maker, *, patron_id, task_id, **overrides) -> Pl
         status=PledgeStatus.active,
         setup_intent="si_test",
         payment_method="pm_test",
+        save_card=True,
     )
     defaults.update(overrides)
     async with session_maker() as session:

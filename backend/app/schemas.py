@@ -89,7 +89,7 @@ class PledgeRead(BaseReadSchema):
     task_id: uuid.UUID
     amount: int
     payment_method: str | None
-    setup_intent: str
+    setup_intent: str | None
     status: PledgeStatus
     payment_intent: str | None
     created_at: datetime
@@ -98,12 +98,22 @@ class PledgeRead(BaseReadSchema):
 
 class PledgeCreateRequest(BaseModel):
     amount: int = Field(ge=MIN_PLEDGE_CENTS)
+    payment_method_id: str | None = None
+    save_card: bool = True
 
 
 class PledgeCreateResponse(BaseModel):
     pledge_id: uuid.UUID
-    client_secret: str
+    client_secret: str | None = None
     publishable_key: str
+
+
+class SavedPaymentMethodRead(BaseModel):
+    id: str
+    brand: str
+    last4: str
+    exp_month: int
+    exp_year: int
 
 
 class PledgeMyResponse(BaseReadSchema):
@@ -145,7 +155,7 @@ class PatronNotificationRead(BaseReadSchema):
 
 class PledgeUpdateResponse(BaseModel):
     pledge_id: uuid.UUID
-    client_secret: str
+    client_secret: str | None = None
     publishable_key: str
 
 

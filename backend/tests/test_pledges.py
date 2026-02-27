@@ -693,3 +693,158 @@ async def test_webhook_payment_intent_failed_unknown(mock_construct, client):
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "ignored"
+
+
+# --- Saved payment method pledge creation ---
+
+
+@patch("app.routers.pledges.stripe.PaymentMethod.retrieve")
+async def test_create_pledge_with_saved_pm(mock_pm_retrieve, client, test_session_maker):
+    patron = await create_patron(test_session_maker, "saved_pm@example.com", "cus_saved")
+    task = await create_task(test_session_maker)
+
+    mock_pm = MagicMock()
+    mock_pm.customer = "cus_saved"
+    mock_pm_retrieve.return_value = mock_pm
+
+    resp = await client.post(
+        f"/api/tasks/{task.id}/pledges",
+        json={"amount": 500, "payment_method_id": "pm_existing_123"},
+        cookies=auth_cookies(patron.id),
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["client_secret"] is None
+    assert "pledge_id" in data
+
+    # Verify pledge is active immediately
+    async with test_session_maker() as session:
+        p = await session.get(Pledge, uuid.UUID(data["pledge_id"]))
+        assert p.status == PledgeStatus.active
+        assert p.payment_method == "pm_existing_123"
+        assert p.setup_intent is None
+        assert p.save_card is True
+
+    # Verify task counters incremented
+    async with test_session_maker() as session:
+        t = await session.get(Task, task.id)
+        assert t.pledge_count == 1
+        assert t.pledge_total == 500
+
+
+@patch("app.routers.pledges.stripe.PaymentMethod.retrieve")
+async def test_create_pledge_with_saved_pm_wrong_customer(mock_pm_retrieve, client, test_session_maker):
+    patron = await create_patron(test_session_maker, "wrong_pm@example.com", "cus_wrong")
+    task = await create_task(test_session_maker)
+
+    mock_pm = MagicMock()
+    mock_pm.customer = "cus_someone_else"
+    mock_pm_retrieve.return_value = mock_pm
+
+    resp = await client.post(
+        f"/api/tasks/{task.id}/pledges",
+        json={"amount": 500, "payment_method_id": "pm_stolen_123"},
+        cookies=auth_cookies(patron.id),
+    )
+    assert resp.status_code == 400
+    assert "does not belong" in resp.json()["detail"].lower()
+
+
+@patch("app.routers.pledges.stripe.SetupIntent.create")
+async def test_create_pledge_save_card_false(mock_si_create, client, test_session_maker):
+    mock_si_create.return_value = mock_setup_intent()
+    patron = await create_patron(test_session_maker, "nosave@example.com", "cus_nosave")
+    task = await create_task(test_session_maker)
+
+    resp = await client.post(
+        f"/api/tasks/{task.id}/pledges",
+        json={"amount": 500, "save_card": False},
+        cookies=auth_cookies(patron.id),
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["client_secret"] == "seti_secret_123"
+
+    async with test_session_maker() as session:
+        p = await session.get(Pledge, uuid.UUID(data["pledge_id"]))
+        assert p.save_card is False
+
+
+# --- Webhook PM detach for unsaved cards ---
+
+
+@patch("app.routers.pledges.stripe.PaymentMethod.detach")
+@patch("app.routers.webhooks.stripe.Webhook.construct_event")
+async def test_webhook_detaches_unsaved_pm_on_success(
+    mock_construct, mock_pm_detach, client, test_session_maker
+):
+    patron = await create_patron(test_session_maker, "unsaved_ok@example.com", "cus_unsaved_ok")
+    task = await create_task(test_session_maker, status=TaskStatus.collecting)
+    pledge = await create_pledge(
+        test_session_maker,
+        patron_id=patron.id,
+        task_id=task.id,
+        status=PledgeStatus.active,
+        payment_intent="pi_unsaved_ok",
+        payment_method="pm_unsaved_123",
+        save_card=False,
+    )
+
+    mock_construct.return_value = {
+        "type": "payment_intent.succeeded",
+        "data": {"object": {"id": "pi_unsaved_ok"}},
+    }
+
+    resp = await client.post(
+        "/api/webhooks/stripe",
+        content=b"raw_body",
+        headers={"stripe-signature": "sig_test"},
+    )
+    assert resp.status_code == 200
+    mock_pm_detach.assert_called_once_with("pm_unsaved_123")
+
+
+@patch("app.routers.pledges.stripe.PaymentMethod.detach")
+@patch("app.routers.webhooks.stripe.Webhook.construct_event")
+async def test_webhook_skips_detach_when_pm_in_use(
+    mock_construct, mock_pm_detach, client, test_session_maker
+):
+    patron = await create_patron(test_session_maker, "shared_pm@example.com", "cus_shared_pm")
+    task1 = await create_task(test_session_maker, title="Task A")
+    task2 = await create_task(test_session_maker, title="Task B")
+
+    # First pledge: unsaved, will be collected
+    await create_pledge(
+        test_session_maker,
+        patron_id=patron.id,
+        task_id=task1.id,
+        status=PledgeStatus.active,
+        payment_intent="pi_shared_1",
+        payment_method="pm_shared_456",
+        save_card=False,
+        setup_intent="si_shared_1",
+    )
+
+    # Second pledge: same PM, still active
+    await create_pledge(
+        test_session_maker,
+        patron_id=patron.id,
+        task_id=task2.id,
+        status=PledgeStatus.active,
+        payment_method="pm_shared_456",
+        save_card=False,
+        setup_intent="si_shared_2",
+    )
+
+    mock_construct.return_value = {
+        "type": "payment_intent.succeeded",
+        "data": {"object": {"id": "pi_shared_1"}},
+    }
+
+    resp = await client.post(
+        "/api/webhooks/stripe",
+        content=b"raw_body",
+        headers={"stripe-signature": "sig_test"},
+    )
+    assert resp.status_code == 200
+    mock_pm_detach.assert_not_called()
