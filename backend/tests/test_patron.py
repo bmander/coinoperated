@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from tests.conftest import create_notification, create_patron, create_pledge, create_task
 
@@ -53,6 +55,36 @@ class TestPatronPledges:
         assert len(resp.json()) == 0
 
 
+    async def test_pledges_ordered_by_created_at_desc(
+        self, client, test_session_maker, test_patron
+    ):
+        task1 = await create_task(test_session_maker, title="First task")
+        task2 = await create_task(test_session_maker, title="Second task")
+        await create_pledge(
+            test_session_maker,
+            patron_id=test_patron.id,
+            task_id=task1.id,
+            setup_intent="si_1",
+        )
+        # Small delay to ensure different created_at timestamps
+        await asyncio.sleep(0.05)
+        await create_pledge(
+            test_session_maker,
+            patron_id=test_patron.id,
+            task_id=task2.id,
+            setup_intent="si_2",
+        )
+
+        resp = await client.get(
+            "/api/patron/pledges", cookies=auth_cookies(test_patron)
+        )
+        data = resp.json()
+        assert len(data) == 2
+        # Most recent pledge first
+        assert data[0]["task"]["title"] == "Second task"
+        assert data[1]["task"]["title"] == "First task"
+
+
 @pytest.mark.asyncio
 class TestPatronNotifications:
     async def test_returns_notifications(
@@ -80,6 +112,34 @@ class TestPatronNotifications:
     async def test_requires_auth(self, client):
         resp = await client.get("/api/patron/notifications")
         assert resp.status_code == 401
+
+    async def test_notifications_ordered_by_created_at_desc(
+        self, client, test_session_maker, test_patron
+    ):
+        task = await create_task(test_session_maker, title="Some task")
+        await create_notification(
+            test_session_maker,
+            patron_id=test_patron.id,
+            task_id=task.id,
+            event=NotificationType.task_accepted,
+            message="First notification",
+        )
+        await asyncio.sleep(0.05)
+        await create_notification(
+            test_session_maker,
+            patron_id=test_patron.id,
+            task_id=task.id,
+            event=NotificationType.task_completed,
+            message="Second notification",
+        )
+
+        resp = await client.get(
+            "/api/patron/notifications", cookies=auth_cookies(test_patron)
+        )
+        data = resp.json()
+        assert len(data) == 2
+        assert data[0]["message"] == "Second notification"
+        assert data[1]["message"] == "First notification"
 
 
 @pytest.mark.asyncio
@@ -153,6 +213,54 @@ class TestNotificationCreation:
         )
 
         await client.patch(f"/api/tasks/{task.id}", json={"status": "accepted"})
+
+        notif_resp = await client.get(
+            "/api/patron/notifications", cookies=auth_cookies(test_patron)
+        )
+        assert len(notif_resp.json()) == 0
+
+    async def test_multiple_patrons_each_get_notification(
+        self, client, test_session_maker, test_patron
+    ):
+        patron2 = await create_patron(
+            test_session_maker, "patron2@example.com", "cus_p2"
+        )
+        task = await create_task(test_session_maker, title="Shared task")
+        await create_pledge(
+            test_session_maker,
+            patron_id=test_patron.id,
+            task_id=task.id,
+            setup_intent="si_1",
+        )
+        await create_pledge(
+            test_session_maker,
+            patron_id=patron2.id,
+            task_id=task.id,
+            setup_intent="si_2",
+        )
+
+        await client.patch(f"/api/tasks/{task.id}", json={"status": "accepted"})
+
+        resp1 = await client.get(
+            "/api/patron/notifications", cookies=auth_cookies(test_patron)
+        )
+        resp2 = await client.get(
+            "/api/patron/notifications", cookies=auth_cookies(patron2)
+        )
+        assert len(resp1.json()) == 1
+        assert resp1.json()[0]["event"] == "task_accepted"
+        assert len(resp2.json()) == 1
+        assert resp2.json()[0]["event"] == "task_accepted"
+
+    async def test_no_notification_on_collecting_transition(
+        self, client, test_session_maker, test_patron
+    ):
+        task = await create_task(test_session_maker, status="accepted")
+        await create_pledge(
+            test_session_maker, patron_id=test_patron.id, task_id=task.id
+        )
+
+        await client.patch(f"/api/tasks/{task.id}", json={"status": "collecting"})
 
         notif_resp = await client.get(
             "/api/patron/notifications", cookies=auth_cookies(test_patron)

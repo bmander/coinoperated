@@ -39,6 +39,28 @@ describe("Dashboard", () => {
     expect(screen.getByText("$10")).toBeInTheDocument();
   });
 
+  it("renders task title links pointing to task detail pages", async () => {
+    mockFetchPledges.mockResolvedValue([
+      makePatronPledge({ id: "p1", task: { id: "task-abc", title: "Fix road", status: "open" } }),
+    ]);
+    mockFetchNotifications.mockResolvedValue([]);
+
+    renderWithRouter(<Dashboard />);
+    const link = await screen.findByRole("link", { name: "Fix road" });
+    expect(link).toHaveAttribute("href", "/tasks/task-abc");
+  });
+
+  it("renders update links pointing to pledge pages", async () => {
+    mockFetchPledges.mockResolvedValue([
+      makePatronPledge({ id: "p1", task: { id: "task-abc", title: "Fix road", status: "open" } }),
+    ]);
+    mockFetchNotifications.mockResolvedValue([]);
+
+    renderWithRouter(<Dashboard />);
+    const link = await screen.findByRole("link", { name: "Update" });
+    expect(link).toHaveAttribute("href", "/tasks/task-abc/pledge");
+  });
+
   it("renders notification feed", async () => {
     mockFetchPledges.mockResolvedValue([]);
     mockFetchNotifications.mockResolvedValue([

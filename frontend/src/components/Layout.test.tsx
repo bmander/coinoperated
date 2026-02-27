@@ -83,4 +83,20 @@ describe("Layout", () => {
 
     expect(screen.queryByRole("link", { name: "Admin" })).not.toBeInTheDocument();
   });
+
+  it("shows Dashboard link for authenticated users", () => {
+    mockUseAuth.mockReturnValue(mockAuth({
+      patron: { id: "1", email: "test@example.com", display_name: null, is_admin: false },
+    }));
+    renderWithRouter(<Layout />);
+
+    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard");
+  });
+
+  it("does not show Dashboard link when not authenticated", () => {
+    mockUseAuth.mockReturnValue(mockAuth());
+    renderWithRouter(<Layout />);
+
+    expect(screen.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
+  });
 });
