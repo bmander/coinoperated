@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 import jwt
 import stripe
 
+from app.email import send_email
+
 
 def create_jwt(patron_id: uuid.UUID, secret_key: str, expiry_days: int) -> str:
     payload = {
@@ -27,8 +29,6 @@ def generate_magic_token() -> str:
 
 
 async def send_magic_link(email: str, link: str) -> None:
-    from app.email import send_email
-
     subject = "Your sign-in link for CoinOperated"
     body = f"Click the link below to sign in:\n\n{link}\n\nThis link expires in 15 minutes."
     await send_email(email, subject, body)

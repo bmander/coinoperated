@@ -9,10 +9,22 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.dependencies import get_db
-from app.models import Pledge, PledgeStatus, Task, TaskStatus
+from app.models import Pledge, PledgeStatus, Task
 from app.notifications import notify_charge_failed, notify_charge_succeeded
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
+
+
+async def _get_pledge_by_payment_intent(
+    db: AsyncSession, payment_intent_id: str
+) -> Pledge | None:
+    return (
+        await db.execute(
+            select(Pledge)
+            .where(Pledge.payment_intent == payment_intent_id)
+            .options(selectinload(Pledge.patron), selectinload(Pledge.task))
+        )
+    ).scalar_one_or_none()
 
 
 @router.post("/stripe")
@@ -64,16 +76,7 @@ async def stripe_webhook(
         await db.commit()
 
     elif event["type"] == "payment_intent.succeeded":
-        pi = event["data"]["object"]
-        payment_intent_id = pi["id"]
-
-        pledge = (
-            await db.execute(
-                select(Pledge)
-                .where(Pledge.payment_intent == payment_intent_id)
-                .options(selectinload(Pledge.patron), selectinload(Pledge.task))
-            )
-        ).scalar_one_or_none()
+        pledge = await _get_pledge_by_payment_intent(db, event["data"]["object"]["id"])
 
         if pledge is None:
             return {"status": "ignored"}
@@ -85,16 +88,7 @@ async def stripe_webhook(
             await db.commit()
 
     elif event["type"] == "payment_intent.payment_failed":
-        pi = event["data"]["object"]
-        payment_intent_id = pi["id"]
-
-        pledge = (
-            await db.execute(
-                select(Pledge)
-                .where(Pledge.payment_intent == payment_intent_id)
-                .options(selectinload(Pledge.patron), selectinload(Pledge.task))
-            )
-        ).scalar_one_or_none()
+        pledge = await _get_pledge_by_payment_intent(db, event["data"]["object"]["id"])
 
         if pledge is None:
             return {"status": "ignored"}
@@ -102,7 +96,6 @@ async def stripe_webhook(
         if pledge.status not in (PledgeStatus.collected, PledgeStatus.failed):
             pledge.status = PledgeStatus.failed
 
-            # Recalculate task collected_total
             task = pledge.task
             if task:
                 task.collected_total = max(0, task.collected_total - pledge.amount)

@@ -4,6 +4,9 @@ from unittest.mock import AsyncMock, patch
 from app.auth import create_jwt
 from app.config import settings
 from app.models import Notification, NotificationType, PledgeStatus, Task, TaskStatus
+from sqlalchemy import select
+
+from app.models import Pledge
 from app.notifications import (
     _charge_failed_email,
     _charge_succeeded_email,
@@ -27,24 +30,32 @@ def auth_cookies(patron_id: uuid.UUID) -> dict:
 
 
 async def test_task_accepted_template(test_session_maker):
+    patron = await create_patron(test_session_maker, "tmpl_a@example.com", "cus_tmpl_a")
     task = await create_task(test_session_maker, title="Fix login bug")
-    subject, body = _task_accepted_email(task)
+    pledge = await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
+    subject, body = _task_accepted_email(task, pledge)
     assert "Fix login bug" in subject
     assert "accepted" in subject.lower()
     assert "Fix login bug" in body
 
 
 async def test_task_completed_template(test_session_maker):
+    patron = await create_patron(test_session_maker, "tmpl_b@example.com", "cus_tmpl_b")
     task = await create_task(test_session_maker, title="Add dark mode")
-    subject, body = _task_completed_email(task, 1500)
+    pledge = await create_pledge(
+        test_session_maker, patron_id=patron.id, task_id=task.id, amount=1500
+    )
+    subject, body = _task_completed_email(task, pledge)
     assert "Add dark mode" in subject
     assert "completed" in subject.lower()
     assert "$15.00" in body
 
 
 async def test_task_declined_template(test_session_maker):
+    patron = await create_patron(test_session_maker, "tmpl_c@example.com", "cus_tmpl_c")
     task = await create_task(test_session_maker, title="Rewrite in Rust")
-    subject, body = _task_declined_email(task)
+    pledge = await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
+    subject, body = _task_declined_email(task, pledge)
     assert "Rewrite in Rust" in subject
     assert "declined" in subject.lower()
     assert "released" in body.lower()
@@ -81,7 +92,6 @@ async def test_task_accepted_creates_notification(mock_send, client, test_sessio
     assert resp.status_code == 200
 
     async with test_session_maker() as session:
-        from sqlalchemy import select
         result = await session.execute(
             select(Notification).where(
                 Notification.task_id == task.id,
@@ -109,7 +119,6 @@ async def test_task_collecting_creates_completed_notification(mock_send, client,
     assert resp.status_code == 200
 
     async with test_session_maker() as session:
-        from sqlalchemy import select
         result = await session.execute(
             select(Notification).where(
                 Notification.task_id == task.id,
@@ -136,7 +145,6 @@ async def test_task_declined_creates_notification(mock_send, client, test_sessio
     assert resp.status_code == 200
 
     async with test_session_maker() as session:
-        from sqlalchemy import select
         result = await session.execute(
             select(Notification).where(
                 Notification.task_id == task.id,
@@ -166,7 +174,6 @@ async def test_multiple_pledgers_get_notifications(mock_send, client, test_sessi
     assert resp.status_code == 200
 
     async with test_session_maker() as session:
-        from sqlalchemy import select
         result = await session.execute(
             select(Notification).where(Notification.task_id == task.id)
         )
@@ -193,7 +200,6 @@ async def test_email_failure_does_not_break_api(mock_send, client, test_session_
 
     # email_sent should be False since send_email returned False
     async with test_session_maker() as session:
-        from sqlalchemy import select
         result = await session.execute(
             select(Notification).where(Notification.task_id == task.id)
         )
@@ -218,7 +224,6 @@ async def test_no_pledgers_no_notifications(mock_send, client, test_session_make
     assert resp.status_code == 200
 
     async with test_session_maker() as session:
-        from sqlalchemy import select
         result = await session.execute(
             select(Notification).where(Notification.task_id == task.id)
         )
@@ -257,7 +262,6 @@ async def test_webhook_payment_succeeded_creates_notification(
     assert resp.status_code == 200
 
     async with test_session_maker() as session:
-        from sqlalchemy import select
         result = await session.execute(
             select(Notification).where(
                 Notification.task_id == task.id,
@@ -271,8 +275,7 @@ async def test_webhook_payment_succeeded_creates_notification(
 
     # Verify pledge state updated
     async with test_session_maker() as session:
-        from app.models import Pledge as PledgeModel
-        p = await session.get(PledgeModel, pledge.id)
+        p = await session.get(Pledge, pledge.id)
         assert p.status == PledgeStatus.collected
         assert p.collected_at is not None
 
@@ -306,7 +309,6 @@ async def test_webhook_payment_failed_creates_notification(
     assert resp.status_code == 200
 
     async with test_session_maker() as session:
-        from sqlalchemy import select
         result = await session.execute(
             select(Notification).where(
                 Notification.task_id == task.id,
@@ -320,8 +322,7 @@ async def test_webhook_payment_failed_creates_notification(
 
     # Verify pledge state updated
     async with test_session_maker() as session:
-        from app.models import Pledge as PledgeModel
-        p = await session.get(PledgeModel, pledge.id)
+        p = await session.get(Pledge, pledge.id)
         assert p.status == PledgeStatus.failed
 
     mock_send.assert_called_once()
@@ -384,7 +385,6 @@ async def test_pending_pledger_not_notified(mock_send, client, test_session_make
     assert resp.status_code == 200
 
     async with test_session_maker() as session:
-        from sqlalchemy import select
         result = await session.execute(
             select(Notification).where(Notification.task_id == task.id)
         )
@@ -430,7 +430,7 @@ async def test_send_email_exception_returns_false(mock_smtp_send):
 # --- Magic link email ---
 
 
-@patch("app.email.send_email", new_callable=AsyncMock, return_value=True)
+@patch("app.auth.send_email", new_callable=AsyncMock, return_value=True)
 async def test_magic_link_sends_email_with_link(mock_send, client, test_session_maker):
     resp = await client.post("/api/auth/login", json={"email": "magic@example.com"})
     assert resp.status_code == 200

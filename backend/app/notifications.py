@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,8 +20,11 @@ logger = logging.getLogger(__name__)
 
 # --- Templates ---
 
+# Each returns (subject, body). Fan-out templates take (task, pledge) so the
+# loop can pass per-pledger context; charge templates take (task, amount).
 
-def _task_accepted_email(task: Task) -> tuple[str, str]:
+
+def _task_accepted_email(task: Task, pledge: Pledge) -> tuple[str, str]:
     subject = f"Task accepted: {task.title}"
     body = (
         f"Good news! The task \"{task.title}\" has been accepted.\n"
@@ -30,8 +34,8 @@ def _task_accepted_email(task: Task) -> tuple[str, str]:
     return subject, body
 
 
-def _task_completed_email(task: Task, amount: int) -> tuple[str, str]:
-    dollars = f"${amount / 100:.2f}"
+def _task_completed_email(task: Task, pledge: Pledge) -> tuple[str, str]:
+    dollars = f"${pledge.amount / 100:.2f}"
     subject = f"Task completed: {task.title}"
     body = (
         f"The task \"{task.title}\" has been completed!\n"
@@ -41,7 +45,7 @@ def _task_completed_email(task: Task, amount: int) -> tuple[str, str]:
     return subject, body
 
 
-def _task_declined_email(task: Task) -> tuple[str, str]:
+def _task_declined_email(task: Task, pledge: Pledge) -> tuple[str, str]:
     subject = f"Task declined: {task.title}"
     body = (
         f"The task \"{task.title}\" has been declined.\n"
@@ -82,21 +86,14 @@ async def _get_active_pledgers(db: AsyncSession, task_id) -> list[Pledge]:
     return list(result.scalars().all())
 
 
-async def _send_and_record(
-    patron_email: str, subject: str, body: str, notification: Notification
-) -> None:
-    ok = await send_email(patron_email, subject, body)
-    notification.email_sent = ok
-
-
-def _create_notification(
+async def _persist_and_send(
     db: AsyncSession,
     patron: Patron,
     task: Task,
     ntype: NotificationType,
     subject: str,
     body: str,
-) -> Notification:
+) -> None:
     notification = Notification(
         patron_id=patron.id,
         task_id=task.id,
@@ -105,62 +102,46 @@ def _create_notification(
         body=body,
     )
     db.add(notification)
-    return notification
+    await db.flush()
+    notification.email_sent = await send_email(patron.email, subject, body)
+
+
+async def _notify_pledgers(
+    db: AsyncSession,
+    task: Task,
+    ntype: NotificationType,
+    template_fn: Callable[[Task, Pledge], tuple[str, str]],
+) -> None:
+    pledges = await _get_active_pledgers(db, task.id)
+    for pledge in pledges:
+        subject, body = template_fn(task, pledge)
+        await _persist_and_send(db, pledge.patron, task, ntype, subject, body)
 
 
 # --- Public API ---
 
 
 async def notify_task_accepted(db: AsyncSession, task: Task) -> None:
-    pledges = await _get_active_pledgers(db, task.id)
-    for pledge in pledges:
-        subject, body = _task_accepted_email(task)
-        notification = _create_notification(
-            db, pledge.patron, task, NotificationType.task_accepted, subject, body
-        )
-        await db.flush()
-        await _send_and_record(pledge.patron.email, subject, body, notification)
+    await _notify_pledgers(db, task, NotificationType.task_accepted, _task_accepted_email)
 
 
 async def notify_task_completed(db: AsyncSession, task: Task) -> None:
-    pledges = await _get_active_pledgers(db, task.id)
-    for pledge in pledges:
-        subject, body = _task_completed_email(task, pledge.amount)
-        notification = _create_notification(
-            db, pledge.patron, task, NotificationType.task_completed, subject, body
-        )
-        await db.flush()
-        await _send_and_record(pledge.patron.email, subject, body, notification)
+    await _notify_pledgers(db, task, NotificationType.task_completed, _task_completed_email)
 
 
 async def notify_task_declined(db: AsyncSession, task: Task) -> None:
-    pledges = await _get_active_pledgers(db, task.id)
-    for pledge in pledges:
-        subject, body = _task_declined_email(task)
-        notification = _create_notification(
-            db, pledge.patron, task, NotificationType.task_declined, subject, body
-        )
-        await db.flush()
-        await _send_and_record(pledge.patron.email, subject, body, notification)
+    await _notify_pledgers(db, task, NotificationType.task_declined, _task_declined_email)
 
 
 async def notify_charge_succeeded(
     db: AsyncSession, patron: Patron, task: Task, amount: int
 ) -> None:
     subject, body = _charge_succeeded_email(task, amount)
-    notification = _create_notification(
-        db, patron, task, NotificationType.charge_succeeded, subject, body
-    )
-    await db.flush()
-    await _send_and_record(patron.email, subject, body, notification)
+    await _persist_and_send(db, patron, task, NotificationType.charge_succeeded, subject, body)
 
 
 async def notify_charge_failed(
     db: AsyncSession, patron: Patron, task: Task, amount: int
 ) -> None:
     subject, body = _charge_failed_email(task, amount)
-    notification = _create_notification(
-        db, patron, task, NotificationType.charge_failed, subject, body
-    )
-    await db.flush()
-    await _send_and_record(patron.email, subject, body, notification)
+    await _persist_and_send(db, patron, task, NotificationType.charge_failed, subject, body)
