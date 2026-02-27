@@ -12,6 +12,13 @@ class Settings(BaseSettings):
     magic_link_expiry_minutes: int = 15
     session_expiry_days: int = 30
     stripe_webhook_secret: str = ""
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = "noreply@coinoperated.dev"
+    smtp_from_name: str = "CoinOperated"
+    smtp_use_tls: bool = True
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

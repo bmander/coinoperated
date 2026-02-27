@@ -354,7 +354,7 @@ async def test_webhook_ignores_unknown_setup_intent(mock_construct, client, test
 @patch("app.routers.webhooks.stripe.Webhook.construct_event")
 async def test_webhook_ignores_other_event_types(mock_construct, client, test_session_maker):
     mock_construct.return_value = {
-        "type": "payment_intent.succeeded",
+        "type": "charge.refunded",
         "data": {"object": {}},
     }
 

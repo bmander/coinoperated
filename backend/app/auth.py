@@ -26,11 +26,12 @@ def generate_magic_token() -> str:
     return secrets.token_urlsafe()
 
 
-def send_magic_link(email: str, link: str) -> None:
-    print(f"\n{'='*60}")
-    print(f"Magic link for {email}:")
-    print(f"  {link}")
-    print(f"{'='*60}\n")
+async def send_magic_link(email: str, link: str) -> None:
+    from app.email import send_email
+
+    subject = "Your sign-in link for CoinOperated"
+    body = f"Click the link below to sign in:\n\n{link}\n\nThis link expires in 15 minutes."
+    await send_email(email, subject, body)
 
 
 def create_stripe_customer(email: str) -> str:

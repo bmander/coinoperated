@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models import PledgeStatus, TaskStatus
+from app.models import NotificationType, PledgeStatus, TaskStatus
 
 
 class BaseReadSchema(BaseModel):
@@ -167,3 +167,17 @@ class PatronMe(BaseReadSchema):
     email: str
     display_name: str | None
     is_admin: bool
+
+
+# --- Notification ---
+
+
+class NotificationRead(BaseReadSchema):
+    id: uuid.UUID
+    patron_id: uuid.UUID
+    task_id: uuid.UUID
+    type: NotificationType
+    subject: str
+    body: str
+    email_sent: bool
+    created_at: datetime

@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.dependencies import get_current_patron, get_db
 from app.models import Patron, Task, TaskStatus
+from app.notifications import notify_task_accepted, notify_task_completed, notify_task_declined
 from app.schemas import TaskCreate, TaskDetail, TaskListResponse, TaskRead, TaskUpdate
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -95,29 +96,39 @@ async def update_task(
 ):
     task = await get_task_or_404(db, task_id)
 
+    notify_fn = None
+
     if payload.status is not None and payload.status != task.status:
-        allowed = VALID_TRANSITIONS.get(task.status, set())
+        old_status = task.status
+        allowed = VALID_TRANSITIONS.get(old_status, set())
         if payload.status not in allowed:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid status transition: {task.status.value} -> {payload.status.value}",
+                detail=f"Invalid status transition: {old_status.value} -> {payload.status.value}",
             )
 
         now = datetime.now(timezone.utc)
 
         if payload.status == TaskStatus.accepted:
             task.accepted_at = now
+            notify_fn = notify_task_accepted
         elif payload.status == TaskStatus.declined:
             task.declined_at = now
+            notify_fn = notify_task_declined
+        elif payload.status == TaskStatus.collecting:
+            notify_fn = notify_task_completed
         elif payload.status == TaskStatus.completed:
             task.completed_at = now
-        elif payload.status == TaskStatus.open and task.status == TaskStatus.accepted:
+        elif payload.status == TaskStatus.open and old_status == TaskStatus.accepted:
             task.accepted_at = None
 
         task.status = payload.status
 
     for field, value in payload.model_dump(exclude_unset=True, exclude={"status"}).items():
         setattr(task, field, value)
+
+    if notify_fn is not None:
+        await notify_fn(db, task)
 
     await db.commit()
     await db.refresh(task)
