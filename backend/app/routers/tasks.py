@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.dependencies import get_current_patron, get_db
+from app.dependencies import get_active_patron, get_db
 from app.models import Patron, Task, TaskStatus
 from app.notifications import notify_task_accepted, notify_task_completed, notify_task_declined
 from app.schemas import TaskCreate, TaskDetail, TaskListResponse, TaskRead, TaskUpdate
@@ -74,7 +74,7 @@ async def get_task(
 async def create_task(
     payload: TaskCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    patron: Annotated[Patron, Depends(get_current_patron)],
+    patron: Annotated[Patron, Depends(get_active_patron)],
 ):
     task = Task(
         title=payload.title,

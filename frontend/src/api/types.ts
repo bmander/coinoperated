@@ -74,6 +74,18 @@ export interface PatronMe {
   email: string;
   display_name: string | null;
   is_admin: boolean;
+  is_banned: boolean;
+}
+
+export interface AdminPatronRead {
+  id: string;
+  email: string;
+  display_name: string | null;
+  is_banned: boolean;
+}
+
+export interface AdminPatronListResponse {
+  items: AdminPatronRead[];
 }
 
 export interface PledgeCreateResponse {

@@ -109,6 +109,7 @@ async def me(
         email=patron.email,
         display_name=patron.display_name,
         is_admin=patron.email == settings.admin_email,
+        is_banned=patron.is_banned,
     )
 
 

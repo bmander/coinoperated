@@ -1,4 +1,4 @@
-import type { AdminTaskListResponse, CollectResponse, TaskRead, UpdateRead } from "./types";
+import type { AdminPatronListResponse, AdminPatronRead, AdminTaskListResponse, CollectResponse, TaskRead, UpdateRead } from "./types";
 
 export async function fetchAdminTasks(): Promise<AdminTaskListResponse> {
   const res = await fetch("/api/admin/tasks");
@@ -39,5 +39,27 @@ export async function collectPayments(
     method: "POST",
   });
   if (!res.ok) throw new Error(`Failed to collect payments: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchAdminPatrons(): Promise<AdminPatronListResponse> {
+  const res = await fetch("/api/admin/patrons");
+  if (!res.ok) throw new Error(`Failed to fetch patrons: ${res.status}`);
+  return res.json();
+}
+
+export async function banPatron(patronId: string): Promise<AdminPatronRead> {
+  const res = await fetch(`/api/admin/patrons/${patronId}/ban`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(`Failed to ban patron: ${res.status}`);
+  return res.json();
+}
+
+export async function unbanPatron(patronId: string): Promise<AdminPatronRead> {
+  const res = await fetch(`/api/admin/patrons/${patronId}/unban`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(`Failed to unban patron: ${res.status}`);
   return res.json();
 }

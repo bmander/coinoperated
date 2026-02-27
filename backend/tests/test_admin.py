@@ -9,6 +9,8 @@ from app.config import settings
 from app.models import Pledge, PledgeStatus, Task, TaskStatus
 from tests.conftest import create_patron, create_pledge, create_task
 
+from app.models import Patron
+
 ADMIN_EMAIL = "admin@example.com"
 
 
@@ -393,3 +395,89 @@ async def test_collect_no_active_pledges(mock_pi_create, client, test_session_ma
     async with test_session_maker() as session:
         t = await session.get(Task, task.id)
         assert t.status == TaskStatus.completed
+
+
+# --- GET /api/admin/patrons ---
+
+
+async def test_list_patrons_requires_admin(client):
+    resp = await client.get("/api/admin/patrons")
+    assert resp.status_code == 401
+
+
+async def test_list_patrons_returns_all(client, test_session_maker):
+    _admin, token = await _make_admin(test_session_maker)
+    await create_patron(test_session_maker, "user@example.com", "cus_user")
+
+    with patch("app.dependencies.settings", _admin_settings()):
+        resp = await client.get("/api/admin/patrons", cookies={"session": token})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["items"]) == 2
+    emails = {p["email"] for p in data["items"]}
+    assert ADMIN_EMAIL in emails
+    assert "user@example.com" in emails
+
+
+# --- POST /api/admin/patrons/{id}/ban ---
+
+
+async def test_ban_patron(client, test_session_maker):
+    _admin, token = await _make_admin(test_session_maker)
+    user = await create_patron(test_session_maker, "bad@example.com", "cus_bad")
+
+    with patch("app.dependencies.settings", _admin_settings()):
+        resp = await client.post(
+            f"/api/admin/patrons/{user.id}/ban", cookies={"session": token}
+        )
+
+    assert resp.status_code == 200
+    assert resp.json()["is_banned"] is True
+
+    async with test_session_maker() as session:
+        p = await session.get(Patron, user.id)
+        assert p.is_banned is True
+
+
+async def test_ban_patron_not_found(client, test_session_maker):
+    _admin, token = await _make_admin(test_session_maker)
+
+    with patch("app.dependencies.settings", _admin_settings()):
+        resp = await client.post(
+            f"/api/admin/patrons/{uuid.uuid4()}/ban", cookies={"session": token}
+        )
+    assert resp.status_code == 404
+
+
+async def test_ban_requires_admin(client, test_session_maker):
+    user = await create_patron(test_session_maker, "user@example.com", "cus_user")
+    token = create_jwt(user.id, settings.secret_key, 30)
+
+    with patch("app.dependencies.settings", _admin_settings()):
+        resp = await client.post(
+            f"/api/admin/patrons/{user.id}/ban", cookies={"session": token}
+        )
+    assert resp.status_code == 403
+
+
+# --- POST /api/admin/patrons/{id}/unban ---
+
+
+async def test_unban_patron(client, test_session_maker):
+    _admin, token = await _make_admin(test_session_maker)
+    user = await create_patron(
+        test_session_maker, "banned@example.com", "cus_banned", is_banned=True
+    )
+
+    with patch("app.dependencies.settings", _admin_settings()):
+        resp = await client.post(
+            f"/api/admin/patrons/{user.id}/unban", cookies={"session": token}
+        )
+
+    assert resp.status_code == 200
+    assert resp.json()["is_banned"] is False
+
+    async with test_session_maker() as session:
+        p = await session.get(Patron, user.id)
+        assert p.is_banned is False

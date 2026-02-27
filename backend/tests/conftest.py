@@ -112,9 +112,10 @@ async def create_patron(
     session_maker,
     email: str,
     stripe_customer: str = "cus_test",
+    is_banned: bool = False,
 ) -> Patron:
     async with session_maker() as session:
-        patron = Patron(email=email, stripe_customer=stripe_customer)
+        patron = Patron(email=email, stripe_customer=stripe_customer, is_banned=is_banned)
         session.add(patron)
         await session.commit()
         await session.refresh(patron)
