@@ -1,4 +1,4 @@
-import type { AdminTaskListResponse, TaskRead, UpdateRead } from "./types";
+import type { AdminTaskListResponse, CollectResponse, TaskRead, UpdateRead } from "./types";
 
 export async function fetchAdminTasks(): Promise<AdminTaskListResponse> {
   const res = await fetch("/api/admin/tasks");
@@ -29,5 +29,15 @@ export async function postUpdate(
     body: JSON.stringify({ body }),
   });
   if (!res.ok) throw new Error(`Failed to post update: ${res.status}`);
+  return res.json();
+}
+
+export async function collectPayments(
+  taskId: string,
+): Promise<CollectResponse> {
+  const res = await fetch(`/api/tasks/${taskId}/collect`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(`Failed to collect payments: ${res.status}`);
   return res.json();
 }

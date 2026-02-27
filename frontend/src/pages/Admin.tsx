@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
-import { fetchAdminTasks, patchTask, postUpdate } from "../api/admin";
-import type { AdminTaskRead } from "../api/types";
+import { collectPayments, fetchAdminTasks, patchTask, postUpdate } from "../api/admin";
+import type { AdminTaskRead, CollectResponse } from "../api/types";
 import { formatBackers, formatCents } from "../utils/formatting";
 import StatusBadge from "../components/StatusBadge";
 import useFetch from "../hooks/useFetch";
@@ -44,6 +44,7 @@ function AdminTaskCard({
   const [evidence, setEvidence] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [collectResult, setCollectResult] = useState<CollectResponse | null>(null);
 
   const handleAction = async (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -163,10 +164,34 @@ function AdminTaskCard({
             )}
 
             {task.status === "collecting" && (
-              <p className="admin-collecting-indicator">Collecting payments...</p>
+              <>
+                {collectResult ? (
+                  <div className="admin-collection-results">
+                    <p>
+                      Collected {formatCents(collectResult.collected_total)} of{" "}
+                      {formatCents(collectResult.pledge_total)} pledged
+                      ({collectResult.collected_count} of{" "}
+                      {collectResult.collected_count + collectResult.failed_count} pledges)
+                    </p>
+                  </div>
+                ) : (
+                  <button
+                    className="btn btn-accept"
+                    disabled={busy}
+                    onClick={() =>
+                      handleAction(async () => {
+                        const result = await collectPayments(task.id);
+                        setCollectResult(result);
+                      })
+                    }
+                  >
+                    Collect Payments
+                  </button>
+                )}
+              </>
             )}
 
-            {task.status === "completed" && task.collected_total > 0 && (
+            {task.status === "completed" && (
               <p className="admin-collection-results">
                 Collected {formatCents(task.collected_total)} of{" "}
                 {formatCents(task.pledge_total)} pledged
