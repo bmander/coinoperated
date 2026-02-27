@@ -9,7 +9,7 @@ import { formatCents } from "../utils/formatting";
 import { isLivePledge } from "../api/types";
 import type { TaskDetailRead, PledgeMyResponse } from "../api/types";
 
-const PRESET_AMOUNTS = [500, 2500, 10000];
+const PRESET_AMOUNTS = [100, 500, 2500];
 
 function PledgeForm({
   task,
@@ -22,7 +22,7 @@ function PledgeForm({
 }) {
   const stripe = useStripe();
   const elements = useElements();
-  const [amount, setAmount] = useState(existingPledge?.amount ?? 500);
+  const [amount, setAmount] = useState(existingPledge?.amount ?? 100);
   const [customAmount, setCustomAmount] = useState("");
   const [isCustom, setIsCustom] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -36,8 +36,8 @@ function PledgeForm({
     if (!stripe || !elements) return;
 
     const finalAmount = isCustom ? Math.round(parseFloat(customAmount) * 100) : amount;
-    if (!finalAmount || finalAmount < 500) {
-      setError("Minimum pledge is $5.00");
+    if (!finalAmount || finalAmount < 100) {
+      setError("Minimum pledge is $1.00");
       return;
     }
 
@@ -130,9 +130,9 @@ function PledgeForm({
           <input
             id="custom-amount"
             type="number"
-            min="5"
+            min="1"
             step="0.01"
-            placeholder="5.00"
+            placeholder="1.00"
             value={customAmount}
             onChange={(e) => setCustomAmount(e.target.value)}
           />

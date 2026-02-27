@@ -89,7 +89,7 @@ async def test_create_pledge_minimum_amount(client, test_session_maker):
 
     resp = await client.post(
         f"/api/tasks/{task.id}/pledges",
-        json={"amount": 499},
+        json={"amount": 99},
         cookies=auth_cookies(patron.id),
     )
     assert resp.status_code == 422

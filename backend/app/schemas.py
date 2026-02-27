@@ -78,7 +78,7 @@ class TaskUpdate(BaseModel):
 class PledgeCreate(BaseModel):
     patron_id: uuid.UUID
     task_id: uuid.UUID
-    amount: int = Field(ge=500)
+    amount: int = Field(ge=100)
     payment_method: str
     setup_intent: str
 
@@ -97,7 +97,7 @@ class PledgeRead(BaseReadSchema):
 
 
 class PledgeCreateRequest(BaseModel):
-    amount: int = Field(ge=500)
+    amount: int = Field(ge=100)
 
 
 class PledgeCreateResponse(BaseModel):
@@ -114,7 +114,7 @@ class PledgeMyResponse(BaseReadSchema):
 
 
 class PledgeUpdateRequest(BaseModel):
-    amount: int = Field(ge=500)
+    amount: int = Field(ge=100)
 
 
 # --- Patron Dashboard ---
