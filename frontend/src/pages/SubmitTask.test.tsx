@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { vi } from "vitest";
 import SubmitTask from "./SubmitTask";
@@ -181,6 +181,16 @@ describe("SubmitTask (non-admin)", () => {
     } as Response);
   });
 
+  it("shows loading state while Stripe loads", () => {
+    // Override fetch to return a never-resolving promise so stripePromise stays null
+    vi.spyOn(globalThis, "fetch").mockReturnValue(new Promise(() => {}) as Promise<Response>);
+
+    renderWithRouter(<SubmitTask />);
+
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Title *")).not.toBeInTheDocument();
+  });
+
   it("shows pledge and card fields for non-admin", async () => {
     renderWithRouter(<SubmitTask />);
 
@@ -240,6 +250,52 @@ describe("SubmitTask (non-admin)", () => {
       payment_method: { card: cardElement },
     });
     expect(mockNavigate).toHaveBeenCalledWith("/tasks/pledged-task-id");
+  });
+
+  it("shows error when createTask fails", async () => {
+    mockGetElement.mockReturnValue({});
+    mockCreateTask.mockRejectedValue(new Error("A pledge is required when submitting a task"));
+
+    renderWithRouter(<SubmitTask />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Title *")).toBeInTheDocument();
+    });
+
+    await userEvent.type(screen.getByLabelText("Title *"), "Task");
+    await userEvent.type(screen.getByLabelText("Description *"), "Desc");
+    await userEvent.click(screen.getByRole("button", { name: "Submit Task" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("A pledge is required when submitting a task")).toBeInTheDocument();
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("validates minimum pledge amount on client side", async () => {
+    mockGetElement.mockReturnValue({});
+
+    renderWithRouter(<SubmitTask />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Title *")).toBeInTheDocument();
+    });
+
+    // Switch to custom amount and enter below-minimum value
+    await userEvent.click(screen.getByRole("button", { name: "Custom" }));
+    await userEvent.type(screen.getByLabelText("Amount (USD)"), "0.50");
+
+    await userEvent.type(screen.getByLabelText("Title *"), "Task");
+    await userEvent.type(screen.getByLabelText("Description *"), "Desc");
+
+    // Use fireEvent.submit to bypass HTML5 constraint validation on the
+    // number input (min=1), so we can test the JS-level validation in handleSubmit
+    fireEvent.submit(screen.getByRole("button", { name: "Submit Task" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Minimum pledge is $1.00")).toBeInTheDocument();
+    });
+    expect(mockCreateTask).not.toHaveBeenCalled();
   });
 
   it("shows stripe error message on card failure", async () => {
