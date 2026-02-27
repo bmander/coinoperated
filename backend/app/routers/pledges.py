@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.dependencies import get_current_patron, get_db
+from app.dependencies import get_active_patron, get_current_patron, get_db
 from app.models import Patron, Pledge, PledgeStatus, Task, TaskStatus
 from app.routers.tasks import get_task_or_404
 from app.schemas import (
@@ -54,7 +54,7 @@ def _decrement_task_counts(task: Task, amount: int) -> None:
 async def create_pledge(
     task_id: uuid.UUID,
     payload: PledgeCreateRequest,
-    patron: Annotated[Patron, Depends(get_current_patron)],
+    patron: Annotated[Patron, Depends(get_active_patron)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     task = await get_task_or_404(db, task_id)

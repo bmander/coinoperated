@@ -15,6 +15,20 @@ vi.mock("react-router-dom", async () => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
+const mockUseAuth = vi.fn();
+vi.mock("../contexts/AuthContext", () => ({
+  useAuth: () => mockUseAuth(),
+}));
+
+beforeEach(() => {
+  mockUseAuth.mockReturnValue({
+    patron: { id: "p1", email: "test@example.com", display_name: null, is_admin: false, is_banned: false },
+    loading: false,
+    login: vi.fn(),
+    logout: vi.fn(),
+  });
+});
+
 afterEach(() => {
   vi.clearAllMocks();
 });
@@ -97,6 +111,20 @@ describe("SubmitTask", () => {
     // Toggle back to edit
     await userEvent.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByLabelText("Description *")).toBeInTheDocument();
+  });
+
+  it("shows suspension message when user is banned", () => {
+    mockUseAuth.mockReturnValue({
+      patron: { id: "p1", email: "banned@example.com", display_name: null, is_admin: false, is_banned: true },
+      loading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    renderWithRouter(<SubmitTask />);
+
+    expect(screen.getByText(/account has been suspended/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Title *")).not.toBeInTheDocument();
   });
 
   it("shows button as disabled while submitting", async () => {

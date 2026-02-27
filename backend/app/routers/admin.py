@@ -5,14 +5,16 @@ from typing import Annotated
 import stripe
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.dependencies import get_admin_patron, get_db
-from app.models import Patron, Pledge, PledgeStatus, Task, TaskStatus, Update
+from app.models import Notification, Patron, Pledge, PledgeStatus, Task, TaskStatus, Update
 from app.routers.tasks import get_task_or_404
 from app.schemas import (
+    AdminPatronListResponse,
+    AdminPatronRead,
     AdminPledgeRead,
     AdminTaskListResponse,
     AdminTaskRead,
@@ -54,6 +56,46 @@ async def list_admin_tasks(
         items.append(AdminTaskRead(**task_data))
 
     return AdminTaskListResponse(items=items, total=len(items))
+
+
+@router.get("/api/admin/patrons", response_model=AdminPatronListResponse)
+async def list_patrons(
+    _admin: Annotated[Patron, Depends(get_admin_patron)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(select(Patron).order_by(Patron.created_at.desc()))
+    patrons = result.scalars().all()
+    return AdminPatronListResponse(
+        items=[AdminPatronRead.model_validate(p) for p in patrons],
+    )
+
+
+async def _set_ban_status(db: AsyncSession, patron_id: uuid.UUID, *, banned: bool) -> AdminPatronRead:
+    patron = await db.get(Patron, patron_id)
+    if patron is None:
+        raise HTTPException(status_code=404, detail="Patron not found")
+    patron.is_banned = banned
+    await db.commit()
+    await db.refresh(patron)
+    return AdminPatronRead.model_validate(patron)
+
+
+@router.post("/api/admin/patrons/{patron_id}/ban", response_model=AdminPatronRead)
+async def ban_patron(
+    patron_id: uuid.UUID,
+    _admin: Annotated[Patron, Depends(get_admin_patron)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    return await _set_ban_status(db, patron_id, banned=True)
+
+
+@router.post("/api/admin/patrons/{patron_id}/unban", response_model=AdminPatronRead)
+async def unban_patron(
+    patron_id: uuid.UUID,
+    _admin: Annotated[Patron, Depends(get_admin_patron)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    return await _set_ban_status(db, patron_id, banned=False)
 
 
 class PostUpdateBody(BaseModel):
@@ -164,3 +206,18 @@ async def collect_payments(
         pledge_total=task.pledge_total,
         results=results,
     )
+
+
+@router.delete("/api/tasks/{task_id}", status_code=204)
+async def delete_task(
+    task_id: uuid.UUID,
+    _admin: Annotated[Patron, Depends(get_admin_patron)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    await get_task_or_404(db, task_id)
+
+    await db.execute(delete(Notification).where(Notification.task_id == task_id))
+    await db.execute(delete(Update).where(Update.task_id == task_id))
+    await db.execute(delete(Pledge).where(Pledge.task_id == task_id))
+    await db.execute(delete(Task).where(Task.id == task_id))
+    await db.commit()

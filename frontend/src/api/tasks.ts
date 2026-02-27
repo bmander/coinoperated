@@ -43,6 +43,7 @@ export async function createTask(payload: CreateTaskPayload): Promise<TaskRead> 
     body: JSON.stringify(payload),
   });
   if (res.status === 401) throw new Error("Not authenticated");
+  if (res.status === 403) throw new Error("Your account has been suspended");
   if (!res.ok) throw new Error(`Failed to create task: ${res.status}`);
   return res.json();
 }

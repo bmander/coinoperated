@@ -2,8 +2,10 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { createTask } from "../api/tasks";
 import MarkdownField from "../components/MarkdownField";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function SubmitTask() {
+  const { patron } = useAuth();
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -26,6 +28,17 @@ export default function SubmitTask() {
       setError("Failed to submit task. Please try again.");
       setSubmitting(false);
     }
+  }
+
+  if (patron?.is_banned) {
+    return (
+      <div className="submit-task-page">
+        <h1>Submit a Task</h1>
+        <p className="form-error">
+          Your account has been suspended and you cannot submit new tasks.
+        </p>
+      </div>
+    );
   }
 
   return (

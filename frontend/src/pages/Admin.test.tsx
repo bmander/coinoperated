@@ -7,14 +7,20 @@ import type { AdminTaskListResponse } from "../api/types";
 
 vi.mock("../api/admin", () => ({
   fetchAdminTasks: vi.fn(),
+  fetchAdminPatrons: vi.fn(),
   patchTask: vi.fn(),
   postUpdate: vi.fn(),
+  deleteTask: vi.fn(),
+  banPatron: vi.fn(),
+  unbanPatron: vi.fn(),
 }));
 
-import { fetchAdminTasks, patchTask, postUpdate } from "../api/admin";
+import { fetchAdminTasks, fetchAdminPatrons, patchTask, postUpdate, deleteTask } from "../api/admin";
 const mockFetchAdminTasks = vi.mocked(fetchAdminTasks);
+const mockFetchAdminPatrons = vi.mocked(fetchAdminPatrons);
 const mockPatchTask = vi.mocked(patchTask);
 const mockPostUpdate = vi.mocked(postUpdate);
+const mockDeleteTask = vi.mocked(deleteTask);
 
 function renderAdmin() {
   return render(
@@ -54,6 +60,10 @@ function makeTask(overrides: Partial<AdminTaskListResponse["items"][0]> = {}) {
 }
 
 describe("Admin", () => {
+  beforeEach(() => {
+    mockFetchAdminPatrons.mockResolvedValue({ items: [] });
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
   });
@@ -61,7 +71,7 @@ describe("Admin", () => {
   it("shows loading state", () => {
     mockFetchAdminTasks.mockReturnValue(new Promise(() => {}));
     renderAdmin();
-    expect(screen.getByText("Loading tasks...")).toBeInTheDocument();
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
   });
 
   it("shows error state", async () => {
@@ -167,6 +177,64 @@ describe("Admin", () => {
     });
   });
 
+  it("shows delete button when expanded", async () => {
+    mockFetchAdminTasks.mockResolvedValue({
+      items: [makeTask()],
+      total: 1,
+    });
+    renderAdmin();
+    await waitFor(() => {
+      expect(screen.getByText("Test Task")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Test Task"));
+
+    expect(screen.getByText("Delete Task")).toBeInTheDocument();
+  });
+
+  it("calls deleteTask on confirm", async () => {
+    mockFetchAdminTasks.mockResolvedValue({
+      items: [makeTask()],
+      total: 1,
+    });
+    mockDeleteTask.mockResolvedValue(undefined);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    renderAdmin();
+    await waitFor(() => {
+      expect(screen.getByText("Test Task")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Test Task"));
+    fireEvent.click(screen.getByText("Delete Task"));
+
+    await waitFor(() => {
+      expect(mockDeleteTask).toHaveBeenCalledWith("task-1");
+    });
+
+    vi.mocked(window.confirm).mockRestore();
+  });
+
+  it("does not call deleteTask when confirm is cancelled", async () => {
+    mockFetchAdminTasks.mockResolvedValue({
+      items: [makeTask()],
+      total: 1,
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+
+    renderAdmin();
+    await waitFor(() => {
+      expect(screen.getByText("Test Task")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Test Task"));
+    fireEvent.click(screen.getByText("Delete Task"));
+
+    expect(mockDeleteTask).not.toHaveBeenCalled();
+
+    vi.mocked(window.confirm).mockRestore();
+  });
+
   it("shows pledge breakdown table when expanded", async () => {
     mockFetchAdminTasks.mockResolvedValue({
       items: [makeTask()],
@@ -181,5 +249,41 @@ describe("Admin", () => {
 
     expect(screen.getByText("backer@test.com")).toBeInTheDocument();
     expect(screen.getByText("$50")).toBeInTheDocument();
+  });
+
+  it("shows patron list with ban/unban buttons", async () => {
+    mockFetchAdminTasks.mockResolvedValue({ items: [], total: 0 });
+    mockFetchAdminPatrons.mockResolvedValue({
+      items: [
+        { id: "p1", email: "active@test.com", display_name: "Active User", is_banned: false },
+        { id: "p2", email: "banned@test.com", display_name: null, is_banned: true },
+      ],
+    });
+    renderAdmin();
+
+    await waitFor(() => {
+      expect(screen.getByText("Users")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("active@test.com")).toBeInTheDocument();
+    expect(screen.getByText("banned@test.com")).toBeInTheDocument();
+    expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(screen.getByText("Banned")).toBeInTheDocument();
+
+    const buttons = screen.getAllByRole("button");
+    const banButton = buttons.find((b) => b.textContent === "Ban");
+    const unbanButton = buttons.find((b) => b.textContent === "Unban");
+    expect(banButton).toBeInTheDocument();
+    expect(unbanButton).toBeInTheDocument();
+  });
+
+  it("shows no users message when patron list is empty", async () => {
+    mockFetchAdminTasks.mockResolvedValue({ items: [], total: 0 });
+    mockFetchAdminPatrons.mockResolvedValue({ items: [] });
+    renderAdmin();
+
+    await waitFor(() => {
+      expect(screen.getByText("No users yet.")).toBeInTheDocument();
+    });
   });
 });

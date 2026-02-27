@@ -81,6 +81,12 @@ describe("createTask", () => {
     await expect(createTask({ title: "T", description: "D" })).rejects.toThrow("Not authenticated");
   });
 
+  it("throws on 403 with suspension message", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 403 });
+
+    await expect(createTask({ title: "T", description: "D" })).rejects.toThrow("Your account has been suspended");
+  });
+
   it("throws on other errors", async () => {
     mockFetch.mockResolvedValue({ ok: false, status: 500 });
 

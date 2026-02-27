@@ -54,6 +54,19 @@ async def test_create_pledge_requires_auth(client, test_session_maker):
     assert resp.status_code == 401
 
 
+async def test_create_pledge_banned_user_gets_403(client, test_session_maker):
+    banned = await create_patron(
+        test_session_maker, "banned@example.com", "cus_banned", is_banned=True
+    )
+    task = await create_task(test_session_maker)
+    resp = await client.post(
+        f"/api/tasks/{task.id}/pledges",
+        json={"amount": 500},
+        cookies=auth_cookies(banned.id),
+    )
+    assert resp.status_code == 403
+
+
 async def test_create_pledge_task_not_found(client, test_session_maker):
     patron = await create_patron(test_session_maker, "bob@example.com", "cus_bob")
     fake_id = uuid.uuid4()

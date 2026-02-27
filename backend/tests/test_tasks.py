@@ -1,5 +1,7 @@
 import uuid
 
+from tests.conftest import auth_cookies, create_patron as create_patron_db
+
 
 # --- Helpers ---
 
@@ -142,6 +144,18 @@ async def test_create_task_validation_empty_title(authed_client):
 async def test_create_task_validation_missing_description(authed_client):
     resp = await authed_client.post("/api/tasks", json={"title": "No description"})
     assert resp.status_code == 422
+
+
+async def test_create_task_banned_user_gets_403(client, test_session_maker):
+    banned = await create_patron_db(
+        test_session_maker, "banned@example.com", "cus_banned", is_banned=True
+    )
+    resp = await client.post(
+        "/api/tasks",
+        json={"title": "Sneaky task", "description": "Should be blocked"},
+        cookies=auth_cookies(banned),
+    )
+    assert resp.status_code == 403
 
 
 # --- PATCH /api/tasks/{id} ---

@@ -208,6 +208,18 @@ class PatronMe(BaseReadSchema):
     email: str
     display_name: str | None
     is_admin: bool
+    is_banned: bool
+
+
+class AdminPatronRead(BaseReadSchema):
+    id: uuid.UUID
+    email: str
+    display_name: str | None
+    is_banned: bool
+
+
+class AdminPatronListResponse(BaseModel):
+    items: list[AdminPatronRead]
 
 
 # --- Notification ---

@@ -43,6 +43,14 @@ async def get_optional_patron(
     return await _resolve_patron(request, db)
 
 
+async def get_active_patron(
+    patron: Annotated[Patron, Depends(get_current_patron)],
+) -> Patron:
+    if patron.is_banned:
+        raise HTTPException(status_code=403, detail="Your account has been suspended")
+    return patron
+
+
 async def get_admin_patron(
     patron: Annotated[Patron, Depends(get_current_patron)],
 ) -> Patron:
