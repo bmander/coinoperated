@@ -137,7 +137,7 @@ describe("Admin", () => {
 
     fireEvent.click(screen.getByText("Test Task"));
 
-    expect(screen.getByText("Collecting payments...")).toBeInTheDocument();
+    expect(screen.getByText("Collect Payments")).toBeInTheDocument();
   });
 
   it("posts an update on accepted task", async () => {

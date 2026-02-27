@@ -146,20 +146,19 @@ async def create_pledge(session_maker, *, patron_id, task_id, **overrides) -> Pl
 
 
 async def create_notification(
-    session_maker,
-    *,
-    patron_id,
-    task_id,
-    event=NotificationType.task_accepted,
-    message="Test notification",
+    session_maker, *, patron_id, task_id, **overrides
 ) -> Notification:
+    defaults = dict(
+        patron_id=patron_id,
+        task_id=task_id,
+        type=NotificationType.task_accepted,
+        subject="Test notification",
+        body="Test body",
+        email_sent=False,
+    )
+    defaults.update(overrides)
     async with session_maker() as session:
-        notification = Notification(
-            patron_id=patron_id,
-            task_id=task_id,
-            event=event,
-            message=message,
-        )
+        notification = Notification(**defaults)
         session.add(notification)
         await session.commit()
         await session.refresh(notification)

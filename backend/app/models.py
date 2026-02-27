@@ -44,6 +44,8 @@ class NotificationType(str, enum.Enum):
     task_accepted = "task_accepted"
     task_completed = "task_completed"
     task_declined = "task_declined"
+    charge_succeeded = "charge_succeeded"
+    charge_failed = "charge_failed"
 
 
 # --- Models ---
@@ -180,11 +182,13 @@ class Notification(Base):
     task_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("task.id"), nullable=False
     )
-    event: Mapped[NotificationType] = mapped_column(
+    type: Mapped[NotificationType] = mapped_column(
         Enum(NotificationType, name="notification_type", native_enum=True),
         nullable=False,
     )
-    message: Mapped[str] = mapped_column(Text, nullable=False)
+    subject: Mapped[str] = mapped_column(Text, nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    email_sent: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

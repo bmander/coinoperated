@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from app.dependencies import get_current_patron, get_db
 from app.models import Notification, Patron, Pledge
-from app.schemas import NotificationRead, PatronPledgeRead
+from app.schemas import PatronNotificationRead, PatronPledgeRead
 
 router = APIRouter(prefix="/api/patron", tags=["patron"])
 
@@ -26,7 +26,7 @@ async def list_my_pledges(
     return result.scalars().all()
 
 
-@router.get("/notifications", response_model=list[NotificationRead])
+@router.get("/notifications", response_model=list[PatronNotificationRead])
 async def list_my_notifications(
     patron: Annotated[Patron, Depends(get_current_patron)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -39,12 +39,12 @@ async def list_my_notifications(
     )
     notifications = result.scalars().all()
     return [
-        NotificationRead(
+        PatronNotificationRead(
             id=n.id,
             task_id=n.task_id,
             task_title=n.task.title,
-            event=n.event,
-            message=n.message,
+            event=n.type,
+            message=n.body,
             created_at=n.created_at,
         )
         for n in notifications

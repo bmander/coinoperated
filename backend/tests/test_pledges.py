@@ -354,7 +354,7 @@ async def test_webhook_ignores_unknown_setup_intent(mock_construct, client, test
 @patch("app.routers.webhooks.stripe.Webhook.construct_event")
 async def test_webhook_ignores_other_event_types(mock_construct, client, test_session_maker):
     mock_construct.return_value = {
-        "type": "payment_intent.succeeded",
+        "type": "charge.refunded",
         "data": {"object": {}},
     }
 
@@ -544,3 +544,139 @@ async def test_create_pledge_on_accepted_task(mock_si_create, client, test_sessi
         cookies=auth_cookies(patron.id),
     )
     assert resp.status_code == 201
+
+
+# --- POST /api/webhooks/stripe (payment_intent.succeeded) ---
+
+
+@patch("app.routers.webhooks.stripe.Webhook.construct_event")
+async def test_webhook_payment_intent_succeeded(mock_construct, client, test_session_maker):
+    patron = await create_patron(test_session_maker, "pi_ok@example.com", "cus_pi_ok")
+    task = await create_task(test_session_maker, status=TaskStatus.collecting)
+    pledge = await create_pledge(
+        test_session_maker,
+        patron_id=patron.id,
+        task_id=task.id,
+        status=PledgeStatus.active,
+        payment_intent="pi_webhook_ok",
+    )
+
+    mock_construct.return_value = {
+        "type": "payment_intent.succeeded",
+        "data": {"object": {"id": "pi_webhook_ok"}},
+    }
+
+    resp = await client.post(
+        "/api/webhooks/stripe",
+        content=b"raw_body",
+        headers={"stripe-signature": "sig_test"},
+    )
+    assert resp.status_code == 200
+
+    async with test_session_maker() as session:
+        p = await session.get(Pledge, pledge.id)
+        assert p.status == PledgeStatus.collected
+        assert p.collected_at is not None
+
+
+@patch("app.routers.webhooks.stripe.Webhook.construct_event")
+async def test_webhook_payment_intent_succeeded_already_collected(
+    mock_construct, client, test_session_maker
+):
+    """If pledge is already collected, webhook should be a no-op."""
+    patron = await create_patron(test_session_maker, "pi_dup@example.com", "cus_pi_dup")
+    task = await create_task(test_session_maker, status=TaskStatus.completed)
+    pledge = await create_pledge(
+        test_session_maker,
+        patron_id=patron.id,
+        task_id=task.id,
+        status=PledgeStatus.collected,
+        payment_intent="pi_already_done",
+    )
+
+    mock_construct.return_value = {
+        "type": "payment_intent.succeeded",
+        "data": {"object": {"id": "pi_already_done"}},
+    }
+
+    resp = await client.post(
+        "/api/webhooks/stripe",
+        content=b"raw_body",
+        headers={"stripe-signature": "sig_test"},
+    )
+    assert resp.status_code == 200
+
+    async with test_session_maker() as session:
+        p = await session.get(Pledge, pledge.id)
+        assert p.status == PledgeStatus.collected
+
+
+@patch("app.routers.webhooks.stripe.Webhook.construct_event")
+async def test_webhook_payment_intent_succeeded_unknown(mock_construct, client):
+    mock_construct.return_value = {
+        "type": "payment_intent.succeeded",
+        "data": {"object": {"id": "pi_unknown"}},
+    }
+
+    resp = await client.post(
+        "/api/webhooks/stripe",
+        content=b"raw_body",
+        headers={"stripe-signature": "sig_test"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ignored"
+
+
+# --- POST /api/webhooks/stripe (payment_intent.payment_failed) ---
+
+
+@patch("app.routers.webhooks.stripe.Webhook.construct_event")
+async def test_webhook_payment_intent_failed(mock_construct, client, test_session_maker):
+    patron = await create_patron(test_session_maker, "pi_fail@example.com", "cus_pi_fail")
+    task = await create_task(
+        test_session_maker, status=TaskStatus.completed, collected_total=1000
+    )
+    pledge = await create_pledge(
+        test_session_maker,
+        patron_id=patron.id,
+        task_id=task.id,
+        status=PledgeStatus.active,
+        payment_intent="pi_webhook_fail",
+        amount=1000,
+    )
+
+    mock_construct.return_value = {
+        "type": "payment_intent.payment_failed",
+        "data": {"object": {"id": "pi_webhook_fail"}},
+    }
+
+    resp = await client.post(
+        "/api/webhooks/stripe",
+        content=b"raw_body",
+        headers={"stripe-signature": "sig_test"},
+    )
+    assert resp.status_code == 200
+
+    async with test_session_maker() as session:
+        p = await session.get(Pledge, pledge.id)
+        assert p.status == PledgeStatus.failed
+
+    async with test_session_maker() as session:
+        t = await session.get(Task, task.id)
+        assert t.collected_total == 0
+
+
+@patch("app.routers.webhooks.stripe.Webhook.construct_event")
+async def test_webhook_payment_intent_failed_unknown(mock_construct, client):
+    mock_construct.return_value = {
+        "type": "payment_intent.payment_failed",
+        "data": {"object": {"id": "pi_unknown_fail"}},
+    }
+
+    resp = await client.post(
+        "/api/webhooks/stripe",
+        content=b"raw_body",
+        headers={"stripe-signature": "sig_test"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ignored"

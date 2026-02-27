@@ -45,7 +45,7 @@ async def login(
     await db.commit()
 
     link = f"{settings.frontend_url}/api/auth/verify?token={token}"
-    send_magic_link(payload.email, link)
+    await send_magic_link(payload.email, link)
 
     return {"message": "Check your email"}
 

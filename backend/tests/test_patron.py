@@ -1,4 +1,5 @@
 import asyncio
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from tests.conftest import create_notification, create_patron, create_pledge, create_task
@@ -54,7 +55,6 @@ class TestPatronPledges:
         assert resp.status_code == 200
         assert len(resp.json()) == 0
 
-
     async def test_pledges_ordered_by_created_at_desc(
         self, client, test_session_maker, test_patron
     ):
@@ -95,8 +95,8 @@ class TestPatronNotifications:
             test_session_maker,
             patron_id=test_patron.id,
             task_id=task.id,
-            event=NotificationType.task_accepted,
-            message='Task "Build a park" has been accepted',
+            type=NotificationType.task_accepted,
+            body='Task "Build a park" has been accepted',
         )
 
         resp = await client.get(
@@ -121,16 +121,16 @@ class TestPatronNotifications:
             test_session_maker,
             patron_id=test_patron.id,
             task_id=task.id,
-            event=NotificationType.task_accepted,
-            message="First notification",
+            type=NotificationType.task_accepted,
+            body="First notification",
         )
         await asyncio.sleep(0.05)
         await create_notification(
             test_session_maker,
             patron_id=test_patron.id,
             task_id=task.id,
-            event=NotificationType.task_completed,
-            message="Second notification",
+            type=NotificationType.task_completed,
+            body="Second notification",
         )
 
         resp = await client.get(
@@ -144,8 +144,9 @@ class TestPatronNotifications:
 
 @pytest.mark.asyncio
 class TestNotificationCreation:
+    @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
     async def test_notification_created_on_task_accepted(
-        self, client, test_session_maker, test_patron
+        self, mock_send, client, test_session_maker, test_patron
     ):
         task = await create_task(test_session_maker, title="Paint mural")
         await create_pledge(
@@ -165,8 +166,9 @@ class TestNotificationCreation:
         assert len(data) == 1
         assert data[0]["event"] == "task_accepted"
 
+    @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
     async def test_notification_created_on_task_declined(
-        self, client, test_session_maker, test_patron
+        self, mock_send, client, test_session_maker, test_patron
     ):
         task = await create_task(test_session_maker, title="Build bridge")
         await create_pledge(
@@ -182,17 +184,17 @@ class TestNotificationCreation:
         assert len(data) == 1
         assert data[0]["event"] == "task_declined"
 
-    async def test_notification_created_on_task_completed(
-        self, client, test_session_maker, test_patron
+    @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
+    async def test_notification_created_on_collecting(
+        self, mock_send, client, test_session_maker, test_patron
     ):
         task = await create_task(test_session_maker, title="Fix road", status="accepted")
         await create_pledge(
             test_session_maker, patron_id=test_patron.id, task_id=task.id
         )
 
-        # accepted -> collecting -> completed
+        # Notification fires on collecting transition
         await client.patch(f"/api/tasks/{task.id}", json={"status": "collecting"})
-        await client.patch(f"/api/tasks/{task.id}", json={"status": "completed"})
 
         notif_resp = await client.get(
             "/api/patron/notifications", cookies=auth_cookies(test_patron)
@@ -219,8 +221,9 @@ class TestNotificationCreation:
         )
         assert len(notif_resp.json()) == 0
 
+    @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
     async def test_multiple_patrons_each_get_notification(
-        self, client, test_session_maker, test_patron
+        self, mock_send, client, test_session_maker, test_patron
     ):
         patron2 = await create_patron(
             test_session_maker, "patron2@example.com", "cus_p2"
@@ -252,15 +255,16 @@ class TestNotificationCreation:
         assert len(resp2.json()) == 1
         assert resp2.json()[0]["event"] == "task_accepted"
 
-    async def test_no_notification_on_collecting_transition(
+    async def test_no_notification_for_non_status_update(
         self, client, test_session_maker, test_patron
     ):
-        task = await create_task(test_session_maker, status="accepted")
+        task = await create_task(test_session_maker)
         await create_pledge(
             test_session_maker, patron_id=test_patron.id, task_id=task.id
         )
 
-        await client.patch(f"/api/tasks/{task.id}", json={"status": "collecting"})
+        # Field-only update, no status change
+        await client.patch(f"/api/tasks/{task.id}", json={"title": "New title"})
 
         notif_resp = await client.get(
             "/api/patron/notifications", cookies=auth_cookies(test_patron)

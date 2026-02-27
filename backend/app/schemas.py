@@ -134,7 +134,7 @@ class PatronPledgeRead(BaseReadSchema):
     task: PatronPledgeTaskSummary
 
 
-class NotificationRead(BaseReadSchema):
+class PatronNotificationRead(BaseReadSchema):
     id: uuid.UUID
     task_id: uuid.UUID
     task_title: str
@@ -169,6 +169,21 @@ class AdminTaskListResponse(BaseModel):
     total: int
 
 
+class PledgeCollectResult(BaseModel):
+    pledge_id: uuid.UUID
+    patron_email: str
+    amount: int
+    status: PledgeStatus
+
+
+class CollectResponse(BaseModel):
+    collected_count: int
+    failed_count: int
+    collected_total: int
+    pledge_total: int
+    results: list[PledgeCollectResult]
+
+
 class UpdateCreate(BaseModel):
     task_id: uuid.UUID
     body: str
@@ -193,3 +208,17 @@ class PatronMe(BaseReadSchema):
     email: str
     display_name: str | None
     is_admin: bool
+
+
+# --- Notification ---
+
+
+class NotificationRead(BaseReadSchema):
+    id: uuid.UUID
+    patron_id: uuid.UUID
+    task_id: uuid.UUID
+    type: NotificationType
+    subject: str
+    body: str
+    email_sent: bool
+    created_at: datetime

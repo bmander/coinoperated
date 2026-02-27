@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.dependencies import get_current_patron, get_db
-from app.models import Notification, NotificationType, Patron, Pledge, PledgeStatus, Task, TaskStatus
+from app.models import Patron, Task, TaskStatus
+from app.notifications import notify_task_accepted, notify_task_completed, notify_task_declined
 from app.schemas import TaskCreate, TaskDetail, TaskListResponse, TaskRead, TaskUpdate
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -95,55 +96,39 @@ async def update_task(
 ):
     task = await get_task_or_404(db, task_id)
 
+    notify_fn = None
+
     if payload.status is not None and payload.status != task.status:
-        allowed = VALID_TRANSITIONS.get(task.status, set())
+        old_status = task.status
+        allowed = VALID_TRANSITIONS.get(old_status, set())
         if payload.status not in allowed:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid status transition: {task.status.value} -> {payload.status.value}",
+                detail=f"Invalid status transition: {old_status.value} -> {payload.status.value}",
             )
 
         now = datetime.now(timezone.utc)
 
         if payload.status == TaskStatus.accepted:
             task.accepted_at = now
+            notify_fn = notify_task_accepted
         elif payload.status == TaskStatus.declined:
             task.declined_at = now
+            notify_fn = notify_task_declined
+        elif payload.status == TaskStatus.collecting:
+            notify_fn = notify_task_completed
         elif payload.status == TaskStatus.completed:
             task.completed_at = now
-        elif payload.status == TaskStatus.open and task.status == TaskStatus.accepted:
+        elif payload.status == TaskStatus.open and old_status == TaskStatus.accepted:
             task.accepted_at = None
 
         task.status = payload.status
 
-        # Create notifications for patrons with live pledges
-        event_map = {
-            TaskStatus.accepted: NotificationType.task_accepted,
-            TaskStatus.completed: NotificationType.task_completed,
-            TaskStatus.declined: NotificationType.task_declined,
-        }
-        if payload.status in event_map:
-            live_pledges = (
-                await db.execute(
-                    select(Pledge).where(
-                        Pledge.task_id == task_id,
-                        Pledge.status.in_([PledgeStatus.active, PledgeStatus.pending]),
-                    )
-                )
-            ).scalars().all()
-
-            event = event_map[payload.status]
-            message = f"Task \"{task.title}\" has been {payload.status.value}"
-            for pledge in live_pledges:
-                db.add(Notification(
-                    patron_id=pledge.patron_id,
-                    task_id=task_id,
-                    event=event,
-                    message=message,
-                ))
-
     for field, value in payload.model_dump(exclude_unset=True, exclude={"status"}).items():
         setattr(task, field, value)
+
+    if notify_fn is not None:
+        await notify_fn(db, task)
 
     await db.commit()
     await db.refresh(task)

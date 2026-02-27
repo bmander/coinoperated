@@ -1,15 +1,30 @@
+from datetime import datetime, timezone
+from typing import Annotated
+
 import stripe
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Depends
-from typing import Annotated
+from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.dependencies import get_db
 from app.models import Pledge, PledgeStatus, Task
+from app.notifications import notify_charge_failed, notify_charge_succeeded
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
+
+
+async def _get_pledge_by_payment_intent(
+    db: AsyncSession, payment_intent_id: str
+) -> Pledge | None:
+    return (
+        await db.execute(
+            select(Pledge)
+            .where(Pledge.payment_intent == payment_intent_id)
+            .options(selectinload(Pledge.patron), selectinload(Pledge.task))
+        )
+    ).scalar_one_or_none()
 
 
 @router.post("/stripe")
@@ -59,5 +74,33 @@ async def stripe_webhook(
             task.pledge_total += pledge.amount
 
         await db.commit()
+
+    elif event["type"] == "payment_intent.succeeded":
+        pledge = await _get_pledge_by_payment_intent(db, event["data"]["object"]["id"])
+
+        if pledge is None:
+            return {"status": "ignored"}
+
+        if pledge.status != PledgeStatus.collected:
+            pledge.status = PledgeStatus.collected
+            pledge.collected_at = datetime.now(timezone.utc)
+            await notify_charge_succeeded(db, pledge.patron, pledge.task, pledge.amount)
+            await db.commit()
+
+    elif event["type"] == "payment_intent.payment_failed":
+        pledge = await _get_pledge_by_payment_intent(db, event["data"]["object"]["id"])
+
+        if pledge is None:
+            return {"status": "ignored"}
+
+        if pledge.status not in (PledgeStatus.collected, PledgeStatus.failed):
+            pledge.status = PledgeStatus.failed
+
+            task = pledge.task
+            if task:
+                task.collected_total = max(0, task.collected_total - pledge.amount)
+
+            await notify_charge_failed(db, pledge.patron, pledge.task, pledge.amount)
+            await db.commit()
 
     return {"status": "ok"}
