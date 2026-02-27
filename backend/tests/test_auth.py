@@ -100,6 +100,17 @@ async def test_me_with_valid_session(client, test_session_maker):
     assert data["email"] == "me@example.com"
     assert data["id"] == str(patron.id)
     assert data["is_admin"] is False
+    assert data["is_banned"] is False
+
+
+async def test_me_banned_patron(client, test_session_maker):
+    patron = await create_patron(
+        test_session_maker, "banned@example.com", "cus_banned", is_banned=True
+    )
+    token = create_jwt(patron.id, settings.secret_key, 30)
+    resp = await client.get("/api/auth/me", cookies={"session": token})
+    assert resp.status_code == 200
+    assert resp.json()["is_banned"] is True
 
 
 async def test_me_without_session(client):

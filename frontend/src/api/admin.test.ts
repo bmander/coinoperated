@@ -1,4 +1,4 @@
-import { deleteTask, fetchAdminTasks, patchTask, postUpdate } from "./admin";
+import { banPatron, deleteTask, fetchAdminPatrons, fetchAdminTasks, patchTask, postUpdate, unbanPatron } from "./admin";
 
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
@@ -85,6 +85,65 @@ describe("postUpdate", () => {
     mockFetch.mockResolvedValue({ ok: false, status: 403 });
 
     await expect(postUpdate("t1", "hi")).rejects.toThrow("Failed to post update: 403");
+  });
+});
+
+describe("fetchAdminPatrons", () => {
+  it("calls GET /api/admin/patrons", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ items: [] }),
+    });
+
+    const result = await fetchAdminPatrons();
+    expect(mockFetch).toHaveBeenCalledWith("/api/admin/patrons");
+    expect(result).toEqual({ items: [] });
+  });
+
+  it("throws on non-ok response", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 403 });
+
+    await expect(fetchAdminPatrons()).rejects.toThrow("Failed to fetch patrons: 403");
+  });
+});
+
+describe("banPatron", () => {
+  it("sends POST to ban endpoint", async () => {
+    const patron = { id: "p1", email: "test@test.com", display_name: null, is_banned: true };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(patron),
+    });
+
+    const result = await banPatron("p1");
+    expect(mockFetch).toHaveBeenCalledWith("/api/admin/patrons/p1/ban", { method: "POST" });
+    expect(result).toEqual(patron);
+  });
+
+  it("throws on non-ok response", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 404 });
+
+    await expect(banPatron("p1")).rejects.toThrow("Failed to ban patron: 404");
+  });
+});
+
+describe("unbanPatron", () => {
+  it("sends POST to unban endpoint", async () => {
+    const patron = { id: "p1", email: "test@test.com", display_name: null, is_banned: false };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(patron),
+    });
+
+    const result = await unbanPatron("p1");
+    expect(mockFetch).toHaveBeenCalledWith("/api/admin/patrons/p1/unban", { method: "POST" });
+    expect(result).toEqual(patron);
+  });
+
+  it("throws on non-ok response", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 404 });
+
+    await expect(unbanPatron("p1")).rejects.toThrow("Failed to unban patron: 404");
   });
 });
 

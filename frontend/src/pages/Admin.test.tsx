@@ -250,4 +250,40 @@ describe("Admin", () => {
     expect(screen.getByText("backer@test.com")).toBeInTheDocument();
     expect(screen.getByText("$50")).toBeInTheDocument();
   });
+
+  it("shows patron list with ban/unban buttons", async () => {
+    mockFetchAdminTasks.mockResolvedValue({ items: [], total: 0 });
+    mockFetchAdminPatrons.mockResolvedValue({
+      items: [
+        { id: "p1", email: "active@test.com", display_name: "Active User", is_banned: false },
+        { id: "p2", email: "banned@test.com", display_name: null, is_banned: true },
+      ],
+    });
+    renderAdmin();
+
+    await waitFor(() => {
+      expect(screen.getByText("Users")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("active@test.com")).toBeInTheDocument();
+    expect(screen.getByText("banned@test.com")).toBeInTheDocument();
+    expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(screen.getByText("Banned")).toBeInTheDocument();
+
+    const buttons = screen.getAllByRole("button");
+    const banButton = buttons.find((b) => b.textContent === "Ban");
+    const unbanButton = buttons.find((b) => b.textContent === "Unban");
+    expect(banButton).toBeInTheDocument();
+    expect(unbanButton).toBeInTheDocument();
+  });
+
+  it("shows no users message when patron list is empty", async () => {
+    mockFetchAdminTasks.mockResolvedValue({ items: [], total: 0 });
+    mockFetchAdminPatrons.mockResolvedValue({ items: [] });
+    renderAdmin();
+
+    await waitFor(() => {
+      expect(screen.getByText("No users yet.")).toBeInTheDocument();
+    });
+  });
 });

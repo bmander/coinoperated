@@ -533,6 +533,21 @@ async def test_ban_requires_admin(client, test_session_maker):
     assert resp.status_code == 403
 
 
+async def test_ban_already_banned_is_idempotent(client, test_session_maker):
+    _admin, token = await _make_admin(test_session_maker)
+    user = await create_patron(
+        test_session_maker, "already@example.com", "cus_already", is_banned=True
+    )
+
+    with patch("app.dependencies.settings", _admin_settings()):
+        resp = await client.post(
+            f"/api/admin/patrons/{user.id}/ban", cookies={"session": token}
+        )
+
+    assert resp.status_code == 200
+    assert resp.json()["is_banned"] is True
+
+
 # --- POST /api/admin/patrons/{id}/unban ---
 
 
@@ -553,3 +568,26 @@ async def test_unban_patron(client, test_session_maker):
     async with test_session_maker() as session:
         p = await session.get(Patron, user.id)
         assert p.is_banned is False
+
+
+async def test_unban_requires_admin(client, test_session_maker):
+    user = await create_patron(
+        test_session_maker, "user@example.com", "cus_user", is_banned=True
+    )
+    token = create_jwt(user.id, settings.secret_key, 30)
+
+    with patch("app.dependencies.settings", _admin_settings()):
+        resp = await client.post(
+            f"/api/admin/patrons/{user.id}/unban", cookies={"session": token}
+        )
+    assert resp.status_code == 403
+
+
+async def test_unban_patron_not_found(client, test_session_maker):
+    _admin, token = await _make_admin(test_session_maker)
+
+    with patch("app.dependencies.settings", _admin_settings()):
+        resp = await client.post(
+            f"/api/admin/patrons/{uuid.uuid4()}/unban", cookies={"session": token}
+        )
+    assert resp.status_code == 404
