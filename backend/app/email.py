@@ -12,8 +12,8 @@ async def send_email(to: str, subject: str, body: str) -> bool:
     """Send an email. Never raises — returns True on success, False on failure."""
     try:
         if not settings.smtp_host:
-            logger.info("Email (dev no-op) to=%s subject=%r", to, subject)
-            logger.info("Body:\n%s", body)
+            print(f"\n📧  Email (dev no-op) to={to} subject={subject!r}")
+            print(f"Body:\n{body}\n")
             return True
 
         msg = EmailMessage()

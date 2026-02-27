@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID
 
 
@@ -20,12 +21,22 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    notification_type = sa.Enum(
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE notification_type AS ENUM (
+                'task_accepted', 'task_completed', 'task_declined',
+                'charge_succeeded', 'charge_failed'
+            );
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$
+    """)
+
+    notification_type = postgresql.ENUM(
         'task_accepted', 'task_completed', 'task_declined',
         'charge_succeeded', 'charge_failed',
         name='notification_type',
+        create_type=False,
     )
-    notification_type.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         'notification',
