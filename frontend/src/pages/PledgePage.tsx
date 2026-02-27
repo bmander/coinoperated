@@ -6,7 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { getTask } from "../api/tasks";
 import { createPledge, getMyPledge, updatePledge, deletePledge } from "../api/pledges";
 import { fetchPaymentMethods } from "../api/patron";
-import { formatCents } from "../utils/formatting";
+import { capitalize, formatCents } from "../utils/formatting";
 import { isLivePledge } from "../api/types";
 import type { TaskDetailRead, PledgeMyResponse, SavedPaymentMethod } from "../api/types";
 
@@ -176,7 +176,7 @@ function PledgeForm({
                 onChange={() => setSelectedPM(pm.id)}
               />
               <span className="pm-label">
-                {pm.brand.charAt(0).toUpperCase() + pm.brand.slice(1)} ....{pm.last4}
+                {capitalize(pm.brand)} ....{pm.last4}
                 <span className="pm-expiry">Expires {String(pm.exp_month).padStart(2, "0")}/{pm.exp_year}</span>
               </span>
             </label>

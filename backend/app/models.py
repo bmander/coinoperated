@@ -42,6 +42,9 @@ class PledgeStatus(str, enum.Enum):
     released = "released"
 
 
+LIVE_PLEDGE_STATUSES = [PledgeStatus.active, PledgeStatus.pending]
+
+
 class NotificationType(str, enum.Enum):
     task_accepted = "task_accepted"
     task_completed = "task_completed"

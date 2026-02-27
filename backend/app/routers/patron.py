@@ -7,12 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.dependencies import get_current_patron, get_db
-from app.models import Notification, Patron, Pledge, PledgeStatus
+from app.models import LIVE_PLEDGE_STATUSES, Notification, Patron, Pledge
 from app.schemas import PatronNotificationRead, PatronPledgeRead, SavedPaymentMethodRead
 
 router = APIRouter(prefix="/api/patron", tags=["patron"])
-
-LIVE_PLEDGE_STATUSES = [PledgeStatus.active, PledgeStatus.pending]
 
 
 @router.get("/pledges", response_model=list[PatronPledgeRead])

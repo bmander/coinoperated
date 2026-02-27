@@ -4,7 +4,7 @@ import { fetchMyPledges, fetchMyNotifications, fetchPaymentMethods, deletePaymen
 import type { PatronPledgeRead, NotificationRead, SavedPaymentMethod } from "../api/types";
 import useFetch from "../hooks/useFetch";
 import StatusBadge from "../components/StatusBadge";
-import { formatCents } from "../utils/formatting";
+import { capitalize, formatCents } from "../utils/formatting";
 
 function eventLabel(event: string): string {
   switch (event) {
@@ -46,7 +46,7 @@ function SavedPaymentMethods() {
           {methods.map((pm) => (
             <div key={pm.id} className="payment-method-list-item">
               <div className="payment-method-info">
-                <span className="pm-brand">{pm.brand.charAt(0).toUpperCase() + pm.brand.slice(1)}</span>
+                <span className="pm-brand">{capitalize(pm.brand)}</span>
                 <span className="pm-last4">....{pm.last4}</span>
                 <span className="pm-expiry">Expires {String(pm.exp_month).padStart(2, "0")}/{pm.exp_year}</span>
               </div>

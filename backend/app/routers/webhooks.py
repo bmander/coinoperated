@@ -11,7 +11,7 @@ from app.config import settings
 from app.dependencies import get_db
 from app.models import Pledge, PledgeStatus, Task
 from app.notifications import notify_charge_failed, notify_charge_succeeded
-from app.routers.pledges import _maybe_detach_pm
+from app.routers.pledges import maybe_detach_pm
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
@@ -89,7 +89,7 @@ async def stripe_webhook(
             await db.commit()
 
             if not pledge.save_card and pledge.payment_method:
-                await _maybe_detach_pm(db, pledge.payment_method, exclude_pledge_id=pledge.id)
+                await maybe_detach_pm(db, pledge.payment_method, exclude_pledge_id=pledge.id)
 
     elif event["type"] == "payment_intent.payment_failed":
         pledge = await _get_pledge_by_payment_intent(db, event["data"]["object"]["id"])
@@ -108,6 +108,6 @@ async def stripe_webhook(
             await db.commit()
 
             if not pledge.save_card and pledge.payment_method:
-                await _maybe_detach_pm(db, pledge.payment_method, exclude_pledge_id=pledge.id)
+                await maybe_detach_pm(db, pledge.payment_method, exclude_pledge_id=pledge.id)
 
     return {"status": "ok"}

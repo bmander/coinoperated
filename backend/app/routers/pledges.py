@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.dependencies import get_active_patron, get_current_patron, get_db
-from app.models import Patron, Pledge, PledgeStatus, Task, TaskStatus
+from app.models import LIVE_PLEDGE_STATUSES, Patron, Pledge, PledgeStatus, Task, TaskStatus
 from app.routers.tasks import get_task_or_404
 from app.schemas import (
     PledgeCreateRequest,
@@ -21,7 +21,6 @@ from app.schemas import (
 router = APIRouter(prefix="/api/tasks/{task_id}/pledges", tags=["pledges"])
 
 PLEDGEABLE_STATUSES = {TaskStatus.open, TaskStatus.accepted}
-LIVE_PLEDGE_STATUSES = [PledgeStatus.active, PledgeStatus.pending]
 
 
 async def _get_patron_pledge(
@@ -50,7 +49,7 @@ def _decrement_task_counts(task: Task, amount: int) -> None:
     task.pledge_total = max(0, task.pledge_total - amount)
 
 
-async def _maybe_detach_pm(
+async def maybe_detach_pm(
     db: AsyncSession, payment_method_id: str, exclude_pledge_id: uuid.UUID
 ) -> None:
     """Detach a payment method if no other live pledges reference it."""
@@ -227,7 +226,7 @@ async def delete_my_pledge(
 
     # Detach unsaved PM if no other live pledges use it
     if not pledge.save_card and pledge.payment_method:
-        await _maybe_detach_pm(db, pledge.payment_method, exclude_pledge_id=pledge.id)
+        await maybe_detach_pm(db, pledge.payment_method, exclude_pledge_id=pledge.id)
 
     pledge.status = PledgeStatus.released
     await db.commit()
