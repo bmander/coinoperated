@@ -103,6 +103,11 @@ async def create_magic_token(
         return mlt
 
 
+def auth_cookies(patron):
+    token = create_jwt(patron.id, settings.secret_key, expiry_days=30)
+    return {"session": token}
+
+
 async def create_patron(
     session_maker,
     email: str,

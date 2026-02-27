@@ -138,8 +138,8 @@ class PatronNotificationRead(BaseReadSchema):
     id: uuid.UUID
     task_id: uuid.UUID
     task_title: str
-    event: NotificationType
-    message: str
+    event: NotificationType = Field(validation_alias="type")
+    message: str = Field(validation_alias="body")
     created_at: datetime
 
 

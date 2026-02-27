@@ -2,16 +2,9 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from tests.conftest import create_notification, create_patron, create_pledge, create_task
+from tests.conftest import auth_cookies, create_notification, create_patron, create_pledge, create_task
 
-from app.auth import create_jwt
-from app.config import settings
 from app.models import NotificationType, PledgeStatus
-
-
-def auth_cookies(patron):
-    token = create_jwt(patron.id, settings.secret_key, expiry_days=30)
-    return {"session": token}
 
 
 @pytest.mark.asyncio

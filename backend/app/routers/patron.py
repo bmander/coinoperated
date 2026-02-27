@@ -37,15 +37,4 @@ async def list_my_notifications(
         .options(selectinload(Notification.task))
         .order_by(Notification.created_at.desc())
     )
-    notifications = result.scalars().all()
-    return [
-        PatronNotificationRead(
-            id=n.id,
-            task_id=n.task_id,
-            task_title=n.task.title,
-            event=n.type,
-            message=n.body,
-            created_at=n.created_at,
-        )
-        for n in notifications
-    ]
+    return result.scalars().all()

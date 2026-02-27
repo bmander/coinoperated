@@ -195,3 +195,7 @@ class Notification(Base):
 
     patron: Mapped[Patron] = relationship(back_populates="notifications")
     task: Mapped[Task] = relationship()
+
+    @property
+    def task_title(self) -> str:
+        return self.task.title
