@@ -36,9 +36,11 @@ describe("TaskCard", () => {
     expect(screen.getByText(/★/)).toBeInTheDocument();
   });
 
-  it("renders View and Pledge links with correct URLs", () => {
-    renderCard(makeTask({ id: "task-42" }));
-    expect(screen.getByRole("link", { name: "View" })).toHaveAttribute("href", "/tasks/task-42");
+  it("renders title link and Pledge link with correct URLs", () => {
+    const task = makeTask({ id: "task-42", title: "My Task" });
+    renderCard(task);
+    expect(screen.getByRole("link", { name: "My Task" })).toHaveAttribute("href", "/tasks/task-42");
     expect(screen.getByRole("link", { name: "Pledge" })).toHaveAttribute("href", "/tasks/task-42/pledge");
+    expect(screen.queryByRole("link", { name: "View" })).not.toBeInTheDocument();
   });
 });

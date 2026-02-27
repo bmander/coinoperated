@@ -6,21 +6,24 @@ import StatusBadge from "./StatusBadge";
 export default function TaskCard({ task }: { task: TaskRead }) {
   return (
     <div className="task-card">
-      <div className="task-card-header">
-        <StatusBadge status={task.status} />
-      </div>
-      <h3 className="task-card-title">{task.title}</h3>
-      <p className="task-card-stats">
-        {formatBackers(task.pledge_count)} &middot;{" "}
-        {formatCents(task.pledge_total)} pledged
-      </p>
-      <div className="task-card-actions">
-        <Link to={`/tasks/${task.id}`} className="btn btn-secondary">
-          View
-        </Link>
-        <Link to={`/tasks/${task.id}/pledge`} className="btn btn-primary">
-          Pledge
-        </Link>
+      <div className="task-card-content">
+        <div className="task-card-main">
+          <div className="task-card-title-row">
+            <StatusBadge status={task.status} />
+            <h3 className="task-card-title">
+              <Link to={`/tasks/${task.id}`}>{task.title}</Link>
+            </h3>
+          </div>
+          <p className="task-card-stats">
+            {formatBackers(task.pledge_count)} &middot;{" "}
+            {formatCents(task.pledge_total)} pledged
+          </p>
+        </div>
+        <div className="task-card-pledge">
+          <Link to={`/tasks/${task.id}/pledge`} className="btn btn-primary btn-sm">
+            Pledge
+          </Link>
+        </div>
       </div>
     </div>
   );
