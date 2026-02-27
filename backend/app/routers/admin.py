@@ -70,19 +70,23 @@ async def list_patrons(
     )
 
 
+async def _set_ban_status(db: AsyncSession, patron_id: uuid.UUID, *, banned: bool) -> AdminPatronRead:
+    patron = await db.get(Patron, patron_id)
+    if patron is None:
+        raise HTTPException(status_code=404, detail="Patron not found")
+    patron.is_banned = banned
+    await db.commit()
+    await db.refresh(patron)
+    return AdminPatronRead.model_validate(patron)
+
+
 @router.post("/api/admin/patrons/{patron_id}/ban", response_model=AdminPatronRead)
 async def ban_patron(
     patron_id: uuid.UUID,
     _admin: Annotated[Patron, Depends(get_admin_patron)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    patron = await db.get(Patron, patron_id)
-    if patron is None:
-        raise HTTPException(status_code=404, detail="Patron not found")
-    patron.is_banned = True
-    await db.commit()
-    await db.refresh(patron)
-    return AdminPatronRead.model_validate(patron)
+    return await _set_ban_status(db, patron_id, banned=True)
 
 
 @router.post("/api/admin/patrons/{patron_id}/unban", response_model=AdminPatronRead)
@@ -91,13 +95,7 @@ async def unban_patron(
     _admin: Annotated[Patron, Depends(get_admin_patron)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    patron = await db.get(Patron, patron_id)
-    if patron is None:
-        raise HTTPException(status_code=404, detail="Patron not found")
-    patron.is_banned = False
-    await db.commit()
-    await db.refresh(patron)
-    return AdminPatronRead.model_validate(patron)
+    return await _set_ban_status(db, patron_id, banned=False)
 
 
 class PostUpdateBody(BaseModel):

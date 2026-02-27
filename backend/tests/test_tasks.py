@@ -1,8 +1,6 @@
 import uuid
 
-from app.auth import create_jwt
-from app.config import settings
-from tests.conftest import create_patron as create_patron_db
+from tests.conftest import auth_cookies, create_patron as create_patron_db
 
 
 # --- Helpers ---
@@ -152,11 +150,10 @@ async def test_create_task_banned_user_gets_403(client, test_session_maker):
     banned = await create_patron_db(
         test_session_maker, "banned@example.com", "cus_banned", is_banned=True
     )
-    token = create_jwt(banned.id, settings.secret_key, 30)
     resp = await client.post(
         "/api/tasks",
         json={"title": "Sneaky task", "description": "Should be blocked"},
-        cookies={"session": token},
+        cookies=auth_cookies(banned),
     )
     assert resp.status_code == 403
 
