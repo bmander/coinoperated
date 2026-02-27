@@ -34,6 +34,14 @@ export default function PledgeWidget({
 
   const widgetRef = useRef<HTMLDivElement>(null);
 
+  function resolveAmount(): number | null {
+    if (isCustom) {
+      const parsed = Math.round(parseFloat(customAmount) * 100);
+      return Number.isNaN(parsed) ? null : parsed;
+    }
+    return selectedAmount;
+  }
+
   // Close on outside click
   useEffect(() => {
     if (!expanded) return;
@@ -56,9 +64,7 @@ export default function PledgeWidget({
   }
 
   async function handleSubmit() {
-    const finalAmount = isCustom
-      ? Math.round(parseFloat(customAmount) * 100)
-      : selectedAmount;
+    const finalAmount = resolveAmount();
     if (!finalAmount || finalAmount < 100) {
       setError("Min $1.00");
       return;
@@ -101,10 +107,7 @@ export default function PledgeWidget({
   }
 
   function handleModalSuccess() {
-    const finalAmount = isCustom
-      ? Math.round(parseFloat(customAmount) * 100)
-      : selectedAmount;
-    setPledgedAmount(finalAmount!);
+    setPledgedAmount(resolveAmount()!);
     setShowModal(false);
     setExpanded(false);
     onPledge?.();

@@ -162,6 +162,35 @@ async def test_logout_clears_cookie(client):
     assert "session" in resp.headers.get("set-cookie", "")
 
 
+async def test_me_has_payment_method_false_by_default(client, test_session_maker):
+    patron = await create_patron(test_session_maker, "nopm@example.com", "cus_nopm")
+    token = create_jwt(patron.id, settings.secret_key, 30)
+    resp = await client.get("/api/auth/me", cookies={"session": token})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["has_payment_method"] is False
+    assert data["default_payment_method"] is None
+
+
+async def test_me_has_payment_method_true_when_set(client, test_session_maker):
+    async with test_session_maker() as session:
+        patron = Patron(
+            email="haspm@example.com",
+            stripe_customer="cus_haspm",
+            default_payment_method="pm_saved_xyz",
+        )
+        session.add(patron)
+        await session.commit()
+        await session.refresh(patron)
+
+    token = create_jwt(patron.id, settings.secret_key, 30)
+    resp = await client.get("/api/auth/me", cookies={"session": token})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["has_payment_method"] is True
+    assert data["default_payment_method"] == "pm_saved_xyz"
+
+
 @patch("app.routers.auth.create_stripe_customer", return_value="cus_existing")
 async def test_second_login_reuses_existing_patron(
     mock_stripe, client, test_session_maker

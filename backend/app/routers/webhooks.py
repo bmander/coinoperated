@@ -71,7 +71,7 @@ async def stripe_webhook(
 
         # Save default payment method on patron
         patron = (
-            await db.execute(select(Patron).where(Patron.stripe_customer == customer_id))
+            await db.execute(select(Patron).where(Patron.id == pledge.patron_id))
         ).scalar_one_or_none()
         if patron:
             patron.default_payment_method = payment_method_id
