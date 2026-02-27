@@ -35,6 +35,11 @@ migrate:
 
 # Install all dependencies
 install:
+	@# Recreate venv if its shebang points to a stale path (e.g. different worktree)
+	@if [ -f $(VENV)/pip ] && ! head -1 $(VENV)/pip | grep -q "$(CURDIR)"; then \
+		echo "Stale venv detected — recreating..."; \
+		rm -rf backend/.venv; \
+	fi
 	python3.13 -m venv backend/.venv
 	$(VENV)/pip install -e "backend/.[dev]"
 	cd frontend && npm install
