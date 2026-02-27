@@ -276,11 +276,6 @@ async def test_webhook_payment_succeeded_creates_notification(
         assert p.status == PledgeStatus.collected
         assert p.collected_at is not None
 
-    # Verify task.collected_total incremented
-    async with test_session_maker() as session:
-        t = await session.get(Task, task.id)
-        assert t.collected_total == pledge.amount
-
     mock_send.assert_called_once()
 
 

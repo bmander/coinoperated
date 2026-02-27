@@ -143,6 +143,21 @@ class AdminTaskListResponse(BaseModel):
     total: int
 
 
+class PledgeCollectResult(BaseModel):
+    pledge_id: uuid.UUID
+    patron_email: str
+    amount: int
+    status: PledgeStatus
+
+
+class CollectResponse(BaseModel):
+    collected_count: int
+    failed_count: int
+    collected_total: int
+    pledge_total: int
+    results: list[PledgeCollectResult]
+
+
 class UpdateCreate(BaseModel):
     task_id: uuid.UUID
     body: str

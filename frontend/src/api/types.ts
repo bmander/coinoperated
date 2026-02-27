@@ -54,6 +54,21 @@ export interface AdminTaskListResponse {
   total: number;
 }
 
+export interface PledgeCollectResult {
+  pledge_id: string;
+  patron_email: string;
+  amount: number;
+  status: PledgeStatus;
+}
+
+export interface CollectResponse {
+  collected_count: number;
+  failed_count: number;
+  collected_total: number;
+  pledge_total: number;
+  results: PledgeCollectResult[];
+}
+
 export interface PatronMe {
   id: string;
   email: string;
