@@ -77,6 +77,7 @@ class Patron(Base):
     email: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     display_name: Mapped[str | None] = mapped_column(Text)
     stripe_customer: Mapped[str] = mapped_column(Text, nullable=False)
+    default_payment_method: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

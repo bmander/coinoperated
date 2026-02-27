@@ -75,6 +75,8 @@ export interface PatronMe {
   display_name: string | null;
   is_admin: boolean;
   is_banned: boolean;
+  has_payment_method: boolean;
+  default_payment_method: string | null;
 }
 
 export interface AdminPatronRead {

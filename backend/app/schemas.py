@@ -209,6 +209,8 @@ class PatronMe(BaseReadSchema):
     display_name: str | None
     is_admin: bool
     is_banned: bool
+    has_payment_method: bool
+    default_payment_method: str | None
 
 
 class AdminPatronRead(BaseReadSchema):
