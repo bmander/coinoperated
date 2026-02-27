@@ -34,6 +34,7 @@ class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=500)
     description: str = Field(min_length=1)
     criteria: str | None = None
+    pledge_amount: int | None = Field(default=None, ge=MIN_PLEDGE_CENTS)
 
 
 class TaskRead(BaseReadSchema):
@@ -55,6 +56,12 @@ class TaskRead(BaseReadSchema):
 
 class TaskDetail(TaskRead):
     updates: list["UpdateRead"] = []
+
+
+class TaskCreateResponse(TaskRead):
+    pledge_id: uuid.UUID | None = None
+    client_secret: str | None = None
+    publishable_key: str | None = None
 
 
 class TaskListResponse(BaseModel):

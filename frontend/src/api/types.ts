@@ -94,6 +94,12 @@ export interface PledgeCreateResponse {
   publishable_key: string;
 }
 
+export interface TaskCreateResponse extends TaskRead {
+  pledge_id: string | null;
+  client_secret: string | null;
+  publishable_key: string | null;
+}
+
 export interface PledgeMyResponse {
   id: string;
   amount: number;

@@ -2,15 +2,17 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated
 
+import stripe
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import settings
 from app.dependencies import get_active_patron, get_db
-from app.models import Patron, Task, TaskStatus
+from app.models import Patron, Pledge, PledgeStatus, Task, TaskStatus
 from app.notifications import notify_task_accepted, notify_task_completed, notify_task_declined
-from app.schemas import TaskCreate, TaskDetail, TaskListResponse, TaskRead, TaskUpdate
+from app.schemas import TaskCreate, TaskCreateResponse, TaskDetail, TaskListResponse, TaskRead, TaskUpdate
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -70,12 +72,19 @@ async def get_task(
     return await get_task_or_404(db, task_id, load_updates=True)
 
 
-@router.post("", response_model=TaskRead, status_code=201)
+@router.post("", response_model=TaskCreateResponse, status_code=201)
 async def create_task(
     payload: TaskCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
     patron: Annotated[Patron, Depends(get_active_patron)],
 ):
+    is_admin = patron.email == settings.admin_email
+
+    if not is_admin and payload.pledge_amount is None:
+        raise HTTPException(
+            status_code=400, detail="A pledge is required when submitting a task"
+        )
+
     task = Task(
         title=payload.title,
         description=payload.description,
@@ -83,9 +92,44 @@ async def create_task(
         submitted_by=patron.id,
     )
     db.add(task)
+    await db.flush()
+
+    pledge_id = None
+    client_secret = None
+    publishable_key = None
+
+    if payload.pledge_amount is not None:
+        si = stripe.SetupIntent.create(
+            customer=patron.stripe_customer,
+            metadata={
+                "pledge_task_id": str(task.id),
+                "pledge_patron_id": str(patron.id),
+            },
+        )
+        pledge = Pledge(
+            patron_id=patron.id,
+            task_id=task.id,
+            amount=payload.pledge_amount,
+            setup_intent=si.id,
+            status=PledgeStatus.pending,
+            payment_method=None,
+        )
+        db.add(pledge)
+        await db.flush()
+        pledge_id = pledge.id
+        client_secret = si.client_secret
+        publishable_key = settings.stripe_publishable_key
+
     await db.commit()
     await db.refresh(task)
-    return task
+
+    task_data = TaskRead.model_validate(task)
+    return TaskCreateResponse(
+        **task_data.model_dump(),
+        pledge_id=pledge_id,
+        client_secret=client_secret,
+        publishable_key=publishable_key,
+    )
 
 
 @router.patch("/{task_id}", response_model=TaskRead)

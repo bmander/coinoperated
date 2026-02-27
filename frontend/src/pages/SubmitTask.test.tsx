@@ -20,20 +20,39 @@ vi.mock("../contexts/AuthContext", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-beforeEach(() => {
-  mockUseAuth.mockReturnValue({
-    patron: { id: "p1", email: "test@example.com", display_name: null, is_admin: false, is_banned: false },
-    loading: false,
-    login: vi.fn(),
-    logout: vi.fn(),
-  });
-});
+const mockConfirmCardSetup = vi.fn();
+const mockGetElement = vi.fn();
+
+vi.mock("@stripe/react-stripe-js", () => ({
+  Elements: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  CardElement: () => <div data-testid="card-element" />,
+  useStripe: () => ({ confirmCardSetup: mockConfirmCardSetup }),
+  useElements: () => ({ getElement: mockGetElement }),
+}));
+
+vi.mock("@stripe/stripe-js", () => ({
+  loadStripe: () => Promise.resolve({}),
+}));
 
 afterEach(() => {
   vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
-describe("SubmitTask", () => {
+function taskCreateResponse(overrides = {}) {
+  return { ...makeTask(), pledge_id: null, client_secret: null, publishable_key: null, ...overrides };
+}
+
+describe("SubmitTask (admin)", () => {
+  beforeEach(() => {
+    mockUseAuth.mockReturnValue({
+      patron: { id: "p1", email: "admin@example.com", display_name: null, is_admin: true, is_banned: false },
+      loading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+  });
+
   it("renders form fields", () => {
     renderWithRouter(<SubmitTask />);
 
@@ -44,9 +63,15 @@ describe("SubmitTask", () => {
     expect(screen.getByRole("button", { name: "Submit Task" })).toBeInTheDocument();
   });
 
+  it("does not show pledge or card fields for admin", () => {
+    renderWithRouter(<SubmitTask />);
+
+    expect(screen.queryByText("Your Pledge *")).not.toBeInTheDocument();
+    expect(screen.queryByText("Card details")).not.toBeInTheDocument();
+  });
+
   it("submits form and redirects to task detail", async () => {
-    const task = makeTask({ id: "new-task-id" });
-    mockCreateTask.mockResolvedValue(task);
+    mockCreateTask.mockResolvedValue(taskCreateResponse({ id: "new-task-id" }));
 
     renderWithRouter(<SubmitTask />);
 
@@ -65,7 +90,7 @@ describe("SubmitTask", () => {
   });
 
   it("sends criteria when provided", async () => {
-    mockCreateTask.mockResolvedValue(makeTask());
+    mockCreateTask.mockResolvedValue(taskCreateResponse());
 
     renderWithRouter(<SubmitTask />);
 
@@ -101,30 +126,14 @@ describe("SubmitTask", () => {
 
     await userEvent.type(screen.getByLabelText("Description *"), "**bold text**");
 
-    // Click the first "Preview" button (description field)
     const previewButtons = screen.getAllByRole("button", { name: "Preview" });
     await userEvent.click(previewButtons[0]);
 
     expect(screen.getByText("bold text")).toBeInTheDocument();
     expect(screen.queryByLabelText("Description *")).not.toBeInTheDocument();
 
-    // Toggle back to edit
     await userEvent.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByLabelText("Description *")).toBeInTheDocument();
-  });
-
-  it("shows suspension message when user is banned", () => {
-    mockUseAuth.mockReturnValue({
-      patron: { id: "p1", email: "banned@example.com", display_name: null, is_admin: false, is_banned: true },
-      loading: false,
-      login: vi.fn(),
-      logout: vi.fn(),
-    });
-
-    renderWithRouter(<SubmitTask />);
-
-    expect(screen.getByText(/account has been suspended/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText("Title *")).not.toBeInTheDocument();
   });
 
   it("shows button as disabled while submitting", async () => {
@@ -139,5 +148,128 @@ describe("SubmitTask", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Submitting..." })).toBeDisabled();
     });
+  });
+});
+
+describe("SubmitTask (banned user)", () => {
+  it("shows suspension message when user is banned", () => {
+    mockUseAuth.mockReturnValue({
+      patron: { id: "p1", email: "banned@example.com", display_name: null, is_admin: false, is_banned: true },
+      loading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    renderWithRouter(<SubmitTask />);
+
+    expect(screen.getByText(/account has been suspended/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Title *")).not.toBeInTheDocument();
+  });
+});
+
+describe("SubmitTask (non-admin)", () => {
+  beforeEach(() => {
+    mockUseAuth.mockReturnValue({
+      patron: { id: "p1", email: "test@example.com", display_name: null, is_admin: false, is_banned: false },
+      loading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      json: () => Promise.resolve({ publishable_key: "pk_test_123" }),
+    } as Response);
+  });
+
+  it("shows pledge and card fields for non-admin", async () => {
+    renderWithRouter(<SubmitTask />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Your Pledge *")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Card details")).toBeInTheDocument();
+    expect(screen.getByTestId("card-element")).toBeInTheDocument();
+  });
+
+  it("shows preset pledge amount buttons", async () => {
+    renderWithRouter(<SubmitTask />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "$1" })).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: "$5" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "$25" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Custom" })).toBeInTheDocument();
+  });
+
+  it("submits task with pledge and confirms card", async () => {
+    const cardElement = {};
+    mockGetElement.mockReturnValue(cardElement);
+    mockConfirmCardSetup.mockResolvedValue({ error: null });
+
+    // Mock createTask - need to override the global fetch mock for this call
+    mockCreateTask.mockResolvedValue(
+      taskCreateResponse({
+        id: "pledged-task-id",
+        pledge_id: "pledge-123",
+        client_secret: "seti_secret_456",
+        publishable_key: "pk_test_123",
+      }),
+    );
+
+    renderWithRouter(<SubmitTask />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Title *")).toBeInTheDocument();
+    });
+
+    await userEvent.type(screen.getByLabelText("Title *"), "My task");
+    await userEvent.type(screen.getByLabelText("Description *"), "Needs doing");
+    await userEvent.click(screen.getByRole("button", { name: "Submit Task" }));
+
+    await waitFor(() => {
+      expect(mockCreateTask).toHaveBeenCalledWith({
+        title: "My task",
+        description: "Needs doing",
+        criteria: undefined,
+        pledge_amount: 100, // default MIN_PLEDGE_CENTS
+      });
+    });
+
+    expect(mockConfirmCardSetup).toHaveBeenCalledWith("seti_secret_456", {
+      payment_method: { card: cardElement },
+    });
+    expect(mockNavigate).toHaveBeenCalledWith("/tasks/pledged-task-id");
+  });
+
+  it("shows stripe error message on card failure", async () => {
+    mockGetElement.mockReturnValue({});
+    mockConfirmCardSetup.mockResolvedValue({
+      error: { message: "Your card was declined" },
+    });
+
+    mockCreateTask.mockResolvedValue(
+      taskCreateResponse({
+        id: "task-id",
+        pledge_id: "pledge-id",
+        client_secret: "seti_secret",
+        publishable_key: "pk_test",
+      }),
+    );
+
+    renderWithRouter(<SubmitTask />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Title *")).toBeInTheDocument();
+    });
+
+    await userEvent.type(screen.getByLabelText("Title *"), "Task");
+    await userEvent.type(screen.getByLabelText("Description *"), "Desc");
+    await userEvent.click(screen.getByRole("button", { name: "Submit Task" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Your card was declined")).toBeInTheDocument();
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

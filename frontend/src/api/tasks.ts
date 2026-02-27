@@ -1,4 +1,4 @@
-import type { TaskDetailRead, TaskListResponse, TaskRead, TaskStatus } from "./types";
+import type { TaskCreateResponse, TaskDetailRead, TaskListResponse, TaskStatus } from "./types";
 
 export interface ListTasksParams {
   status?: TaskStatus;
@@ -34,9 +34,10 @@ export interface CreateTaskPayload {
   title: string;
   description: string;
   criteria?: string;
+  pledge_amount?: number;
 }
 
-export async function createTask(payload: CreateTaskPayload): Promise<TaskRead> {
+export async function createTask(payload: CreateTaskPayload): Promise<TaskCreateResponse> {
   const res = await fetch("/api/tasks", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -44,6 +45,9 @@ export async function createTask(payload: CreateTaskPayload): Promise<TaskRead> 
   });
   if (res.status === 401) throw new Error("Not authenticated");
   if (res.status === 403) throw new Error("Your account has been suspended");
-  if (!res.ok) throw new Error(`Failed to create task: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail ?? `Failed to create task: ${res.status}`);
+  }
   return res.json();
 }

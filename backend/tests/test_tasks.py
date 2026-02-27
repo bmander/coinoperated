@@ -1,9 +1,40 @@
 import uuid
+from unittest.mock import MagicMock, patch
 
+import pytest
+
+from app.config import settings
 from tests.conftest import auth_cookies, create_patron as create_patron_db
 
 
 # --- Helpers ---
+
+ADMIN_EMAIL = "test@example.com"
+
+
+def _admin_settings():
+    """Return a mock settings object with admin_email matching the test patron."""
+
+    class FakeSettings:
+        admin_email = ADMIN_EMAIL
+        secret_key = settings.secret_key
+        stripe_publishable_key = settings.stripe_publishable_key
+
+    return FakeSettings()
+
+
+def mock_setup_intent(si_id="si_task_123", client_secret="seti_task_secret"):
+    si = MagicMock()
+    si.id = si_id
+    si.client_secret = client_secret
+    return si
+
+
+@pytest.fixture(autouse=True)
+def _patch_admin_settings():
+    """Make the default test patron (test@example.com) an admin for task CRUD tests."""
+    with patch("app.routers.tasks.settings", _admin_settings()):
+        yield
 
 
 async def create_task(client, **overrides):
@@ -98,7 +129,7 @@ async def test_get_task_not_found(client):
     assert resp.status_code == 404
 
 
-# --- POST /api/tasks ---
+# --- POST /api/tasks (admin) ---
 
 
 async def test_create_task_requires_auth(client):
@@ -119,6 +150,8 @@ async def test_create_task_basic(authed_client, test_patron):
     assert data["title"] == "New task"
     assert data["status"] == "open"
     assert data["submitted_by"] == str(test_patron.id)
+    assert data["pledge_id"] is None
+    assert data["client_secret"] is None
 
 
 async def test_create_task_with_criteria(authed_client):
@@ -156,6 +189,80 @@ async def test_create_task_banned_user_gets_403(client, test_session_maker):
         cookies=auth_cookies(banned),
     )
     assert resp.status_code == 403
+
+
+# --- POST /api/tasks (non-admin pledge requirement) ---
+
+
+async def test_create_task_non_admin_requires_pledge(client, test_session_maker):
+    patron = await create_patron_db(test_session_maker, "user@example.com", "cus_user")
+    resp = await client.post(
+        "/api/tasks",
+        json={"title": "My task", "description": "Do something"},
+        cookies=auth_cookies(patron),
+    )
+    assert resp.status_code == 400
+    assert "pledge is required" in resp.json()["detail"].lower()
+
+
+async def test_create_task_non_admin_pledge_below_minimum(client, test_session_maker):
+    patron = await create_patron_db(
+        test_session_maker, "user2@example.com", "cus_user2"
+    )
+    resp = await client.post(
+        "/api/tasks",
+        json={"title": "My task", "description": "Do something", "pledge_amount": 50},
+        cookies=auth_cookies(patron),
+    )
+    assert resp.status_code == 422
+
+
+@patch("app.routers.tasks.stripe.SetupIntent.create")
+async def test_create_task_non_admin_with_pledge(
+    mock_si_create, client, test_session_maker
+):
+    mock_si_create.return_value = mock_setup_intent()
+    patron = await create_patron_db(
+        test_session_maker, "user3@example.com", "cus_user3"
+    )
+    resp = await client.post(
+        "/api/tasks",
+        json={
+            "title": "My task",
+            "description": "Do something",
+            "pledge_amount": 500,
+        },
+        cookies=auth_cookies(patron),
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["title"] == "My task"
+    assert data["status"] == "open"
+    assert data["pledge_id"] is not None
+    assert data["client_secret"] == "seti_task_secret"
+    assert data["publishable_key"] == settings.stripe_publishable_key
+    mock_si_create.assert_called_once()
+
+
+@patch("app.routers.tasks.stripe.SetupIntent.create")
+async def test_create_task_admin_with_optional_pledge(
+    mock_si_create, authed_client, test_patron
+):
+    """Admin can optionally include a pledge when creating a task."""
+    mock_si_create.return_value = mock_setup_intent()
+    resp = await authed_client.post(
+        "/api/tasks",
+        json={
+            "title": "Admin task with pledge",
+            "description": "Details",
+            "pledge_amount": 2500,
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["pledge_id"] is not None
+    assert data["client_secret"] == "seti_task_secret"
+    mock_si_create.assert_called_once()
 
 
 # --- PATCH /api/tasks/{id} ---

@@ -88,7 +88,11 @@ describe("createTask", () => {
   });
 
   it("throws on other errors", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 500 });
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.reject(),
+    });
 
     await expect(createTask({ title: "T", description: "D" })).rejects.toThrow("Failed to create task: 500");
   });
