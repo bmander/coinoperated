@@ -335,6 +335,39 @@ async def test_collect_idempotent_no_double_charge(mock_pi_create, client, test_
 
 
 @patch("app.routers.admin.stripe.PaymentIntent.create")
+async def test_collect_handles_invalid_request_error(mock_pi_create, client, test_session_maker):
+    """InvalidRequestError (e.g. expired payment method) should mark pledge as failed."""
+    mock_pi_create.side_effect = stripe_module.error.InvalidRequestError(
+        "No such payment method: pm_expired", param="payment_method"
+    )
+    _admin, token = await _make_admin(test_session_maker)
+    task = await create_task(
+        test_session_maker, status=TaskStatus.collecting, pledge_count=1, pledge_total=1500
+    )
+    backer = await create_patron(test_session_maker, "expired@example.com", "cus_expired")
+    await create_pledge(
+        test_session_maker, patron_id=backer.id, task_id=task.id, amount=1500
+    )
+
+    with patch("app.dependencies.settings", _admin_settings()):
+        resp = await client.post(
+            f"/api/tasks/{task.id}/collect", cookies={"session": token}
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["collected_count"] == 0
+    assert data["failed_count"] == 1
+    assert data["collected_total"] == 0
+    assert data["results"][0]["status"] == "failed"
+
+    async with test_session_maker() as session:
+        t = await session.get(Task, task.id)
+        assert t.status == TaskStatus.completed
+        assert t.collected_total == 0
+
+
+@patch("app.routers.admin.stripe.PaymentIntent.create")
 async def test_collect_no_active_pledges(mock_pi_create, client, test_session_maker):
     """Collecting on a task with no active pledges should complete with zeros."""
     _admin, token = await _make_admin(test_session_maker)
