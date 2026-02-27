@@ -1,4 +1,4 @@
-import { fetchAdminTasks, patchTask, postUpdate } from "./admin";
+import { deleteTask, fetchAdminTasks, patchTask, postUpdate } from "./admin";
 
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
@@ -85,5 +85,23 @@ describe("postUpdate", () => {
     mockFetch.mockResolvedValue({ ok: false, status: 403 });
 
     await expect(postUpdate("t1", "hi")).rejects.toThrow("Failed to post update: 403");
+  });
+});
+
+describe("deleteTask", () => {
+  it("sends DELETE to /api/tasks/:id", async () => {
+    mockFetch.mockResolvedValue({ ok: true });
+
+    await deleteTask("t1");
+
+    expect(mockFetch).toHaveBeenCalledWith("/api/tasks/t1", {
+      method: "DELETE",
+    });
+  });
+
+  it("throws on non-ok response", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 404 });
+
+    await expect(deleteTask("t1")).rejects.toThrow("Failed to delete task: 404");
   });
 });
