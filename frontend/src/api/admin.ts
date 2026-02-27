@@ -41,3 +41,10 @@ export async function collectPayments(
   if (!res.ok) throw new Error(`Failed to collect payments: ${res.status}`);
   return res.json();
 }
+
+export async function deleteTask(taskId: string): Promise<void> {
+  const res = await fetch(`/api/tasks/${taskId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`Failed to delete task: ${res.status}`);
+}

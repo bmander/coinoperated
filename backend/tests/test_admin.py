@@ -6,8 +6,8 @@ from sqlalchemy import select
 
 from app.auth import create_jwt
 from app.config import settings
-from app.models import Pledge, PledgeStatus, Task, TaskStatus
-from tests.conftest import create_patron, create_pledge, create_task
+from app.models import Notification, Pledge, PledgeStatus, Task, TaskStatus, Update
+from tests.conftest import create_notification, create_patron, create_pledge, create_task
 
 ADMIN_EMAIL = "admin@example.com"
 
@@ -393,3 +393,77 @@ async def test_collect_no_active_pledges(mock_pi_create, client, test_session_ma
     async with test_session_maker() as session:
         t = await session.get(Task, task.id)
         assert t.status == TaskStatus.completed
+
+
+# --- DELETE /api/tasks/{task_id} ---
+
+
+async def test_delete_task_requires_auth(client, test_session_maker):
+    task = await create_task(test_session_maker)
+    resp = await client.delete(f"/api/tasks/{task.id}")
+    assert resp.status_code == 401
+
+
+async def test_delete_task_rejects_non_admin(client, test_session_maker):
+    patron = await create_patron(test_session_maker, "user@example.com", "cus_user")
+    token = create_jwt(patron.id, settings.secret_key, 30)
+    task = await create_task(test_session_maker)
+
+    with patch("app.dependencies.settings", _admin_settings()):
+        resp = await client.delete(
+            f"/api/tasks/{task.id}", cookies={"session": token}
+        )
+    assert resp.status_code == 403
+
+
+async def test_delete_task_succeeds(client, test_session_maker):
+    _admin, token = await _make_admin(test_session_maker)
+    task = await create_task(test_session_maker)
+
+    with patch("app.dependencies.settings", _admin_settings()):
+        resp = await client.delete(
+            f"/api/tasks/{task.id}", cookies={"session": token}
+        )
+
+    assert resp.status_code == 204
+    async with test_session_maker() as session:
+        assert await session.get(Task, task.id) is None
+
+
+async def test_delete_task_cascades_related_records(client, test_session_maker):
+    _admin, token = await _make_admin(test_session_maker)
+    task = await create_task(test_session_maker, status=TaskStatus.accepted)
+    backer = await create_patron(test_session_maker, "backer@example.com", "cus_backer")
+    pledge = await create_pledge(
+        test_session_maker, patron_id=backer.id, task_id=task.id, amount=1000
+    )
+    notification = await create_notification(
+        test_session_maker, patron_id=backer.id, task_id=task.id
+    )
+    async with test_session_maker() as session:
+        update = Update(task_id=task.id, body="progress")
+        session.add(update)
+        await session.commit()
+        await session.refresh(update)
+
+    with patch("app.dependencies.settings", _admin_settings()):
+        resp = await client.delete(
+            f"/api/tasks/{task.id}", cookies={"session": token}
+        )
+
+    assert resp.status_code == 204
+    async with test_session_maker() as session:
+        assert await session.get(Task, task.id) is None
+        assert await session.get(Pledge, pledge.id) is None
+        assert await session.get(Notification, notification.id) is None
+        assert await session.get(Update, update.id) is None
+
+
+async def test_delete_task_not_found(client, test_session_maker):
+    _admin, token = await _make_admin(test_session_maker)
+    fake_id = uuid.uuid4()
+    with patch("app.dependencies.settings", _admin_settings()):
+        resp = await client.delete(
+            f"/api/tasks/{fake_id}", cookies={"session": token}
+        )
+    assert resp.status_code == 404
