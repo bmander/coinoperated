@@ -16,6 +16,8 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
+MIN_PLEDGE_CENTS = 100
+
 
 class Base(DeclarativeBase):
     pass
@@ -123,7 +125,7 @@ class Pledge(Base):
     __tablename__ = "pledge"
     __table_args__ = (
         UniqueConstraint("patron_id", "task_id"),
-        CheckConstraint("amount >= 100", name="pledge_minimum_amount"),
+        CheckConstraint(f"amount >= {MIN_PLEDGE_CENTS}", name="pledge_minimum_amount"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
