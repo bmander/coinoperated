@@ -43,6 +43,7 @@ export default function TaskBoard() {
       <hr />
 
       <div className="controls">
+        <Link to="/tasks/new" className="btn btn-primary">Submit a Task</Link>
         <label>
           Sort:{" "}
           <select value={sort} onChange={(e) => setSort(e.target.value as SortOption)}>
@@ -75,9 +76,6 @@ export default function TaskBoard() {
         ))}
       </div>
 
-      <div className="board-footer">
-        <Link to="/tasks/new" className="btn btn-primary">Submit a Task</Link>
-      </div>
     </div>
   );
 }

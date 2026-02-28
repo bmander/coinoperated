@@ -49,7 +49,11 @@
   gap: 1.5rem;
   margin: 1rem 0;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  align-items: center;
+}
+
+.controls .btn {
+  margin-right: auto;
 }
 
 .controls label {
