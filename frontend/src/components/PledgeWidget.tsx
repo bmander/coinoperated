@@ -140,18 +140,7 @@ export default function PledgeWidget({
                 {formatCents(amt)}
               </button>
             ))}
-            <button
-              type="button"
-              className={`pledge-amt-btn${isCustom ? " active" : ""}`}
-              onClick={() => {
-                setIsCustom(true);
-                setSelectedAmount(null);
-                setError("");
-              }}
-            >
-              ...
-            </button>
-            {isCustom && (
+            {isCustom ? (
               <input
                 type="number"
                 className="pledge-custom-input"
@@ -162,6 +151,18 @@ export default function PledgeWidget({
                 onChange={(e) => setCustomAmount(e.target.value)}
                 autoFocus
               />
+            ) : (
+              <button
+                type="button"
+                className="pledge-amt-btn"
+                onClick={() => {
+                  setIsCustom(true);
+                  setSelectedAmount(null);
+                  setError("");
+                }}
+              >
+                ...
+              </button>
             )}
             {error && <span className="pledge-widget-error">{error}</span>}
             <button

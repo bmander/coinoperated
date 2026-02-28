@@ -800,11 +800,21 @@
 .pledge-custom-input {
   width: 4rem;
   padding: 0.2rem 0.4rem;
-  border: 1px solid #ccc;
+  border: 1px solid #646cff;
   border-radius: 0;
   font-size: 0.8rem;
   background: #fff;
   color: inherit;
+  animation: pledgeInputExpand 0.2s ease-out;
+}
+
+@keyframes pledgeInputExpand {
+  from {
+    width: 1.8rem;
+  }
+  to {
+    width: 4rem;
+  }
 }
 
 .pledge-confirm-btn {
