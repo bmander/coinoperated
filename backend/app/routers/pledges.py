@@ -184,19 +184,22 @@ async def update_my_pledge(
     if pledge is None:
         raise HTTPException(status_code=404, detail="No pledge found")
 
-    was_active = pledge.status == PledgeStatus.active
-
     if pledge.status == PledgeStatus.pending:
         _cancel_setup_intent(pledge.setup_intent)
 
     si = stripe.SetupIntent.create(
         customer=patron.stripe_customer,
-        metadata={"pledge_task_id": str(task_id), "pledge_patron_id": str(patron.id)},
+        metadata={
+            "pledge_task_id": str(task_id),
+            "pledge_patron_id": str(patron.id),
+            "is_update": "true",
+            "old_amount": str(pledge.amount),
+        },
     )
 
-    if was_active:
-        task = await get_task_or_404(db, task_id)
-        _decrement_task_counts(task, pledge.amount)
+    # Adjust pledge_total for the new amount (pledge stays counted)
+    task = await get_task_or_404(db, task_id)
+    task.pledge_total += payload.amount - pledge.amount
 
     pledge.amount = payload.amount
     pledge.setup_intent = si.id

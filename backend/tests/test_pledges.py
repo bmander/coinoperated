@@ -186,7 +186,7 @@ async def test_update_pledge(mock_si_create, mock_si_cancel, client, test_sessio
 
 
 @patch("app.routers.pledges.stripe.SetupIntent.create")
-async def test_update_active_pledge_decrements_task(mock_si_create, client, test_session_maker):
+async def test_update_active_pledge_adjusts_task_total(mock_si_create, client, test_session_maker):
     mock_si_create.return_value = mock_setup_intent("si_upd2", "seti_upd2_secret")
     patron = await create_patron(test_session_maker, "jack@example.com", "cus_jack")
     task = await create_task(test_session_maker)
@@ -212,12 +212,12 @@ async def test_update_active_pledge_decrements_task(mock_si_create, client, test
     )
     assert resp.status_code == 200
 
-    # Verify task counts were decremented
+    # Count stays, total adjusts by delta (2000 - 1000 = +1000)
     from app.models import Task as TaskModel
     async with test_session_maker() as session:
         t = await session.get(TaskModel, task.id)
-        assert t.pledge_count == 0
-        assert t.pledge_total == 0
+        assert t.pledge_count == 1
+        assert t.pledge_total == 2000
 
 
 # --- DELETE /api/tasks/{task_id}/pledges/me ---

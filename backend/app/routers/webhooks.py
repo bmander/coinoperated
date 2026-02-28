@@ -76,13 +76,15 @@ async def stripe_webhook(
         if patron:
             patron.default_payment_method = payment_method_id
 
-        # Increment task counters
-        task = (
-            await db.execute(select(Task).where(Task.id == pledge.task_id))
-        ).scalar_one_or_none()
-        if task:
-            task.pledge_count += 1
-            task.pledge_total += pledge.amount
+        # Increment task counters only for new pledges (updates already adjusted)
+        is_update = si.get("metadata", {}).get("is_update") == "true"
+        if not is_update:
+            task = (
+                await db.execute(select(Task).where(Task.id == pledge.task_id))
+            ).scalar_one_or_none()
+            if task:
+                task.pledge_count += 1
+                task.pledge_total += pledge.amount
 
         await db.commit()
 
