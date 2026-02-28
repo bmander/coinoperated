@@ -101,11 +101,9 @@ async def create_task(
     if payload.pledge_amount is not None:
         if payload.payment_method_id:
             # Reuse saved payment method — skip SetupIntent
-            pm = stripe.PaymentMethod.retrieve(payload.payment_method_id)
-            if pm.customer != patron.stripe_customer:
-                raise HTTPException(
-                    status_code=400, detail="Payment method does not belong to you"
-                )
+            from app.routers.pledges import verify_pm_ownership
+
+            verify_pm_ownership(payload.payment_method_id, patron.stripe_customer)
 
             pledge = Pledge(
                 patron_id=patron.id,

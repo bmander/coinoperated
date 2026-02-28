@@ -37,6 +37,15 @@ async def _get_patron_pledge(
     ).scalar_one_or_none()
 
 
+def verify_pm_ownership(payment_method_id: str, stripe_customer: str) -> None:
+    """Raise 400 if the payment method doesn't belong to the customer."""
+    pm = stripe.PaymentMethod.retrieve(payment_method_id)
+    if pm.customer != stripe_customer:
+        raise HTTPException(
+            status_code=400, detail="Payment method does not belong to you"
+        )
+
+
 def _cancel_setup_intent(setup_intent_id: str) -> None:
     try:
         stripe.SetupIntent.cancel(setup_intent_id)
@@ -86,11 +95,7 @@ async def create_pledge(
 
     if payload.payment_method_id:
         # Reuse a saved payment method
-        pm = stripe.PaymentMethod.retrieve(payload.payment_method_id)
-        if pm.customer != patron.stripe_customer:
-            raise HTTPException(
-                status_code=400, detail="Payment method does not belong to you"
-            )
+        verify_pm_ownership(payload.payment_method_id, patron.stripe_customer)
 
         pledge = Pledge(
             patron_id=patron.id,
