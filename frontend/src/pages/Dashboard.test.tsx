@@ -37,7 +37,7 @@ describe("Dashboard", () => {
     expect(screen.getByText("Loading notifications...")).toBeInTheDocument();
   });
 
-  it("renders pledge list with task links and amounts", async () => {
+  it("renders pledge list with task links", async () => {
     mockFetchPledges.mockResolvedValue([
       makePatronPledge({ id: "p1", amount: 5000, task: { id: "t1", title: "Fix road", status: "accepted" } }),
       makePatronPledge({ id: "p2", amount: 1000, task: { id: "t2", title: "Plant trees", status: "open" } }),
@@ -47,8 +47,6 @@ describe("Dashboard", () => {
     renderWithRouter(<Dashboard />);
     expect(await screen.findByText("Fix road")).toBeInTheDocument();
     expect(screen.getByText("Plant trees")).toBeInTheDocument();
-    expect(screen.getByText("$50")).toBeInTheDocument();
-    expect(screen.getByText("$10")).toBeInTheDocument();
   });
 
   it("renders task title links pointing to task detail pages", async () => {

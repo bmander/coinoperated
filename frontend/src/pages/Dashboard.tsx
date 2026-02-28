@@ -5,7 +5,7 @@ import type { PatronPledgeRead, NotificationRead, SavedPaymentMethod } from "../
 import useFetch from "../hooks/useFetch";
 import StatusBadge from "../components/StatusBadge";
 import PledgeWidget from "../components/PledgeWidget";
-import { capitalize, formatCents } from "../utils/formatting";
+import { capitalize } from "../utils/formatting";
 
 function eventLabel(event: string): string {
   switch (event) {
@@ -89,11 +89,7 @@ export default function Dashboard() {
                     {pledge.task.title}
                   </Link>
                 </div>
-                <div className="pledge-list-item-details">
-                  <span className="pledge-amount">{formatCents(pledge.amount)}</span>
-                  <span className={`pledge-status pledge-status-${pledge.status}`}>{pledge.status}</span>
-                  <PledgeWidget task={pledge.task} />
-                </div>
+                <PledgeWidget task={pledge.task} />
               </div>
             ))}
           </div>
