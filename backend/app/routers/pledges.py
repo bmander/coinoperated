@@ -94,7 +94,7 @@ async def create_pledge(
         raise HTTPException(status_code=400, detail="You already have a pledge on this task")
 
     # Reuse released pledge row if one exists (unique constraint on patron_id+task_id)
-    released = (
+    pledge = (
         await db.execute(
             select(Pledge).where(
                 Pledge.patron_id == patron.id,
@@ -103,29 +103,19 @@ async def create_pledge(
             )
         )
     ).scalar_one_or_none()
+    if pledge is None:
+        pledge = Pledge(patron_id=patron.id, task_id=task_id)
+        db.add(pledge)
+
+    pledge.amount = payload.amount
 
     if payload.payment_method_id:
         # Reuse a saved payment method
         verify_pm_ownership(payload.payment_method_id, patron.stripe_customer)
-
-        if released:
-            released.amount = payload.amount
-            released.setup_intent = None
-            released.status = PledgeStatus.active
-            released.payment_method = payload.payment_method_id
-            released.save_card = True
-            pledge = released
-        else:
-            pledge = Pledge(
-                patron_id=patron.id,
-                task_id=task_id,
-                amount=payload.amount,
-                setup_intent=None,
-                status=PledgeStatus.active,
-                payment_method=payload.payment_method_id,
-                save_card=True,
-            )
-            db.add(pledge)
+        pledge.setup_intent = None
+        pledge.status = PledgeStatus.active
+        pledge.payment_method = payload.payment_method_id
+        pledge.save_card = True
 
         task.pledge_count += 1
         task.pledge_total += payload.amount
@@ -144,25 +134,11 @@ async def create_pledge(
         customer=patron.stripe_customer,
         metadata={"pledge_task_id": str(task_id), "pledge_patron_id": str(patron.id)},
     )
+    pledge.setup_intent = si.id
+    pledge.status = PledgeStatus.pending
+    pledge.payment_method = None
+    pledge.save_card = payload.save_card
 
-    if released:
-        released.amount = payload.amount
-        released.setup_intent = si.id
-        released.status = PledgeStatus.pending
-        released.payment_method = None
-        released.save_card = payload.save_card
-        pledge = released
-    else:
-        pledge = Pledge(
-            patron_id=patron.id,
-            task_id=task_id,
-            amount=payload.amount,
-            setup_intent=si.id,
-            status=PledgeStatus.pending,
-            payment_method=None,
-            save_card=payload.save_card,
-        )
-        db.add(pledge)
     await db.commit()
     await db.refresh(pledge)
 

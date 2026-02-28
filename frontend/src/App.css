@@ -386,22 +386,6 @@
 }
 
 /* Pledge Page */
-.pledge-page {
-  max-width: 500px;
-  margin: 0 auto;
-  padding: 1rem 0;
-}
-
-.pledge-page h1 {
-  font-size: 1.3rem;
-  margin-bottom: 1.5rem;
-}
-
-.pledge-form h2 {
-  font-size: 1.1rem;
-  margin-bottom: 1rem;
-}
-
 .amount-selector {
   display: flex;
   gap: 0.5rem;
@@ -475,31 +459,6 @@
   margin-bottom: 0.75rem;
 }
 
-.pledge-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-
-.pledge-confirmed {
-  text-align: center;
-  padding: 2rem 0;
-}
-
-.pledge-confirmed h2 {
-  margin-bottom: 0.5rem;
-}
-
-.pledge-confirmed p {
-  color: #888;
-  margin-bottom: 1.5rem;
-}
-
-.my-pledge-status {
-  color: #888;
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
-}
 
 /* Admin */
 .admin-page h1 {
