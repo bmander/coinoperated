@@ -212,7 +212,7 @@ async def test_create_task_non_admin_pledge_below_minimum(client, test_session_m
     assert resp.status_code == 422
 
 
-@patch("app.routers.tasks.stripe.SetupIntent.create")
+@patch("app.services.pledges.stripe.SetupIntent.create")
 async def test_create_task_non_admin_with_pledge(
     mock_si_create, client, test_session_maker
 ):
@@ -239,7 +239,7 @@ async def test_create_task_non_admin_with_pledge(
     mock_si_create.assert_called_once()
 
 
-@patch("app.routers.tasks.stripe.SetupIntent.create")
+@patch("app.services.pledges.stripe.SetupIntent.create")
 async def test_create_task_admin_with_optional_pledge(
     mock_si_create, authed_client, test_patron
 ):
@@ -375,7 +375,7 @@ async def test_completed_is_terminal(authed_client):
 # --- POST /api/tasks with payment_method_id / save_card ---
 
 
-@patch("app.routers.tasks.stripe.PaymentMethod.retrieve")
+@patch("app.services.pledges.stripe.PaymentMethod.retrieve")
 async def test_create_task_with_saved_pm(mock_pm_retrieve, client, test_session_maker):
     patron = await create_patron_db(test_session_maker, "user4@example.com", "cus_user4")
     mock_pm = MagicMock()
@@ -405,7 +405,7 @@ async def test_create_task_with_saved_pm(mock_pm_retrieve, client, test_session_
     assert task_resp.json()["pledge_total"] == 500
 
 
-@patch("app.routers.tasks.stripe.SetupIntent.create")
+@patch("app.services.pledges.stripe.SetupIntent.create")
 async def test_create_task_save_card_false(mock_si_create, client, test_session_maker):
     mock_si_create.return_value = mock_setup_intent()
     patron = await create_patron_db(test_session_maker, "user5@example.com", "cus_user5")

@@ -19,7 +19,7 @@ def auth_cookies(patron_id: uuid.UUID) -> dict:
 # --- POST /api/tasks/{task_id}/pledges ---
 
 
-@patch("app.routers.pledges.stripe.SetupIntent.create")
+@patch("app.services.pledges.stripe.SetupIntent.create")
 async def test_create_pledge(mock_si_create, client, test_session_maker):
     mock_si_create.return_value = mock_setup_intent()
     patron = await create_patron(test_session_maker, "alice@example.com", "cus_alice")
@@ -68,7 +68,7 @@ async def test_create_pledge_task_not_found(client, test_session_maker):
     assert resp.status_code == 404
 
 
-@patch("app.routers.pledges.stripe.SetupIntent.create")
+@patch("app.services.pledges.stripe.SetupIntent.create")
 async def test_create_pledge_duplicate_rejected(mock_si_create, client, test_session_maker):
     mock_si_create.return_value = mock_setup_intent()
     patron = await create_patron(test_session_maker, "carol@example.com", "cus_carol")
@@ -535,7 +535,7 @@ async def test_delete_pledge_requires_auth(client, test_session_maker):
 # --- Pledges allowed on accepted tasks ---
 
 
-@patch("app.routers.pledges.stripe.SetupIntent.create")
+@patch("app.services.pledges.stripe.SetupIntent.create")
 async def test_create_pledge_on_accepted_task(mock_si_create, client, test_session_maker):
     mock_si_create.return_value = mock_setup_intent()
     patron = await create_patron(test_session_maker, "accepted@example.com", "cus_accepted")
@@ -782,7 +782,7 @@ async def test_webhook_handles_already_attached_pm(
 # --- Saved payment method pledge creation ---
 
 
-@patch("app.routers.pledges.stripe.PaymentMethod.retrieve")
+@patch("app.services.pledges.stripe.PaymentMethod.retrieve")
 async def test_create_pledge_with_saved_pm(mock_pm_retrieve, client, test_session_maker):
     patron = await create_patron(test_session_maker, "saved_pm@example.com", "cus_saved")
     task = await create_task(test_session_maker)
@@ -816,7 +816,7 @@ async def test_create_pledge_with_saved_pm(mock_pm_retrieve, client, test_sessio
         assert t.pledge_total == 500
 
 
-@patch("app.routers.pledges.stripe.PaymentMethod.retrieve")
+@patch("app.services.pledges.stripe.PaymentMethod.retrieve")
 async def test_create_pledge_with_saved_pm_wrong_customer(mock_pm_retrieve, client, test_session_maker):
     patron = await create_patron(test_session_maker, "wrong_pm@example.com", "cus_wrong")
     task = await create_task(test_session_maker)
@@ -834,7 +834,7 @@ async def test_create_pledge_with_saved_pm_wrong_customer(mock_pm_retrieve, clie
     assert "does not belong" in resp.json()["detail"].lower()
 
 
-@patch("app.routers.pledges.stripe.SetupIntent.create")
+@patch("app.services.pledges.stripe.SetupIntent.create")
 async def test_create_pledge_save_card_false(mock_si_create, client, test_session_maker):
     mock_si_create.return_value = mock_setup_intent()
     patron = await create_patron(test_session_maker, "nosave@example.com", "cus_nosave")
