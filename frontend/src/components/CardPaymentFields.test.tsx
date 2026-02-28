@@ -50,8 +50,9 @@ describe("CardPaymentFields", () => {
     render(<TestWrapper savedMethods={[savedMethod]} />);
 
     expect(screen.getByText("Payment method")).toBeInTheDocument();
-    expect(screen.getByText(/Visa \.\.\.\.4242/)).toBeInTheDocument();
-    expect(screen.getByText(/Expires 12\/2027/)).toBeInTheDocument();
+    expect(screen.getByText("Visa", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("…4242")).toBeInTheDocument();
+    expect(screen.getByText(/12\/2027/)).toBeInTheDocument();
     expect(screen.getByText("New card")).toBeInTheDocument();
     expect(screen.queryByTestId("card-element")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Save this card for future pledges")).not.toBeInTheDocument();
@@ -125,7 +126,7 @@ describe("CardPaymentFields", () => {
     await userEvent.click(screen.getByLabelText("New card"));
     expect(screen.getByTestId("card-element")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByLabelText(/Visa \.\.\.\.4242/));
+    await userEvent.click(screen.getByLabelText(/Visa.*4242/));
     expect(screen.queryByTestId("card-element")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Save this card for future pledges")).not.toBeInTheDocument();
   });
@@ -159,12 +160,12 @@ describe("CardPaymentFields", () => {
 
     render(<ControlledWrapper />);
 
-    expect(screen.getByText(/Visa \.\.\.\.4242/)).toBeInTheDocument();
-    expect(screen.getByText(/Mastercard \.\.\.\.5555/)).toBeInTheDocument();
+    expect(screen.getByText("…4242")).toBeInTheDocument();
+    expect(screen.getByText("…5555")).toBeInTheDocument();
     // Single-digit month should be zero-padded
-    expect(screen.getByText(/Expires 03\/2028/)).toBeInTheDocument();
+    expect(screen.getByText(/03\/2028/)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByLabelText(/Mastercard \.\.\.\.5555/));
+    await userEvent.click(screen.getByLabelText(/Mastercard.*5555/));
 
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ selectedPM: "pm_2", usingSavedCard: true }),

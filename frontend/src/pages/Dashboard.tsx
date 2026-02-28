@@ -47,8 +47,8 @@ function SavedPaymentMethods() {
             <div key={pm.id} className="payment-method-list-item">
               <div className="payment-method-info">
                 <span className="pm-brand">{capitalize(pm.brand)}</span>
-                <span className="pm-last4">....{pm.last4}</span>
-                <span className="pm-expiry">Expires {String(pm.exp_month).padStart(2, "0")}/{pm.exp_year}</span>
+                <span className="pm-last4">…{pm.last4}</span>
+                <span className="pm-expiry">Exp {String(pm.exp_month).padStart(2, "0")}/{pm.exp_year}</span>
               </div>
               <button
                 className="btn btn-secondary btn-sm"

@@ -175,8 +175,9 @@ describe("PaymentModal", () => {
     );
 
     expect(screen.getByText("Payment method")).toBeInTheDocument();
-    expect(screen.getByText(/Visa \.\.\.\.4242/)).toBeInTheDocument();
-    expect(screen.getByText(/Expires 12\/2027/)).toBeInTheDocument();
+    expect(screen.getByText("Visa", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("…4242")).toBeInTheDocument();
+    expect(screen.getByText(/12\/2027/)).toBeInTheDocument();
     expect(screen.getByLabelText("New card")).toBeInTheDocument();
   });
 

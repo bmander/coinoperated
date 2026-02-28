@@ -111,11 +111,11 @@ describe("Dashboard", () => {
 
     renderWithRouter(<Dashboard />);
     expect(await screen.findByText("Visa")).toBeInTheDocument();
-    expect(screen.getByText("....4242")).toBeInTheDocument();
-    expect(screen.getByText("Expires 12/2028")).toBeInTheDocument();
+    expect(screen.getByText("…4242")).toBeInTheDocument();
+    expect(screen.getByText("Exp 12/2028")).toBeInTheDocument();
     expect(screen.getByText("Mastercard")).toBeInTheDocument();
-    expect(screen.getByText("....5555")).toBeInTheDocument();
-    expect(screen.getByText("Expires 03/2027")).toBeInTheDocument();
+    expect(screen.getByText("…5555")).toBeInTheDocument();
+    expect(screen.getByText("Exp 03/2027")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(2);
   });
 
@@ -129,7 +129,7 @@ describe("Dashboard", () => {
     vi.spyOn(globalThis, "confirm").mockReturnValue(true);
 
     renderWithRouter(<Dashboard />);
-    await screen.findByText("....9999");
+    await screen.findByText("…9999");
 
     await userEvent.click(screen.getByRole("button", { name: "Remove" }));
     expect(mockDeletePaymentMethod).toHaveBeenCalledWith("pm_del");
@@ -145,7 +145,7 @@ describe("Dashboard", () => {
     vi.spyOn(globalThis, "confirm").mockReturnValue(true);
 
     renderWithRouter(<Dashboard />);
-    await screen.findByText("....1111");
+    await screen.findByText("…1111");
 
     await userEvent.click(screen.getByRole("button", { name: "Remove" }));
     expect(await screen.findByText("Payment method is in use by an active pledge")).toBeInTheDocument();
