@@ -385,7 +385,7 @@
   color: #888;
 }
 
-/* Pledge Page */
+/* Pledge / Card Entry */
 .amount-selector {
   display: flex;
   gap: 0.5rem;
@@ -459,6 +459,24 @@
   margin-bottom: 0.75rem;
 }
 
+.save-card-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.payment-method-selector {
+  margin-bottom: 0.75rem;
+}
+
+.payment-method-selector > label:first-child {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
 
 /* Admin */
 .admin-page h1 {
