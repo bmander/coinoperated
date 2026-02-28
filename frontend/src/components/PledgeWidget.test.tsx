@@ -247,9 +247,10 @@ describe("PledgeWidget", () => {
       });
     });
 
-    // No modal should appear, should show pledged state
+    // No modal should appear, should show existing pledge UI
     expect(screen.queryByText("Payment Information")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Pledged $5" })).toBeInTheDocument();
+    expect(screen.getByText("$5")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument();
     expect(onPledge).toHaveBeenCalled();
   });
 
@@ -318,12 +319,11 @@ describe("PledgeWidget", () => {
       screen.getByRole("button", { name: "Confirm Pledge" }),
     );
 
-    // Should show pledged state
+    // Should show existing pledge UI
     await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: "Pledged $20" }),
-      ).toBeInTheDocument();
+      expect(screen.getByText("$20")).toBeInTheDocument();
     });
+    expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument();
     expect(onPledge).toHaveBeenCalled();
   });
 

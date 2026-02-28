@@ -27,7 +27,6 @@ export default function PledgeWidget({
   const [customAmount, setCustomAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [pledgedAmount, setPledgedAmount] = useState<number | null>(null);
   const [existingPledge, setExistingPledge] = useState<PledgeMyResponse | null>(null);
   const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
 
@@ -98,7 +97,7 @@ export default function PledgeWidget({
             payment_method: patron.default_payment_method,
           });
           if (!result.error) {
-            setPledgedAmount(finalAmount);
+            setExistingPledge({ id: resp.pledge_id, amount: finalAmount, status: "active", created_at: new Date().toISOString() });
             setExpanded(false);
             setSubmitting(false);
             onPledge?.();
@@ -120,7 +119,7 @@ export default function PledgeWidget({
   }
 
   function handleModalSuccess() {
-    setPledgedAmount(resolveAmount()!);
+    setExistingPledge({ id: "confirmed", amount: resolveAmount()!, status: "active", created_at: new Date().toISOString() });
     setShowModal(false);
     setExpanded(false);
     onPledge?.();
@@ -196,10 +195,6 @@ export default function PledgeWidget({
               ✕
             </button>
           </div>
-        ) : pledgedAmount ? (
-          <button className="btn btn-sm btn-secondary">
-            {`Pledged ${formatCents(pledgedAmount)}`}
-          </button>
         ) : isLivePledge(existingPledge) ? (
           <span className="pledge-widget-existing">
             <span className="pledge-amount">{formatCents(existingPledge.amount)}</span>
