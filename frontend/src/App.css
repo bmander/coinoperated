@@ -33,6 +33,15 @@
   margin: 0.5rem 0;
 }
 
+.tagline a {
+  color: #646cff;
+  text-decoration: none;
+}
+
+.tagline a:hover {
+  text-decoration: underline;
+}
+
 .controls {
   display: flex;
   gap: 1.5rem;
@@ -897,4 +906,30 @@
 
 .pm-expiry {
   color: #888;
+}
+
+/* How It Works */
+.how-it-works-page {
+  max-width: 600px;
+  margin: 1rem auto;
+  padding-bottom: 4rem;
+  line-height: 1.7;
+}
+
+.how-it-works-page h1 {
+  margin-bottom: 1rem;
+}
+
+.how-it-works-page p {
+  margin-bottom: 1.25rem;
+  color: #444;
+}
+
+.how-it-works-page a {
+  color: #646cff;
+  text-decoration: none;
+}
+
+.how-it-works-page a:hover {
+  text-decoration: underline;
 }

@@ -39,7 +39,7 @@ export default function TaskBoard() {
 
   return (
     <div className="task-board">
-      <p className="tagline">Infrastructure tasks, funded by people who care.</p>
+      <p className="tagline">Group fund a universal fix-it man. <Link to="/how-it-works">How this works</Link></p>
       <hr />
 
       <div className="controls">
