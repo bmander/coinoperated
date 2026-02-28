@@ -753,6 +753,10 @@
 }
 
 /* Pledge Widget */
+.pledge-widget {
+  overflow: hidden;
+}
+
 .pledge-widget-options {
   display: flex;
   gap: 0.25rem;
