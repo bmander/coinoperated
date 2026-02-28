@@ -342,7 +342,7 @@ describe("SubmitTask (non-admin)", () => {
 
     renderWithRouter(<SubmitTask />);
 
-    expect(await screen.findByText(/Visa \.\.\.\.4242/)).toBeInTheDocument();
+    expect(await screen.findByText("…4242")).toBeInTheDocument();
     expect(screen.getByText("New card")).toBeInTheDocument();
     expect(screen.queryByTestId("card-element")).not.toBeInTheDocument();
   });
@@ -357,7 +357,7 @@ describe("SubmitTask (non-admin)", () => {
 
     renderWithRouter(<SubmitTask />);
 
-    await screen.findByText(/Visa \.\.\.\.4242/);
+    await screen.findByText("…4242");
 
     await userEvent.type(screen.getByLabelText("Title *"), "My task");
     await userEvent.type(screen.getByLabelText("Description *"), "Needs doing");
