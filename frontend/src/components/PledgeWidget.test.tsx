@@ -157,7 +157,7 @@ describe("PledgeWidget", () => {
     renderWidget();
     await userEvent.click(screen.getByRole("button", { name: "Pledge" }));
     // Submit button should be disabled when no amount selected
-    const submitBtn = screen.getAllByRole("button", { name: "Pledge" })[0];
+    const submitBtn = screen.getByRole("button", { name: "Submit pledge" });
     expect(submitBtn).toBeDisabled();
   });
 
@@ -168,8 +168,7 @@ describe("PledgeWidget", () => {
     await userEvent.type(screen.getByPlaceholderText("$"), "0.50");
 
     // The submit Pledge button in expanded mode
-    const buttons = screen.getAllByRole("button", { name: "Pledge" });
-    await userEvent.click(buttons[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Submit pledge" }));
 
     expect(screen.getByText("Min $1.00")).toBeInTheDocument();
   });
@@ -187,7 +186,7 @@ describe("PledgeWidget", () => {
     await userEvent.click(screen.getByRole("button", { name: "Pledge" }));
     await userEvent.click(screen.getByRole("button", { name: "$10" }));
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Pledge" })[0],
+      screen.getByRole("button", { name: "Submit pledge" }),
     );
 
     await waitFor(() => {
@@ -230,7 +229,7 @@ describe("PledgeWidget", () => {
     await userEvent.click(screen.getByRole("button", { name: "Pledge" }));
     await userEvent.click(screen.getByRole("button", { name: "$5" }));
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Pledge" })[0],
+      screen.getByRole("button", { name: "Submit pledge" }),
     );
 
     await waitFor(() => {
@@ -273,7 +272,7 @@ describe("PledgeWidget", () => {
     await userEvent.click(screen.getByRole("button", { name: "Pledge" }));
     await userEvent.click(screen.getByRole("button", { name: "$10" }));
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Pledge" })[0],
+      screen.getByRole("button", { name: "Submit pledge" }),
     );
 
     // Modal should appear as fallback
@@ -299,7 +298,7 @@ describe("PledgeWidget", () => {
     await userEvent.click(screen.getByRole("button", { name: "Pledge" }));
     await userEvent.click(screen.getByRole("button", { name: "$20" }));
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Pledge" })[0],
+      screen.getByRole("button", { name: "Submit pledge" }),
     );
 
     // Wait for modal to appear
@@ -333,7 +332,7 @@ describe("PledgeWidget", () => {
     await userEvent.click(screen.getByRole("button", { name: "Pledge" }));
     await userEvent.click(screen.getByRole("button", { name: "$5" }));
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Pledge" })[0],
+      screen.getByRole("button", { name: "Submit pledge" }),
     );
 
     await screen.findByText("Payment Information");
@@ -356,7 +355,7 @@ describe("PledgeWidget", () => {
     await userEvent.click(screen.getByRole("button", { name: "Pledge" }));
     await userEvent.click(screen.getByRole("button", { name: "$5" }));
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Pledge" })[0],
+      screen.getByRole("button", { name: "Submit pledge" }),
     );
 
     expect(
@@ -398,7 +397,7 @@ describe("PledgeWidget", () => {
     await userEvent.click(screen.getByRole("button", { name: "..." }));
     await userEvent.type(screen.getByPlaceholderText("$"), "15.50");
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Pledge" })[0],
+      screen.getByRole("button", { name: "Submit pledge" }),
     );
 
     await waitFor(() => {

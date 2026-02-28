@@ -803,6 +803,28 @@
   color: inherit;
 }
 
+.pledge-confirm-btn {
+  background: #8fca8f;
+  border-color: #8fca8f;
+  color: #fff;
+}
+
+.pledge-confirm-btn:hover:not(:disabled) {
+  background: #7aba7a;
+  border-color: #7aba7a;
+}
+
+.pledge-cancel-btn {
+  background: #ca8f8f;
+  border-color: #ca8f8f;
+  color: #fff;
+}
+
+.pledge-cancel-btn:hover {
+  background: #ba7a7a;
+  border-color: #ba7a7a;
+}
+
 .pledge-widget-error {
   color: #e55;
   font-size: 0.75rem;

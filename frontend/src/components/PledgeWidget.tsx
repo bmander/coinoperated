@@ -166,11 +166,20 @@ export default function PledgeWidget({
             {error && <span className="pledge-widget-error">{error}</span>}
             <button
               type="button"
-              className="btn btn-primary btn-sm"
+              className="btn btn-sm pledge-confirm-btn"
               onClick={handleSubmit}
               disabled={submitting || (!selectedAmount && !isCustom)}
+              aria-label="Submit pledge"
             >
-              {submitting ? "..." : "Pledge"}
+              {submitting ? "..." : "✓"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm pledge-cancel-btn"
+              onClick={() => { setExpanded(false); setError(""); }}
+              aria-label="Close"
+            >
+              ✕
             </button>
           </div>
         ) : (
