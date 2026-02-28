@@ -18,13 +18,15 @@
 .site-title {
   font-size: 1.4rem;
   font-weight: 700;
-  color: inherit;
+  color: #fff;
   text-decoration: none;
+  background: #2a5a8a;
+  padding: 0.15rem 0.4rem;
 }
 
 .site-title:hover {
-  color: inherit;
-  opacity: 0.8;
+  color: #fff;
+  opacity: 0.85;
 }
 
 /* Task Board */

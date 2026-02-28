@@ -7,7 +7,7 @@ export default function Layout() {
   return (
     <div className="layout">
       <header className="site-header">
-        <Link to="/" className="site-title">CoinOperatedBrandon</Link>
+        <Link to="/" className="site-title">Coin Operated Brandon</Link>
         {patron ? (
           <div className="header-user">
             <Link to="/dashboard" className="btn btn-secondary">Dashboard</Link>
