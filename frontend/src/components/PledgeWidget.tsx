@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { loadStripe } from "@stripe/stripe-js";
 import type { Stripe } from "@stripe/stripe-js";
 import { useAuth } from "../contexts/AuthContext";
-import { createPledge, deletePledge } from "../api/pledges";
+import { createPledge, deletePledge, getMyPledge, updatePledge } from "../api/pledges";
 import { formatCents } from "../utils/formatting";
-import type { TaskRead } from "../api/types";
+import type { TaskRead, PledgeMyResponse } from "../api/types";
+import { isLivePledge } from "../api/types";
 import PaymentModal from "./PaymentModal";
 
 const PRESET_AMOUNTS = [500, 1000, 2000]; // $5, $10, $20
@@ -26,6 +27,7 @@ export default function PledgeWidget({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [pledgedAmount, setPledgedAmount] = useState<number | null>(null);
+  const [existingPledge, setExistingPledge] = useState<PledgeMyResponse | null>(null);
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -41,6 +43,12 @@ export default function PledgeWidget({
     }
     return selectedAmount;
   }
+
+  // Fetch existing pledge on mount
+  useEffect(() => {
+    if (!patron) return;
+    getMyPledge(task.id).then((p) => setExistingPledge(p)).catch(() => {});
+  }, [patron, task.id]);
 
   // Close on outside click
   useEffect(() => {
@@ -74,7 +82,9 @@ export default function PledgeWidget({
     setError("");
 
     try {
-      const resp = await createPledge(task.id, finalAmount);
+      const resp = isLivePledge(existingPledge)
+        ? await updatePledge(task.id, finalAmount)
+        : await createPledge(task.id, finalAmount);
       const sp = loadStripe(resp.publishable_key);
 
       // Try auto-confirm with saved payment method
@@ -183,12 +193,20 @@ export default function PledgeWidget({
               ✕
             </button>
           </div>
+        ) : pledgedAmount ? (
+          <button className="btn btn-sm btn-secondary">
+            {`Pledged ${formatCents(pledgedAmount)}`}
+          </button>
+        ) : isLivePledge(existingPledge) ? (
+          <span className="pledge-widget-existing">
+            <span className="pledge-amount">{formatCents(existingPledge.amount)}</span>
+            <button className="btn btn-sm btn-secondary" onClick={handlePledgeClick}>
+              Change
+            </button>
+          </span>
         ) : (
-          <button
-            className={`btn btn-sm${pledgedAmount ? " btn-secondary" : " btn-primary"}`}
-            onClick={pledgedAmount ? undefined : handlePledgeClick}
-          >
-            {pledgedAmount ? `Pledged ${formatCents(pledgedAmount)}` : "Pledge"}
+          <button className="btn btn-sm btn-primary" onClick={handlePledgeClick}>
+            Pledge
           </button>
         )}
       </div>

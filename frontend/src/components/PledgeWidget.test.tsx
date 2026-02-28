@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import PledgeWidget from "./PledgeWidget";
-import { createPledge, deletePledge } from "../api/pledges";
+import { createPledge, deletePledge, getMyPledge, updatePledge } from "../api/pledges";
 import { makeTask } from "../test/factories";
 import { renderWithRouter } from "../test/render";
 
@@ -35,6 +35,8 @@ vi.mock("@stripe/react-stripe-js", () => ({
 
 const mockCreatePledge = vi.mocked(createPledge);
 const mockDeletePledge = vi.mocked(deletePledge);
+const mockGetMyPledge = vi.mocked(getMyPledge);
+const mockUpdatePledge = vi.mocked(updatePledge);
 
 function renderWidget(
   overrides: Parameters<typeof makeTask>[0] = {},
@@ -47,6 +49,7 @@ function renderWidget(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetMyPledge.mockResolvedValue(null);
   mockUseAuth.mockReturnValue({
     patron: {
       id: "p1",
@@ -361,6 +364,76 @@ describe("PledgeWidget", () => {
     expect(
       await screen.findByText("You already have a pledge on this task"),
     ).toBeInTheDocument();
+  });
+
+  // --- Existing pledge ---
+
+  it("shows existing pledge amount and Change button", async () => {
+    mockGetMyPledge.mockResolvedValue({
+      id: "pledge-1",
+      amount: 2500,
+      status: "active",
+      created_at: "2025-01-15T00:00:00Z",
+    });
+
+    renderWidget();
+
+    expect(await screen.findByText("$25")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument();
+  });
+
+  it("does not show Change button when no existing pledge", async () => {
+    mockGetMyPledge.mockResolvedValue(null);
+
+    renderWidget();
+
+    // Wait for effect to settle
+    await waitFor(() => {
+      expect(mockGetMyPledge).toHaveBeenCalled();
+    });
+    expect(screen.queryByRole("button", { name: "Change" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pledge" })).toBeInTheDocument();
+  });
+
+  it("expands when Change is clicked", async () => {
+    mockGetMyPledge.mockResolvedValue({
+      id: "pledge-1",
+      amount: 1000,
+      status: "active",
+      created_at: "2025-01-15T00:00:00Z",
+    });
+
+    renderWidget();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Change" }));
+
+    expect(screen.getByRole("button", { name: "$5" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "$10" })).toBeInTheDocument();
+  });
+
+  it("calls updatePledge instead of createPledge when editing existing pledge", async () => {
+    mockGetMyPledge.mockResolvedValue({
+      id: "pledge-1",
+      amount: 1000,
+      status: "active",
+      created_at: "2025-01-15T00:00:00Z",
+    });
+    mockUpdatePledge.mockResolvedValue({
+      pledge_id: "pledge-1",
+      client_secret: "seti_secret",
+      publishable_key: "pk_test",
+    });
+
+    renderWidget();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Change" }));
+    await userEvent.click(screen.getByRole("button", { name: "$20" }));
+    await userEvent.click(screen.getByRole("button", { name: "Submit pledge" }));
+
+    await waitFor(() => {
+      expect(mockUpdatePledge).toHaveBeenCalledWith("abc-123", 2000);
+    });
+    expect(mockCreatePledge).not.toHaveBeenCalled();
   });
 
   // --- Outside click ---
