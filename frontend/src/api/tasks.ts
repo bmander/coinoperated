@@ -35,6 +35,8 @@ export interface CreateTaskPayload {
   description: string;
   criteria?: string;
   pledge_amount?: number;
+  payment_method_id?: string;
+  save_card?: boolean;
 }
 
 export async function createTask(payload: CreateTaskPayload): Promise<TaskCreateResponse> {

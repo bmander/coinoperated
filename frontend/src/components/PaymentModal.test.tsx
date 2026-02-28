@@ -2,6 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { render } from "@testing-library/react";
 import PaymentModal from "./PaymentModal";
+import type { SavedPaymentMethod } from "../api/types";
 
 const mockConfirmCardSetup = vi.fn();
 const mockGetElement = vi.fn();
@@ -16,6 +17,14 @@ vi.mock("@stripe/react-stripe-js", () => ({
 }));
 
 const stripePromise = Promise.resolve({}) as Promise<any>;
+
+const savedMethod: SavedPaymentMethod = {
+  id: "pm_saved_1",
+  brand: "visa",
+  last4: "4242",
+  exp_month: 12,
+  exp_year: 2027,
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -50,6 +59,21 @@ describe("PaymentModal", () => {
     expect(
       screen.getByRole("button", { name: "Cancel" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows save card checkbox when no saved methods", () => {
+    render(
+      <PaymentModal
+        stripePromise={stripePromise}
+        clientSecret="seti_secret"
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByLabelText("Save this card for future pledges"),
+    ).toBeChecked();
   });
 
   it("calls onSuccess after successful card setup", async () => {
@@ -135,5 +159,86 @@ describe("PaymentModal", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  // --- Saved payment methods ---
+
+  it("shows saved payment method selector when methods provided", () => {
+    render(
+      <PaymentModal
+        stripePromise={stripePromise}
+        clientSecret="seti_secret"
+        savedMethods={[savedMethod]}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Payment method")).toBeInTheDocument();
+    expect(screen.getByText(/Visa \.\.\.\.4242/)).toBeInTheDocument();
+    expect(screen.getByText(/Expires 12\/2027/)).toBeInTheDocument();
+    expect(screen.getByLabelText("New card")).toBeInTheDocument();
+  });
+
+  it("defaults to saved method and hides card element", () => {
+    render(
+      <PaymentModal
+        stripePromise={stripePromise}
+        clientSecret="seti_secret"
+        savedMethods={[savedMethod]}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("card-element")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Save this card for future pledges"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows card element and save checkbox when New card is selected", async () => {
+    render(
+      <PaymentModal
+        stripePromise={stripePromise}
+        clientSecret="seti_secret"
+        savedMethods={[savedMethod]}
+        onSuccess={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(screen.getByLabelText("New card"));
+
+    expect(screen.getByTestId("card-element")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Save this card for future pledges"),
+    ).toBeInTheDocument();
+  });
+
+  it("confirms with saved payment method ID", async () => {
+    mockConfirmCardSetup.mockResolvedValue({ error: null });
+    const onSuccess = vi.fn();
+
+    render(
+      <PaymentModal
+        stripePromise={stripePromise}
+        clientSecret="seti_secret"
+        savedMethods={[savedMethod]}
+        onSuccess={onSuccess}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Confirm Pledge" }),
+    );
+
+    await waitFor(() => {
+      expect(mockConfirmCardSetup).toHaveBeenCalledWith("seti_secret", {
+        payment_method: "pm_saved_1",
+      });
+    });
+    expect(onSuccess).toHaveBeenCalled();
   });
 });

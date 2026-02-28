@@ -99,26 +99,53 @@ async def create_task(
     publishable_key = None
 
     if payload.pledge_amount is not None:
-        si = stripe.SetupIntent.create(
-            customer=patron.stripe_customer,
-            metadata={
-                "pledge_task_id": str(task.id),
-                "pledge_patron_id": str(patron.id),
-            },
-        )
-        pledge = Pledge(
-            patron_id=patron.id,
-            task_id=task.id,
-            amount=payload.pledge_amount,
-            setup_intent=si.id,
-            status=PledgeStatus.pending,
-            payment_method=None,
-        )
-        db.add(pledge)
-        await db.flush()
-        pledge_id = pledge.id
-        client_secret = si.client_secret
-        publishable_key = settings.stripe_publishable_key
+        if payload.payment_method_id:
+            # Reuse saved payment method — skip SetupIntent
+            pm = stripe.PaymentMethod.retrieve(payload.payment_method_id)
+            if pm.customer != patron.stripe_customer:
+                raise HTTPException(
+                    status_code=400, detail="Payment method does not belong to you"
+                )
+
+            pledge = Pledge(
+                patron_id=patron.id,
+                task_id=task.id,
+                amount=payload.pledge_amount,
+                setup_intent=None,
+                status=PledgeStatus.active,
+                payment_method=payload.payment_method_id,
+                save_card=True,
+            )
+            db.add(pledge)
+            await db.flush()
+
+            task.pledge_count += 1
+            task.pledge_total += payload.pledge_amount
+
+            pledge_id = pledge.id
+            publishable_key = settings.stripe_publishable_key
+        else:
+            si = stripe.SetupIntent.create(
+                customer=patron.stripe_customer,
+                metadata={
+                    "pledge_task_id": str(task.id),
+                    "pledge_patron_id": str(patron.id),
+                },
+            )
+            pledge = Pledge(
+                patron_id=patron.id,
+                task_id=task.id,
+                amount=payload.pledge_amount,
+                setup_intent=si.id,
+                status=PledgeStatus.pending,
+                payment_method=None,
+                save_card=payload.save_card,
+            )
+            db.add(pledge)
+            await db.flush()
+            pledge_id = pledge.id
+            client_secret = si.client_secret
+            publishable_key = settings.stripe_publishable_key
 
     await db.commit()
     await db.refresh(task)

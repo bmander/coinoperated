@@ -4,8 +4,9 @@ import { loadStripe } from "@stripe/stripe-js";
 import type { Stripe } from "@stripe/stripe-js";
 import { useAuth } from "../contexts/AuthContext";
 import { createPledge, deletePledge, getMyPledge, updatePledge } from "../api/pledges";
+import { fetchPaymentMethods } from "../api/patron";
 import { formatCents } from "../utils/formatting";
-import type { TaskRead, PledgeMyResponse } from "../api/types";
+import type { TaskRead, PledgeMyResponse, SavedPaymentMethod } from "../api/types";
 import { isLivePledge } from "../api/types";
 import PaymentModal from "./PaymentModal";
 
@@ -28,6 +29,7 @@ export default function PledgeWidget({
   const [error, setError] = useState("");
   const [pledgedAmount, setPledgedAmount] = useState<number | null>(null);
   const [existingPledge, setExistingPledge] = useState<PledgeMyResponse | null>(null);
+  const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -48,6 +50,7 @@ export default function PledgeWidget({
   useEffect(() => {
     if (!patron) return;
     getMyPledge(task.id).then((p) => setExistingPledge(p)).catch(() => {});
+    fetchPaymentMethods().then((m) => setSavedMethods(m)).catch(() => {});
   }, [patron, task.id]);
 
   // Close on outside click
@@ -84,7 +87,7 @@ export default function PledgeWidget({
     try {
       const resp = isLivePledge(existingPledge)
         ? await updatePledge(task.id, finalAmount)
-        : await createPledge(task.id, finalAmount);
+        : await createPledge(task.id, finalAmount, { saveCard: true });
       const sp = loadStripe(resp.publishable_key);
 
       // Try auto-confirm with saved payment method
@@ -215,6 +218,7 @@ export default function PledgeWidget({
         <PaymentModal
           stripePromise={stripePromise}
           clientSecret={clientSecret}
+          savedMethods={savedMethods}
           onSuccess={handleModalSuccess}
           onCancel={handleModalCancel}
         />

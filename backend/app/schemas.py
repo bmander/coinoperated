@@ -35,6 +35,8 @@ class TaskCreate(BaseModel):
     description: str = Field(min_length=1)
     criteria: str | None = None
     pledge_amount: int | None = Field(default=None, ge=MIN_PLEDGE_CENTS)
+    payment_method_id: str | None = None
+    save_card: bool = True
 
 
 class TaskRead(BaseReadSchema):

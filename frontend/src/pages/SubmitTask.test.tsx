@@ -4,10 +4,13 @@ import { vi } from "vitest";
 import SubmitTask from "./SubmitTask";
 import { renderWithRouter } from "../test/render";
 import { createTask } from "../api/tasks";
+import { fetchPaymentMethods } from "../api/patron";
 import { makeTask } from "../test/factories";
 
 vi.mock("../api/tasks");
+vi.mock("../api/patron");
 const mockCreateTask = vi.mocked(createTask);
+const mockFetchPaymentMethods = vi.mocked(fetchPaymentMethods);
 
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", async () => {
@@ -179,6 +182,8 @@ describe("SubmitTask (non-admin)", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       json: () => Promise.resolve({ publishable_key: "pk_test_123" }),
     } as Response);
+
+    mockFetchPaymentMethods.mockResolvedValue([]);
   });
 
   it("shows loading state while Stripe loads", () => {
@@ -243,6 +248,7 @@ describe("SubmitTask (non-admin)", () => {
         description: "Needs doing",
         criteria: undefined,
         pledge_amount: 100, // default MIN_PLEDGE_CENTS
+        save_card: true,
       });
     });
 
@@ -327,5 +333,46 @@ describe("SubmitTask (non-admin)", () => {
       expect(screen.getByText("Your card was declined")).toBeInTheDocument();
     });
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("shows saved PM selector when methods exist", async () => {
+    mockFetchPaymentMethods.mockResolvedValue([
+      { id: "pm_saved", brand: "visa", last4: "4242", exp_month: 12, exp_year: 2028 },
+    ]);
+
+    renderWithRouter(<SubmitTask />);
+
+    expect(await screen.findByText(/Visa \.\.\.\.4242/)).toBeInTheDocument();
+    expect(screen.getByText("New card")).toBeInTheDocument();
+    expect(screen.queryByTestId("card-element")).not.toBeInTheDocument();
+  });
+
+  it("submits with saved PM and passes payment_method_id", async () => {
+    mockFetchPaymentMethods.mockResolvedValue([
+      { id: "pm_saved", brand: "visa", last4: "4242", exp_month: 12, exp_year: 2028 },
+    ]);
+    mockCreateTask.mockResolvedValue(
+      taskCreateResponse({ id: "task-with-saved-pm", client_secret: null }),
+    );
+
+    renderWithRouter(<SubmitTask />);
+
+    await screen.findByText(/Visa \.\.\.\.4242/);
+
+    await userEvent.type(screen.getByLabelText("Title *"), "My task");
+    await userEvent.type(screen.getByLabelText("Description *"), "Needs doing");
+    await userEvent.click(screen.getByRole("button", { name: "Submit Task" }));
+
+    await waitFor(() => {
+      expect(mockCreateTask).toHaveBeenCalledWith({
+        title: "My task",
+        description: "Needs doing",
+        criteria: undefined,
+        pledge_amount: 100,
+        payment_method_id: "pm_saved",
+      });
+    });
+    expect(mockConfirmCardSetup).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith("/tasks/task-with-saved-pm");
   });
 });

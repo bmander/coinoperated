@@ -3,10 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { createTask } from "../api/tasks";
+import { fetchPaymentMethods } from "../api/patron";
 import MarkdownField from "../components/MarkdownField";
+import CardPaymentFields, { useCardPaymentSelection } from "../components/CardPaymentFields";
 import { useAuth } from "../contexts/AuthContext";
 import { MIN_PLEDGE_CENTS, PRESET_AMOUNTS } from "../constants";
 import { formatCents } from "../utils/formatting";
+import type { SavedPaymentMethod } from "../api/types";
 
 function TaskFormFields({
   title,
@@ -60,7 +63,7 @@ function TaskFormFields({
   );
 }
 
-function PledgedTaskForm() {
+function PledgedTaskForm({ savedMethods }: { savedMethods: SavedPaymentMethod[] }) {
   const stripe = useStripe();
   const elements = useElements();
   const navigate = useNavigate();
@@ -72,6 +75,7 @@ function PledgedTaskForm() {
   const [isCustom, setIsCustom] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [paymentSelection, setPaymentSelection] = useCardPaymentSelection(savedMethods);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -93,6 +97,9 @@ function PledgedTaskForm() {
         description: description.trim(),
         criteria: criteria.trim() || undefined,
         pledge_amount: finalAmount,
+        ...(paymentSelection.usingSavedCard
+          ? { payment_method_id: paymentSelection.selectedPM }
+          : { save_card: paymentSelection.saveCard }),
       });
 
       if (resp.client_secret) {
@@ -167,20 +174,11 @@ function PledgedTaskForm() {
         )}
       </div>
 
-      <div className="card-element-container">
-        <label>Card details</label>
-        <CardElement
-          options={{
-            style: {
-              base: {
-                fontSize: "16px",
-                color: "#e0e0e0",
-                "::placeholder": { color: "#888" },
-              },
-            },
-          }}
-        />
-      </div>
+      <CardPaymentFields
+        savedMethods={savedMethods}
+        value={paymentSelection}
+        onChange={setPaymentSelection}
+      />
 
       {error && <p className="form-error">{error}</p>}
 
@@ -246,17 +244,20 @@ export default function SubmitTask() {
   const isAdmin = patron?.is_admin ?? false;
   const isBanned = patron?.is_banned ?? false;
   const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
+  const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
 
   useEffect(() => {
     if (isAdmin || isBanned) return;
 
-    fetch("/api/config/stripe")
-      .then((r) => r.json())
-      .then((config) => {
-        if (config.publishable_key) {
-          setStripePromise(loadStripe(config.publishable_key));
-        }
-      });
+    Promise.all([
+      fetch("/api/config/stripe").then((r) => r.json()),
+      fetchPaymentMethods().catch(() => [] as SavedPaymentMethod[]),
+    ]).then(([config, methods]) => {
+      if (config.publishable_key) {
+        setStripePromise(loadStripe(config.publishable_key));
+      }
+      setSavedMethods(methods);
+    });
   }, [isAdmin, isBanned]);
 
   if (isBanned) {
@@ -295,7 +296,7 @@ export default function SubmitTask() {
         what "done" looks like. A pledge is required to submit a task.
       </p>
       <Elements stripe={stripePromise}>
-        <PledgedTaskForm />
+        <PledgedTaskForm savedMethods={savedMethods} />
       </Elements>
     </div>
   );

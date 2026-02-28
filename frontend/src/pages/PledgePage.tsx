@@ -7,9 +7,10 @@ import { getTask } from "../api/tasks";
 import { createPledge, getMyPledge, updatePledge, deletePledge } from "../api/pledges";
 import { fetchPaymentMethods } from "../api/patron";
 import { MIN_PLEDGE_CENTS, PRESET_AMOUNTS } from "../constants";
-import { capitalize, formatCents } from "../utils/formatting";
+import { formatCents } from "../utils/formatting";
 import { isLivePledge } from "../api/types";
 import type { TaskDetailRead, PledgeMyResponse, SavedPaymentMethod } from "../api/types";
+import CardPaymentFields, { useCardPaymentSelection } from "../components/CardPaymentFields";
 
 function PledgeForm({
   task,
@@ -31,14 +32,10 @@ function PledgeForm({
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState(false);
 
-  // Payment method selection: "new" or a saved PM id
-  const [selectedPM, setSelectedPM] = useState<string>(
-    savedMethods.length > 0 ? savedMethods[0].id : "new"
-  );
-  const [saveCard, setSaveCard] = useState(true);
-
   const isUpdate = isLivePledge(existingPledge);
-  const usingSavedCard = selectedPM !== "new";
+  const [paymentSelection, setPaymentSelection] = useCardPaymentSelection(
+    isUpdate ? [] : savedMethods,
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,16 +52,16 @@ function PledgeForm({
     setError("");
 
     try {
-      if (usingSavedCard && !isUpdate) {
+      if (paymentSelection.usingSavedCard) {
         // Create pledge with saved payment method — no Stripe confirmation needed
-        await createPledge(task.id, finalAmount, { paymentMethodId: selectedPM });
+        await createPledge(task.id, finalAmount, { paymentMethodId: paymentSelection.selectedPM });
         setConfirmed(true);
         return;
       }
 
       const resp = isUpdate
         ? await updatePledge(task.id, finalAmount)
-        : await createPledge(task.id, finalAmount, { saveCard });
+        : await createPledge(task.id, finalAmount, { saveCard: paymentSelection.saveCard });
 
       if (!resp.client_secret) {
         setConfirmed(true);
@@ -161,65 +158,12 @@ function PledgeForm({
         </div>
       )}
 
-      {!isUpdate && savedMethods.length > 0 && (
-        <div className="payment-method-selector">
-          <label>Payment method</label>
-          {savedMethods.map((pm) => (
-            <label key={pm.id} className="payment-method-option">
-              <input
-                type="radio"
-                name="payment-method"
-                value={pm.id}
-                checked={selectedPM === pm.id}
-                onChange={() => setSelectedPM(pm.id)}
-              />
-              <span className="pm-label">
-                {capitalize(pm.brand)} ....{pm.last4}
-                <span className="pm-expiry">Expires {String(pm.exp_month).padStart(2, "0")}/{pm.exp_year}</span>
-              </span>
-            </label>
-          ))}
-          <label className="payment-method-option">
-            <input
-              type="radio"
-              name="payment-method"
-              value="new"
-              checked={selectedPM === "new"}
-              onChange={() => setSelectedPM("new")}
-            />
-            <span className="pm-label">New card</span>
-          </label>
-        </div>
-      )}
-
-      {(!usingSavedCard || isUpdate) && (
-        <div className="card-element-container">
-          <label>Card details</label>
-          <CardElement
-            options={{
-              disableLink: true,
-              style: {
-                base: {
-                  fontSize: "16px",
-                  color: "#e0e0e0",
-                  "::placeholder": { color: "#888" },
-                },
-              },
-            }}
-          />
-        </div>
-      )}
-
-      {!usingSavedCard && !isUpdate && (
-        <label className="save-card-checkbox">
-          <input
-            type="checkbox"
-            checked={saveCard}
-            onChange={(e) => setSaveCard(e.target.checked)}
-          />
-          Save this card for future pledges
-        </label>
-      )}
+      <CardPaymentFields
+        savedMethods={isUpdate ? [] : savedMethods}
+        value={paymentSelection}
+        onChange={setPaymentSelection}
+        showSaveCheckbox={!isUpdate}
+      />
 
       {error && <p className="pledge-error">{error}</p>}
 

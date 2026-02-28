@@ -6,6 +6,11 @@ import { makeTask } from "../test/factories";
 import { renderWithRouter } from "../test/render";
 
 vi.mock("../api/pledges");
+vi.mock("../api/patron");
+
+import { fetchPaymentMethods } from "../api/patron";
+
+const mockFetchPaymentMethods = vi.mocked(fetchPaymentMethods);
 
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", async () => {
@@ -50,6 +55,7 @@ function renderWidget(
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetMyPledge.mockResolvedValue(null);
+  mockFetchPaymentMethods.mockResolvedValue([]);
   mockUseAuth.mockReturnValue({
     patron: {
       id: "p1",
@@ -193,7 +199,7 @@ describe("PledgeWidget", () => {
     );
 
     await waitFor(() => {
-      expect(mockCreatePledge).toHaveBeenCalledWith("abc-123", 1000);
+      expect(mockCreatePledge).toHaveBeenCalledWith("abc-123", 1000, { saveCard: true });
     });
 
     // Modal should appear
@@ -474,7 +480,7 @@ describe("PledgeWidget", () => {
     );
 
     await waitFor(() => {
-      expect(mockCreatePledge).toHaveBeenCalledWith("abc-123", 1550);
+      expect(mockCreatePledge).toHaveBeenCalledWith("abc-123", 1550, { saveCard: true });
     });
   });
 });

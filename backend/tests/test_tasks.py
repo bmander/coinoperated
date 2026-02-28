@@ -1,9 +1,11 @@
 import uuid
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import select
 
 from app.config import settings
+from app.models import Pledge
 from tests.conftest import auth_cookies, create_patron as create_patron_db, mock_setup_intent
 
 
@@ -368,3 +370,67 @@ async def test_completed_is_terminal(authed_client):
         f"/api/tasks/{task['id']}", json={"status": "open"}
     )
     assert resp.status_code == 400
+
+
+# --- POST /api/tasks with payment_method_id / save_card ---
+
+
+@patch("app.routers.tasks.stripe.PaymentMethod.retrieve")
+async def test_create_task_with_saved_pm(mock_pm_retrieve, client, test_session_maker):
+    patron = await create_patron_db(test_session_maker, "user4@example.com", "cus_user4")
+    mock_pm = MagicMock()
+    mock_pm.customer = "cus_user4"
+    mock_pm_retrieve.return_value = mock_pm
+
+    resp = await client.post(
+        "/api/tasks",
+        json={
+            "title": "My task",
+            "description": "Do something",
+            "pledge_amount": 500,
+            "payment_method_id": "pm_saved_123",
+        },
+        cookies=auth_cookies(patron),
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["pledge_id"] is not None
+    assert data["client_secret"] is None
+    assert data["publishable_key"] == settings.stripe_publishable_key
+    mock_pm_retrieve.assert_called_once_with("pm_saved_123")
+
+    # Verify task counts were updated
+    task_resp = await client.get(f"/api/tasks/{data['id']}")
+    assert task_resp.json()["pledge_count"] == 1
+    assert task_resp.json()["pledge_total"] == 500
+
+
+@patch("app.routers.tasks.stripe.SetupIntent.create")
+async def test_create_task_save_card_false(mock_si_create, client, test_session_maker):
+    mock_si_create.return_value = mock_setup_intent()
+    patron = await create_patron_db(test_session_maker, "user5@example.com", "cus_user5")
+
+    resp = await client.post(
+        "/api/tasks",
+        json={
+            "title": "My task",
+            "description": "Do something",
+            "pledge_amount": 500,
+            "save_card": False,
+        },
+        cookies=auth_cookies(patron),
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    pledge_id = data["pledge_id"]
+    assert pledge_id is not None
+    assert data["client_secret"] == "seti_test_secret"
+
+    # Verify pledge.save_card is False
+    async with test_session_maker() as session:
+        pledge = (
+            await session.execute(
+                select(Pledge).where(Pledge.id == uuid.UUID(pledge_id))
+            )
+        ).scalar_one()
+        assert pledge.save_card is False
