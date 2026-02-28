@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 import stripe
@@ -179,7 +179,7 @@ async def collect_payments(
             )
             pledge.payment_intent = pi.id
             pledge.status = PledgeStatus.collected
-            pledge.collected_at = datetime.now(timezone.utc)
+            pledge.collected_at = datetime.now(UTC)
             collected_total += pledge.amount
         except (stripe.error.CardError, stripe.error.InvalidRequestError):
             pledge.status = PledgeStatus.failed
@@ -192,7 +192,7 @@ async def collect_payments(
 
     task.collected_total = collected_total
     task.status = TaskStatus.completed
-    task.completed_at = datetime.now(timezone.utc)
+    task.completed_at = datetime.now(UTC)
 
     await db.commit()
 

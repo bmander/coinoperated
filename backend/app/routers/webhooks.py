@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+import contextlib
+from datetime import UTC, datetime
 from typing import Annotated
 
 import stripe
@@ -40,10 +41,10 @@ async def stripe_webhook(
         event = stripe.Webhook.construct_event(
             payload, sig_header, settings.stripe_webhook_secret
         )
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid payload")
-    except stripe.error.SignatureVerificationError:
-        raise HTTPException(status_code=400, detail="Invalid signature")
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail="Invalid payload") from err
+    except stripe.error.SignatureVerificationError as err:
+        raise HTTPException(status_code=400, detail="Invalid signature") from err
 
     if event["type"] == "setup_intent.succeeded":
         si = event["data"]["object"]
@@ -61,10 +62,8 @@ async def stripe_webhook(
             return {"status": "ignored"}
 
         # Attach payment method to customer (may already be attached)
-        try:
+        with contextlib.suppress(stripe.error.InvalidRequestError):
             stripe.PaymentMethod.attach(payment_method_id, customer=customer_id)
-        except stripe.error.InvalidRequestError:
-            pass  # Already attached
 
         pledge.status = PledgeStatus.active
         pledge.payment_method = payment_method_id
@@ -96,7 +95,7 @@ async def stripe_webhook(
 
         if pledge.status != PledgeStatus.collected:
             pledge.status = PledgeStatus.collected
-            pledge.collected_at = datetime.now(timezone.utc)
+            pledge.collected_at = datetime.now(UTC)
             await notify_charge_succeeded(db, pledge.patron, pledge.task, pledge.amount)
             await db.commit()
 

@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -7,12 +8,10 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 from testcontainers.postgres import PostgresContainer
 
-from unittest.mock import MagicMock
-
 from app.auth import create_jwt
-from app.models import Base, MagicLinkToken, Notification, NotificationType, Patron, Pledge, PledgeStatus, Task
-from app.dependencies import get_db
 from app.config import settings
+from app.dependencies import get_db
+from app.models import Base, MagicLinkToken, Notification, NotificationType, Patron, Pledge, PledgeStatus, Task
 
 
 @pytest.fixture(scope="session")
@@ -104,7 +103,7 @@ async def create_magic_token(
         mlt = MagicLinkToken(
             email=email,
             token=token,
-            expires_at=datetime.now(timezone.utc) + delta,
+            expires_at=datetime.now(UTC) + delta,
             used=used,
         )
         session.add(mlt)
@@ -132,7 +131,7 @@ async def create_patron(
 
 
 async def create_task(session_maker, **overrides) -> Task:
-    defaults = dict(title="Test task", description="A test task", status="open")
+    defaults = {"title": "Test task", "description": "A test task", "status": "open"}
     defaults.update(overrides)
     async with session_maker() as session:
         task = Task(**defaults)
@@ -143,15 +142,15 @@ async def create_task(session_maker, **overrides) -> Task:
 
 
 async def create_pledge(session_maker, *, patron_id, task_id, **overrides) -> Pledge:
-    defaults = dict(
-        patron_id=patron_id,
-        task_id=task_id,
-        amount=1000,
-        status=PledgeStatus.active,
-        setup_intent="si_test",
-        payment_method="pm_test",
-        save_card=True,
-    )
+    defaults = {
+        "patron_id": patron_id,
+        "task_id": task_id,
+        "amount": 1000,
+        "status": PledgeStatus.active,
+        "setup_intent": "si_test",
+        "payment_method": "pm_test",
+        "save_card": True,
+    }
     defaults.update(overrides)
     async with session_maker() as session:
         pledge = Pledge(**defaults)
@@ -164,14 +163,14 @@ async def create_pledge(session_maker, *, patron_id, task_id, **overrides) -> Pl
 async def create_notification(
     session_maker, *, patron_id, task_id, **overrides
 ) -> Notification:
-    defaults = dict(
-        patron_id=patron_id,
-        task_id=task_id,
-        type=NotificationType.task_accepted,
-        subject="Test notification",
-        body="Test body",
-        email_sent=False,
-    )
+    defaults = {
+        "patron_id": patron_id,
+        "task_id": task_id,
+        "type": NotificationType.task_accepted,
+        "subject": "Test notification",
+        "body": "Test body",
+        "email_sent": False,
+    }
     defaults.update(overrides)
     async with session_maker() as session:
         notification = Notification(**defaults)

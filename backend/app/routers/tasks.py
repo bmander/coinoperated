@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 import stripe
@@ -27,10 +27,10 @@ VALID_TRANSITIONS: dict[TaskStatus, set[TaskStatus]] = {
 async def list_tasks(
     db: Annotated[AsyncSession, Depends(get_db)],
     status: TaskStatus | None = None,
-    sort_by: str = Query("created_at", pattern="^(pledge_total|created_at)$"),
-    sort_order: str = Query("desc", pattern="^(asc|desc)$"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    sort_by: Annotated[str, Query(pattern="^(pledge_total|created_at)$")] = "created_at",
+    sort_order: Annotated[str, Query(pattern="^(asc|desc)$")] = "desc",
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ):
     query = select(Task)
     count_query = select(func.count()).select_from(Task)
@@ -40,10 +40,7 @@ async def list_tasks(
         count_query = count_query.where(Task.status == status)
 
     sort_column = getattr(Task, sort_by)
-    if sort_order == "desc":
-        query = query.order_by(sort_column.desc())
-    else:
-        query = query.order_by(sort_column.asc())
+    query = query.order_by(sort_column.desc()) if sort_order == "desc" else query.order_by(sort_column.asc())
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -176,7 +173,7 @@ async def update_task(
                 detail=f"Invalid status transition: {old_status.value} -> {payload.status.value}",
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if payload.status == TaskStatus.accepted:
             task.accepted_at = now

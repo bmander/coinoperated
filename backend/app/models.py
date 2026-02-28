@@ -26,7 +26,7 @@ class Base(DeclarativeBase):
 # --- Enums ---
 
 
-class TaskStatus(str, enum.Enum):
+class TaskStatus(enum.StrEnum):
     open = "open"
     accepted = "accepted"
     collecting = "collecting"
@@ -34,7 +34,7 @@ class TaskStatus(str, enum.Enum):
     declined = "declined"
 
 
-class PledgeStatus(str, enum.Enum):
+class PledgeStatus(enum.StrEnum):
     pending = "pending"
     active = "active"
     collected = "collected"
@@ -45,7 +45,7 @@ class PledgeStatus(str, enum.Enum):
 LIVE_PLEDGE_STATUSES = [PledgeStatus.active, PledgeStatus.pending]
 
 
-class NotificationType(str, enum.Enum):
+class NotificationType(enum.StrEnum):
     task_accepted = "task_accepted"
     task_completed = "task_completed"
     task_declined = "task_declined"

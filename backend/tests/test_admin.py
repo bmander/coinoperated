@@ -46,7 +46,7 @@ async def test_admin_tasks_rejects_non_admin(client, test_session_maker):
 
 
 async def test_admin_tasks_returns_tasks_with_pledges(client, test_session_maker):
-    admin, token = await _make_admin(test_session_maker)
+    _admin, token = await _make_admin(test_session_maker)
     task = await create_task(test_session_maker, title="Task with pledges")
 
     backer = await create_patron(test_session_maker, "backer@example.com", "cus_backer")

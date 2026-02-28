@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import jwt
@@ -121,7 +121,7 @@ async def test_me_without_session(client):
 async def test_me_with_expired_jwt(client, test_session_maker):
     patron = await create_patron(test_session_maker, "expired-jwt@example.com")
     expired_token = jwt.encode(
-        {"sub": str(patron.id), "exp": datetime.now(timezone.utc) - timedelta(days=1)},
+        {"sub": str(patron.id), "exp": datetime.now(UTC) - timedelta(days=1)},
         settings.secret_key,
         algorithm="HS256",
     )

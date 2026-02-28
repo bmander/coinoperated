@@ -1,8 +1,8 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,7 +33,7 @@ async def login(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     token = generate_magic_token()
-    expires_at = datetime.now(timezone.utc) + timedelta(
+    expires_at = datetime.now(UTC) + timedelta(
         minutes=settings.magic_link_expiry_minutes
     )
     magic_link = MagicLinkToken(
@@ -63,7 +63,7 @@ async def verify(
     if magic_token is None or magic_token.used:
         return _error_redirect("invalid_token")
 
-    if magic_token.expires_at < datetime.now(timezone.utc):
+    if magic_token.expires_at < datetime.now(UTC):
         return _error_redirect("expired_token")
 
     magic_token.used = True

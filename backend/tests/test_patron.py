@@ -2,9 +2,9 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from tests.conftest import auth_cookies, create_notification, create_patron, create_pledge, create_task
 
 from app.models import NotificationType, PledgeStatus
+from tests.conftest import auth_cookies, create_notification, create_patron, create_pledge, create_task
 
 
 @pytest.mark.asyncio

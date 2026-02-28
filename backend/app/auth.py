@@ -1,6 +1,6 @@
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 import stripe
@@ -11,7 +11,7 @@ from app.email import send_email
 def create_jwt(patron_id: uuid.UUID, secret_key: str, expiry_days: int) -> str:
     payload = {
         "sub": str(patron_id),
-        "exp": datetime.now(timezone.utc) + timedelta(days=expiry_days),
+        "exp": datetime.now(UTC) + timedelta(days=expiry_days),
     }
     return jwt.encode(payload, secret_key, algorithm="HS256")
 

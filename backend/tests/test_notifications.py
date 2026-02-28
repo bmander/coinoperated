@@ -1,12 +1,11 @@
 import uuid
 from unittest.mock import AsyncMock, patch
 
-from app.auth import create_jwt
-from app.config import settings
-from app.models import Notification, NotificationType, PledgeStatus, Task, TaskStatus
 from sqlalchemy import select
 
-from app.models import Pledge
+from app.auth import create_jwt
+from app.config import settings
+from app.models import Notification, NotificationType, Pledge, PledgeStatus, TaskStatus
 from app.notifications import (
     _charge_failed_email,
     _charge_succeeded_email,
@@ -14,9 +13,7 @@ from app.notifications import (
     _task_completed_email,
     _task_declined_email,
 )
-
 from tests.conftest import create_patron, create_pledge, create_task
-
 
 # --- Helpers ---
 

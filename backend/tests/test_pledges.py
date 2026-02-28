@@ -1,15 +1,12 @@
 import uuid
 from unittest.mock import MagicMock, patch
 
-import pytest
 import stripe as stripe_module
 
 from app.auth import create_jwt
 from app.config import settings
 from app.models import Pledge, PledgeStatus, Task, TaskStatus
-
 from tests.conftest import create_patron, create_pledge, create_task, mock_setup_intent
-
 
 # --- Helpers ---
 
@@ -867,7 +864,7 @@ async def test_webhook_detaches_unsaved_pm_on_success(
 ):
     patron = await create_patron(test_session_maker, "unsaved_ok@example.com", "cus_unsaved_ok")
     task = await create_task(test_session_maker, status=TaskStatus.collecting)
-    pledge = await create_pledge(
+    _pledge = await create_pledge(
         test_session_maker,
         patron_id=patron.id,
         task_id=task.id,

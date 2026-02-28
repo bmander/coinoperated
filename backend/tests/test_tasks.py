@@ -6,8 +6,8 @@ from sqlalchemy import select
 
 from app.config import settings
 from app.models import Pledge
-from tests.conftest import auth_cookies, create_patron as create_patron_db, mock_setup_intent
-
+from tests.conftest import auth_cookies, mock_setup_intent
+from tests.conftest import create_patron as create_patron_db
 
 # --- Helpers ---
 

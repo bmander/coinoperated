@@ -53,8 +53,8 @@ async def delete_payment_method(
     # Verify PM belongs to this patron
     try:
         pm = stripe.PaymentMethod.retrieve(pm_id)
-    except stripe.error.InvalidRequestError:
-        raise HTTPException(status_code=404, detail="Payment method not found")
+    except stripe.error.InvalidRequestError as err:
+        raise HTTPException(status_code=404, detail="Payment method not found") from err
 
     if pm.customer != patron.stripe_customer:
         raise HTTPException(status_code=404, detail="Payment method not found")

@@ -1,3 +1,4 @@
+import contextlib
 import uuid
 from typing import Annotated
 
@@ -47,10 +48,8 @@ def verify_pm_ownership(payment_method_id: str, stripe_customer: str) -> None:
 
 
 def _cancel_setup_intent(setup_intent_id: str) -> None:
-    try:
+    with contextlib.suppress(stripe.error.InvalidRequestError):
         stripe.SetupIntent.cancel(setup_intent_id)
-    except stripe.error.InvalidRequestError:
-        pass
 
 
 def _decrement_task_counts(task: Task, amount: int) -> None:
@@ -72,10 +71,8 @@ async def maybe_detach_pm(
         )
     ).scalar_one_or_none()
     if other is None:
-        try:
+        with contextlib.suppress(stripe.error.InvalidRequestError):
             stripe.PaymentMethod.detach(payment_method_id)
-        except stripe.error.InvalidRequestError:
-            pass
 
 
 @router.post("", response_model=PledgeCreateResponse, status_code=201)
