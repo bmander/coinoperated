@@ -2,12 +2,13 @@ import { screen } from "@testing-library/react";
 import { Route, Routes } from "react-router-dom";
 import TaskDetail from "./TaskDetail";
 import { getTask } from "../api/tasks";
-import { getMyPledge } from "../api/pledges";
 import { makeTaskDetail, makeUpdate } from "../test/factories";
 import { renderWithRouter } from "../test/render";
 
 vi.mock("../api/tasks");
 vi.mock("../api/pledges");
+vi.mock("../api/patron");
+vi.mock("@stripe/stripe-js");
 
 const mockUseAuth = vi.fn();
 vi.mock("../contexts/AuthContext", () => ({
@@ -15,7 +16,6 @@ vi.mock("../contexts/AuthContext", () => ({
 }));
 
 const mockGetTask = vi.mocked(getTask);
-const mockGetMyPledge = vi.mocked(getMyPledge);
 
 function renderDetail(taskId = "abc-123") {
   return renderWithRouter(
@@ -28,7 +28,6 @@ function renderDetail(taskId = "abc-123") {
 
 beforeEach(() => {
   mockUseAuth.mockReturnValue({ patron: null, loading: false, login: vi.fn(), logout: vi.fn() });
-  mockGetMyPledge.mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -126,20 +125,20 @@ describe("TaskDetail", () => {
   it("shows Pledge button for open tasks", async () => {
     mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
     renderDetail();
-    expect(await screen.findByRole("link", { name: "Pledge" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Pledge" })).toBeInTheDocument();
   });
 
   it("shows Pledge button for accepted tasks", async () => {
     mockGetTask.mockResolvedValue(makeTaskDetail({ status: "accepted" }));
     renderDetail();
-    expect(await screen.findByRole("link", { name: "Pledge" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Pledge" })).toBeInTheDocument();
   });
 
   it("hides Pledge button for completed tasks", async () => {
     mockGetTask.mockResolvedValue(makeTaskDetail({ status: "completed" }));
     renderDetail();
     await screen.findByText("Description");
-    expect(screen.queryByRole("link", { name: "Pledge" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pledge" })).not.toBeInTheDocument();
   });
 
   it("shows collected stats for completed tasks", async () => {
@@ -162,42 +161,5 @@ describe("TaskDetail", () => {
     mockGetTask.mockRejectedValue(new Error("Task not found"));
     renderDetail();
     expect(await screen.findByText("Error: Task not found")).toBeInTheDocument();
-  });
-
-  it("shows pledge status and Update Pledge button when patron has active pledge", async () => {
-    mockUseAuth.mockReturnValue({ patron: { id: "p1", email: "a@b.com", display_name: null, is_admin: false }, loading: false, login: vi.fn(), logout: vi.fn() });
-    mockGetMyPledge.mockResolvedValue({ id: "pl1", amount: 2500, status: "active", created_at: "2025-01-01T00:00:00Z" });
-    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
-    renderDetail();
-    expect(await screen.findByText(/You pledged \$25 \(active\)/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Update Pledge" })).toBeInTheDocument();
-  });
-
-  it("shows Update Pledge button for pending pledge", async () => {
-    mockUseAuth.mockReturnValue({ patron: { id: "p1", email: "a@b.com", display_name: null, is_admin: false }, loading: false, login: vi.fn(), logout: vi.fn() });
-    mockGetMyPledge.mockResolvedValue({ id: "pl1", amount: 500, status: "pending", created_at: "2025-01-01T00:00:00Z" });
-    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
-    renderDetail();
-    expect(await screen.findByText(/You pledged \$5 \(pending\)/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Update Pledge" })).toBeInTheDocument();
-  });
-
-  it("shows plain Pledge button when patron has no pledge", async () => {
-    mockUseAuth.mockReturnValue({ patron: { id: "p1", email: "a@b.com", display_name: null, is_admin: false }, loading: false, login: vi.fn(), logout: vi.fn() });
-    mockGetMyPledge.mockResolvedValue(null);
-    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
-    renderDetail();
-    expect(await screen.findByRole("link", { name: "Pledge" })).toBeInTheDocument();
-    expect(screen.queryByText(/You pledged/)).not.toBeInTheDocument();
-  });
-
-  it("does not show pledge status for released pledge", async () => {
-    mockUseAuth.mockReturnValue({ patron: { id: "p1", email: "a@b.com", display_name: null, is_admin: false }, loading: false, login: vi.fn(), logout: vi.fn() });
-    // getMyPledge returns null for released pledges (404 from API)
-    mockGetMyPledge.mockResolvedValue(null);
-    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
-    renderDetail();
-    expect(await screen.findByRole("link", { name: "Pledge" })).toBeInTheDocument();
-    expect(screen.queryByText(/You pledged/)).not.toBeInTheDocument();
   });
 });

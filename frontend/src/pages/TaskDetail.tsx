@@ -1,14 +1,10 @@
-import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import Markdown from "react-markdown";
 import { getTask } from "../api/tasks";
-import { getMyPledge } from "../api/pledges";
 import { formatBackers, formatCents } from "../utils/formatting";
 import StatusBadge from "../components/StatusBadge";
 import useFetch from "../hooks/useFetch";
-import { useAuth } from "../contexts/AuthContext";
-import { isLivePledge } from "../api/types";
-import type { PledgeMyResponse } from "../api/types";
+import PledgeWidget from "../components/PledgeWidget";
 
 function MarkdownSection({ title, children }: { title: string; children: string }) {
   return (
@@ -23,23 +19,14 @@ function MarkdownSection({ title, children }: { title: string; children: string 
 
 export default function TaskDetail() {
   const { taskId } = useParams<{ taskId: string }>();
-  const { patron } = useAuth();
   const { data: task, loading, error } = useFetch(
     () => getTask(taskId!),
     [taskId],
   );
-  const [myPledge, setMyPledge] = useState<PledgeMyResponse | null>(null);
-
-  useEffect(() => {
-    if (!patron || !taskId) return;
-    getMyPledge(taskId).then(setMyPledge).catch(() => {});
-  }, [patron, taskId]);
 
   if (loading) return <p className="page-message">Loading task...</p>;
   if (error) return <p className="page-message page-error">Error: {error}</p>;
   if (!task) return null;
-
-  const canPledge = task.status === "open" || task.status === "accepted";
 
   return (
     <div className="task-detail">
@@ -85,18 +72,7 @@ export default function TaskDetail() {
         <MarkdownSection title="Completion Evidence">{task.evidence}</MarkdownSection>
       )}
 
-      {canPledge && (
-        <div className="task-detail-cta">
-          {isLivePledge(myPledge) && (
-            <p className="my-pledge-status">
-              You pledged {formatCents(myPledge.amount)} ({myPledge.status})
-            </p>
-          )}
-          <Link to={`/tasks/${task.id}/pledge`} className="btn btn-primary">
-            {isLivePledge(myPledge) ? "Update Pledge" : "Pledge"}
-          </Link>
-        </div>
-      )}
+      <PledgeWidget task={task} />
     </div>
   );
 }

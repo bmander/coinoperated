@@ -2,10 +2,13 @@ import { screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import Dashboard from "./Dashboard";
 import { fetchMyPledges, fetchMyNotifications, fetchPaymentMethods, deletePaymentMethod } from "../api/patron";
+import { getMyPledge } from "../api/pledges";
 import { makePatronPledge, makeNotification } from "../test/factories";
 import { renderWithRouter } from "../test/render";
 
 vi.mock("../api/patron");
+vi.mock("../api/pledges");
+vi.mock("@stripe/stripe-js");
 vi.mock("../contexts/AuthContext", () => ({
   useAuth: () => ({ patron: { id: "p1", email: "test@example.com", display_name: null, is_admin: false }, loading: false, login: vi.fn(), logout: vi.fn() }),
 }));
@@ -14,9 +17,11 @@ const mockFetchPledges = vi.mocked(fetchMyPledges);
 const mockFetchNotifications = vi.mocked(fetchMyNotifications);
 const mockFetchPaymentMethods = vi.mocked(fetchPaymentMethods);
 const mockDeletePaymentMethod = vi.mocked(deletePaymentMethod);
+const mockGetMyPledge = vi.mocked(getMyPledge);
 
 beforeEach(() => {
   mockFetchPaymentMethods.mockResolvedValue([]);
+  mockGetMyPledge.mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -57,15 +62,16 @@ describe("Dashboard", () => {
     expect(link).toHaveAttribute("href", "/tasks/task-abc");
   });
 
-  it("renders update links pointing to pledge pages", async () => {
+  it("renders PledgeWidget for each pledge row", async () => {
     mockFetchPledges.mockResolvedValue([
-      makePatronPledge({ id: "p1", task: { id: "task-abc", title: "Fix road", status: "open" } }),
+      makePatronPledge({ id: "p1", task: { id: "t1", title: "Fix road", status: "open" } }),
+      makePatronPledge({ id: "p2", task: { id: "t2", title: "Plant trees", status: "accepted" } }),
     ]);
     mockFetchNotifications.mockResolvedValue([]);
 
     renderWithRouter(<Dashboard />);
-    const link = await screen.findByRole("link", { name: "Update" });
-    expect(link).toHaveAttribute("href", "/tasks/task-abc/pledge");
+    const buttons = await screen.findAllByRole("button", { name: "Pledge" });
+    expect(buttons).toHaveLength(2);
   });
 
   it("renders notification feed", async () => {

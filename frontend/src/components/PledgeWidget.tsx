@@ -6,7 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { createPledge, deletePledge, getMyPledge, updatePledge } from "../api/pledges";
 import { fetchPaymentMethods } from "../api/patron";
 import { formatCents } from "../utils/formatting";
-import type { TaskRead, PledgeMyResponse, SavedPaymentMethod } from "../api/types";
+import type { TaskStatus, PledgeMyResponse, SavedPaymentMethod } from "../api/types";
 import { isLivePledge } from "../api/types";
 import PaymentModal from "./PaymentModal";
 
@@ -16,7 +16,7 @@ export default function PledgeWidget({
   task,
   onPledge,
 }: {
-  task: TaskRead;
+  task: { id: string; status: TaskStatus };
   onPledge?: () => void;
 }) {
   const { patron } = useAuth();
