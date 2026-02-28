@@ -638,6 +638,12 @@
   margin-bottom: 2rem;
 }
 
+.payment-method-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .dashboard-section h2 {
   font-size: 1.1rem;
   margin-bottom: 0.75rem;

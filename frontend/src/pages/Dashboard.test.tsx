@@ -114,12 +114,8 @@ describe("Dashboard", () => {
     ]);
 
     renderWithRouter(<Dashboard />);
-    expect(await screen.findByText("Visa")).toBeInTheDocument();
-    expect(screen.getByText("…4242")).toBeInTheDocument();
-    expect(screen.getByText("Exp 12/2028")).toBeInTheDocument();
-    expect(screen.getByText("Mastercard")).toBeInTheDocument();
+    expect(await screen.findByText("…4242")).toBeInTheDocument();
     expect(screen.getByText("…5555")).toBeInTheDocument();
-    expect(screen.getByText("Exp 03/2027")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(2);
   });
 

@@ -1,7 +1,7 @@
 import { CardElement } from "@stripe/react-stripe-js";
 import { useState } from "react";
 import type { SavedPaymentMethod } from "../api/types";
-import { capitalize } from "../utils/formatting";
+import CardChip from "./CardChip";
 
 export interface CardPaymentSelection {
   selectedPM: string;
@@ -49,16 +49,7 @@ export default function CardPaymentFields({
                   onChange({ ...value, selectedPM: pm.id, usingSavedCard: true })
                 }
               />
-              <span className="pm-label pm-chip">
-                {capitalize(pm.brand)}{" "}
-                <span className="pm-mono">…{pm.last4}</span>
-                <span className="pm-expiry">
-                  {" "}Exp{" "}
-                  <span className="pm-mono">
-                    {String(pm.exp_month).padStart(2, "0")}/{pm.exp_year}
-                  </span>
-                </span>
-              </span>
+              <CardChip method={pm} />
             </label>
           ))}
           <label className="payment-method-option">

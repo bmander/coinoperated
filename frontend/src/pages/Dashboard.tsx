@@ -5,7 +5,7 @@ import type { PatronPledgeRead, NotificationRead, SavedPaymentMethod } from "../
 import useFetch from "../hooks/useFetch";
 import StatusBadge from "../components/StatusBadge";
 import PledgeWidget from "../components/PledgeWidget";
-import { capitalize } from "../utils/formatting";
+import CardChip from "../components/CardChip";
 
 function eventLabel(event: string): string {
   switch (event) {
@@ -46,11 +46,7 @@ function SavedPaymentMethods() {
         <div className="payment-method-list">
           {methods.map((pm) => (
             <div key={pm.id} className="payment-method-list-item">
-              <div className="payment-method-info">
-                <span className="pm-brand">{capitalize(pm.brand)}</span>
-                <span className="pm-last4">…{pm.last4}</span>
-                <span className="pm-expiry">Exp {String(pm.exp_month).padStart(2, "0")}/{pm.exp_year}</span>
-              </div>
+              <CardChip method={pm} />
               <button
                 className="btn btn-secondary btn-sm"
                 onClick={() => handleDelete(pm.id)}
