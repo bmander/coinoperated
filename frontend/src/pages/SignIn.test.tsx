@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { vi } from "vitest";
 import SignIn from "./SignIn";
@@ -43,6 +43,34 @@ describe("SignIn", () => {
     });
     expect(screen.getByText("test@example.com")).toBeInTheDocument();
     expect(mockLogin).toHaveBeenCalledWith("test@example.com");
+  });
+
+  it("disables re-send button during cooldown then re-enables", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mockLogin.mockResolvedValue(undefined);
+    renderWithRouter(<SignIn />, ["/signin"]);
+
+    await userEvent.type(screen.getByLabelText("Email address"), "test@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Send sign-in link" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Check your email")).toBeInTheDocument();
+    });
+
+    // Button should be disabled right after submit
+    expect(screen.getByRole("button", { name: "Email sent" })).toBeDisabled();
+
+    // Advance past cooldown
+    act(() => { vi.advanceTimersByTime(30_000); });
+
+    // Button should now be enabled
+    expect(screen.getByRole("button", { name: "Re-send email" })).toBeEnabled();
+
+    mockLogin.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Re-send email" }));
+    expect(mockLogin).toHaveBeenCalledWith("test@example.com");
+
+    vi.useRealTimers();
   });
 
   it("shows error message on login failure", async () => {

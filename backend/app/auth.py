@@ -29,6 +29,7 @@ def generate_magic_token() -> str:
 
 
 async def send_magic_link(email: str, link: str) -> None:
+    print(f"\n  Magic link for {email}: {link}\n")
     subject = "Your sign-in link for CoinOperated"
     body = f"Click the link below to sign in:\n\n{link}\n\nThis link expires in 15 minutes."
     await send_email(email, subject, body)

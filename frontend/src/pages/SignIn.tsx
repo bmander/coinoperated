@@ -1,6 +1,8 @@
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+
+const RESEND_COOLDOWN_MS = 30_000;
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_token: "This sign-in link is invalid or has already been used.",
@@ -13,6 +15,13 @@ export default function SignIn() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [cooldown, setCooldown] = useState(false);
+
+  useEffect(() => {
+    if (!cooldown) return;
+    const id = setTimeout(() => setCooldown(false), RESEND_COOLDOWN_MS);
+    return () => clearTimeout(id);
+  }, [cooldown]);
 
   const urlError = searchParams.get("error");
 
@@ -20,15 +29,20 @@ export default function SignIn() {
     return <Navigate to="/" replace />;
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function sendLink() {
     setError("");
     try {
       await login(email);
       setSubmitted(true);
+      setCooldown(true);
     } catch {
       setError("Something went wrong. Please try again.");
     }
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    await sendLink();
   }
 
   if (submitted) {
@@ -38,6 +52,14 @@ export default function SignIn() {
         <p className="signin-message">
           We sent a sign-in link to <strong>{email}</strong>
         </p>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={sendLink}
+          disabled={cooldown}
+        >
+          {cooldown ? "Email sent" : "Re-send email"}
+        </button>
       </div>
     );
   }
