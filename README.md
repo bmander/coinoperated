@@ -8,39 +8,44 @@ See [DESIGN.md](DESIGN.md) for the full design document.
 
 ## How it works
 
-1. Anyone posts a task (a wish, a bug, a feature, a spec, a standard)
-2. Patrons pledge money toward tasks they care about ($5 minimum)
-3. Brandon reviews the board and ships what he wants
-4. On completion, pledgers are charged; the task closes with stats
+1. Sign in with your email via magic link
+2. Post a task (a wish, a bug, a feature, a spec, a standard)
+3. Pledge money toward tasks you care about ($1 minimum)
+4. Brandon reviews the board and ships what he wants
+5. On completion, pledgers are charged; the task closes with collection stats
 
 ## Tech stack
 
-| Layer    | Technology                          |
-|----------|-------------------------------------|
-| Backend  | FastAPI + SQLAlchemy 2.0 (async)    |
-| Frontend | React 19 + TypeScript + Vite        |
-| Database | PostgreSQL 16                       |
-| Payments | Stripe (SetupIntents + PaymentIntents) |
+| Layer       | Technology                                |
+|-------------|-------------------------------------------|
+| Backend     | FastAPI + SQLAlchemy 2.0 (async)          |
+| Frontend    | React 19 + TypeScript + Vite 7            |
+| Database    | PostgreSQL 16                             |
+| Payments    | Stripe (SetupIntents + PaymentIntents)    |
+| Auth        | Magic link email (SMTP)                   |
+| Deployment  | Google App Engine                         |
+| CI/CD       | GitHub Actions (test on PR, deploy on `prod`) |
 
 ## Development
 
 ### Prerequisites
 
 - Python 3.13+
-- Node.js 18+
+- Node.js 20+
 - Docker (for PostgreSQL)
+- [Stripe CLI](https://stripe.com/docs/stripe-cli) (for webhook forwarding)
 
 ### Setup
 
 ```sh
 make install    # Create Python venv, install backend + frontend deps
-cp backend/.env.example backend/.env
+cp backend/.env.example backend/.env   # Configure local env vars
 ```
 
 ### Run
 
 ```sh
-make dev        # Starts PostgreSQL, backend, and frontend concurrently
+make dev        # Starts PostgreSQL, backend, frontend, and Stripe webhook forwarding
 ```
 
 Or run each piece individually:
@@ -52,25 +57,49 @@ make dev-backend    # Start FastAPI on :8000
 make dev-frontend   # Start Vite dev server on :5173
 ```
 
-### Project layout
+### Test
+
+```sh
+make test           # Run backend + frontend tests in parallel
+make test-backend   # pytest tests/ -q
+make test-frontend  # npx vitest run
+```
+
+### Lint & format
+
+```sh
+make lint           # Run ruff (backend) + eslint (frontend)
+make format         # Run ruff format
+```
+
+## Project layout
 
 ```
 backend/
   app/
-    main.py         # FastAPI app & routes
-    config.py       # Settings (env vars)
-    models.py       # SQLAlchemy ORM models
-    schemas.py      # Pydantic request/response schemas
-    database.py     # Async engine & session
-  alembic/          # Database migrations
-  alembic.ini
+    main.py          # FastAPI app factory
+    models.py        # SQLAlchemy ORM models
+    routers/         # Route handlers (tasks, pledges, admin, auth, webhooks)
+    services/        # Business logic
+  alembic/           # Database migrations
+  tests/
+  app.yaml           # App Engine config
 frontend/
   src/
-    App.tsx
-    api/            # API client
-    components/
-    pages/
-docker-compose.yml  # PostgreSQL 16
+    api/             # fetch-based API client
+    contexts/        # Auth state (React Context)
+    pages/           # TaskBoard, TaskDetail, SubmitTask, Dashboard, Admin, SignIn, ...
+    components/      # Layout, TaskCard, PledgeWidget, PaymentModal, ...
+docker-compose.yml   # PostgreSQL 16
 Makefile
-DESIGN.md           # Full design document
+DESIGN.md
 ```
+
+## Deployment
+
+The app deploys to Google App Engine via GitHub Actions. Pushing to the `prod` branch triggers:
+
+1. Frontend and backend tests run in parallel
+2. Frontend is built and copied to `backend/static/`
+3. Backend deploys as an App Engine service with the frontend served as static files
+4. Secrets are injected from GitHub Actions secrets into `app.yaml` at deploy time
