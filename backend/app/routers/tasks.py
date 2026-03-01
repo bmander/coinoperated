@@ -17,8 +17,8 @@ from app.schemas import TaskCreate, TaskCreateResponse, TaskDetail, TaskListResp
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 VALID_TRANSITIONS: dict[TaskStatus, set[TaskStatus]] = {
-    TaskStatus.open: {TaskStatus.accepted, TaskStatus.declined},
-    TaskStatus.accepted: {TaskStatus.collecting, TaskStatus.open},
+    TaskStatus.proposed: {TaskStatus.underway, TaskStatus.declined},
+    TaskStatus.underway: {TaskStatus.collecting, TaskStatus.proposed},
     TaskStatus.collecting: {TaskStatus.completed},
 }
 
@@ -175,8 +175,8 @@ async def update_task(
 
         now = datetime.now(UTC)
 
-        if payload.status == TaskStatus.accepted:
-            task.accepted_at = now
+        if payload.status == TaskStatus.underway:
+            task.underway_at = now
             notify_fn = notify_task_accepted
         elif payload.status == TaskStatus.declined:
             task.declined_at = now
@@ -185,8 +185,8 @@ async def update_task(
             notify_fn = notify_task_completed
         elif payload.status == TaskStatus.completed:
             task.completed_at = now
-        elif payload.status == TaskStatus.open and old_status == TaskStatus.accepted:
-            task.accepted_at = None
+        elif payload.status == TaskStatus.proposed and old_status == TaskStatus.underway:
+            task.underway_at = None
 
         task.status = payload.status
 

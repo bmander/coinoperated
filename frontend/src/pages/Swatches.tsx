@@ -38,10 +38,10 @@ const SWATCHES: { section: string; items: Swatch[] }[] = [
   {
     section: "Status badges",
     items: [
-      { color: "#e6f4e6", label: "Open background", usages: [".status-open background"] },
-      { color: "#2a7a2a", label: "Open text / Accept button", usages: [".status-open color", ".btn-accept"] },
-      { color: "#e6e6f4", label: "Accepted background", usages: [".status-accepted background"] },
-      { color: "#4444cc", label: "Accepted text", usages: [".status-accepted color", ".notification-event-task_accepted"] },
+      { color: "#e6f4e6", label: "Proposed background", usages: [".status-proposed background"] },
+      { color: "#2a7a2a", label: "Proposed text / Accept button", usages: [".status-proposed color", ".btn-accept"] },
+      { color: "#e6e6f4", label: "Underway background", usages: [".status-underway background"] },
+      { color: "#4444cc", label: "Underway text", usages: [".status-underway color", ".notification-event-task_accepted"] },
       { color: "#f4f4e6", label: "Collecting background", usages: [".status-collecting background"] },
       { color: "#997700", label: "Collecting text", usages: [".status-collecting color", ".admin-collecting-indicator"] },
       { color: "#d4ead4", label: "Completed background", usages: [".status-completed background"] },

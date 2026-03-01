@@ -148,7 +148,7 @@ class TestNotificationCreation:
 
         resp = await client.patch(
             f"/api/tasks/{task.id}",
-            json={"status": "accepted"},
+            json={"status": "underway"},
         )
         assert resp.status_code == 200
 
@@ -181,7 +181,7 @@ class TestNotificationCreation:
     async def test_notification_created_on_collecting(
         self, mock_send, client, test_session_maker, test_patron
     ):
-        task = await create_task(test_session_maker, title="Fix road", status="accepted")
+        task = await create_task(test_session_maker, title="Fix road", status="underway")
         await create_pledge(
             test_session_maker, patron_id=test_patron.id, task_id=task.id
         )
@@ -207,7 +207,7 @@ class TestNotificationCreation:
             status=PledgeStatus.released,
         )
 
-        await client.patch(f"/api/tasks/{task.id}", json={"status": "accepted"})
+        await client.patch(f"/api/tasks/{task.id}", json={"status": "underway"})
 
         notif_resp = await client.get(
             "/api/patron/notifications", cookies=auth_cookies(test_patron)
@@ -235,7 +235,7 @@ class TestNotificationCreation:
             setup_intent="si_2",
         )
 
-        await client.patch(f"/api/tasks/{task.id}", json={"status": "accepted"})
+        await client.patch(f"/api/tasks/{task.id}", json={"status": "underway"})
 
         resp1 = await client.get(
             "/api/patron/notifications", cookies=auth_cookies(test_patron)

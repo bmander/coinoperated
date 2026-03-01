@@ -24,12 +24,12 @@ describe("listTasks", () => {
       json: () => Promise.resolve({ items: [], total: 0, offset: 0, limit: 20 }),
     });
 
-    await listTasks({ status: "open", sort_by: "pledge_total", sort_order: "desc", offset: 10, limit: 5 });
+    await listTasks({ status: "proposed", sort_by: "pledge_total", sort_order: "desc", offset: 10, limit: 5 });
 
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain("/api/tasks?");
     const params = new URLSearchParams(url.split("?")[1]);
-    expect(params.get("status")).toBe("open");
+    expect(params.get("status")).toBe("proposed");
     expect(params.get("sort_by")).toBe("pledge_total");
     expect(params.get("sort_order")).toBe("desc");
     expect(params.get("offset")).toBe("10");
@@ -45,7 +45,7 @@ describe("listTasks", () => {
 
 describe("createTask", () => {
   it("sends POST with JSON body", async () => {
-    const task = { id: "new-1", title: "New task", status: "open" };
+    const task = { id: "new-1", title: "New task", status: "proposed" };
     mockFetch.mockResolvedValue({
       ok: true,
       status: 201,

@@ -1,4 +1,4 @@
-export type TaskStatus = "open" | "accepted" | "collecting" | "completed" | "declined";
+export type TaskStatus = "proposed" | "underway" | "collecting" | "completed" | "declined";
 
 export interface TaskRead {
   id: string;
@@ -12,7 +12,7 @@ export interface TaskRead {
   pledge_total: number;
   collected_total: number;
   created_at: string;
-  accepted_at: string | null;
+  underway_at: string | null;
   completed_at: string | null;
   declined_at: string | null;
 }

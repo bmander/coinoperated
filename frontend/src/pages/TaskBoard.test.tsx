@@ -80,13 +80,13 @@ describe("TaskBoard", () => {
     const callCountAfterMount = mockListTasks.mock.calls.length;
 
     const filterSelect = screen.getByRole("combobox", { name: /filter/i });
-    await user.selectOptions(filterSelect, "accepted");
+    await user.selectOptions(filterSelect, "underway");
 
     await waitFor(() =>
       expect(mockListTasks.mock.calls.length).toBeGreaterThan(callCountAfterMount),
     );
     expect(mockListTasks).toHaveBeenLastCalledWith(
-      expect.objectContaining({ status: "accepted" }),
+      expect.objectContaining({ status: "underway" }),
     );
   });
 });

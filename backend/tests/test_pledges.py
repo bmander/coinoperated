@@ -536,10 +536,10 @@ async def test_delete_pledge_requires_auth(client, test_session_maker):
 
 
 @patch("app.routers.pledges.stripe.SetupIntent.create")
-async def test_create_pledge_on_accepted_task(mock_si_create, client, test_session_maker):
+async def test_create_pledge_on_underway_task(mock_si_create, client, test_session_maker):
     mock_si_create.return_value = mock_setup_intent()
-    patron = await create_patron(test_session_maker, "accepted@example.com", "cus_accepted")
-    task = await create_task(test_session_maker, status=TaskStatus.accepted)
+    patron = await create_patron(test_session_maker, "underway@example.com", "cus_underway")
+    task = await create_task(test_session_maker, status=TaskStatus.underway)
 
     resp = await client.post(
         f"/api/tasks/{task.id}/pledges",

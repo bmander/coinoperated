@@ -21,7 +21,7 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api/tasks/{task_id}/pledges", tags=["pledges"])
 
-PLEDGEABLE_STATUSES = {TaskStatus.open, TaskStatus.accepted}
+PLEDGEABLE_STATUSES = {TaskStatus.proposed, TaskStatus.underway}
 
 
 async def _get_patron_pledge(

@@ -101,8 +101,6 @@
   border-radius: 0;
   padding: 0.35rem 0.45rem;
   text-align: left;
-  position: relative;
-  overflow: hidden;
 }
 
 .task-card::before {
@@ -112,8 +110,8 @@
   margin: -0.35rem -0.45rem 0.35rem;
 }
 
-.task-card-open::before { background: #e6f4e6; }
-.task-card-accepted::before { background: #e6e6f4; }
+.task-card-proposed::before { background: #e6f4e6; }
+.task-card-underway::before { background: #e6e6f4; }
 .task-card-collecting::before { background: #f4f4e6; }
 .task-card-completed::before { background: #d4ead4; }
 .task-card-declined::before { background: #f4e6e6; }
@@ -125,13 +123,48 @@
   padding: 0.15rem 0.5rem;
   border-radius: 12px;
   display: inline-block;
+  position: relative;
+  cursor: default;
 }
 
-.status-open {
+.status-glossary {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: #fff;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 0.5rem;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.status-glossary-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 400;
+  padding: 0.15rem 0.25rem;
+}
+
+.status-glossary-active {
+  background: #f4f4f4;
+}
+
+.status-glossary-desc {
+  color: #555;
+  letter-spacing: 0;
+}
+
+.status-proposed {
   background: #e6f4e6;
   color: #2a7a2a;
 }
-.status-accepted {
+.status-underway {
   background: #e6e6f4;
   color: #44c;
 }
@@ -165,6 +198,7 @@
   align-items: center;
   gap: 0.75rem;
   margin-bottom: 0.15rem;
+  position: relative;
 }
 
 .task-card-title {

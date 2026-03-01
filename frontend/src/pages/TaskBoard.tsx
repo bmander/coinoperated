@@ -15,8 +15,8 @@ const SORT_MAP: Record<SortOption, { sort_by: "pledge_total" | "created_at"; sor
 
 const STATUS_OPTIONS: { value: TaskStatus | ""; label: string }[] = [
   { value: "", label: "All" },
-  { value: "open", label: "Open" },
-  { value: "accepted", label: "Accepted" },
+  { value: "proposed", label: "Proposed" },
+  { value: "underway", label: "Underway" },
   { value: "collecting", label: "Collecting" },
   { value: "completed", label: "Completed" },
   { value: "declined", label: "Declined" },
