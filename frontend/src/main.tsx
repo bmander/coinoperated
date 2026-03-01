@@ -16,10 +16,11 @@ import PatronProfile from './pages/PatronProfile'
 import HowItWorks from './pages/HowItWorks'
 import Swatches from './pages/Swatches'
 import RequireAdmin from './components/RequireAdmin'
+import { BASE_PATH } from './api/client'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
+    <BrowserRouter basename={BASE_PATH || '/'}>
       <AuthProvider>
         <Routes>
           <Route element={<Layout />}>
