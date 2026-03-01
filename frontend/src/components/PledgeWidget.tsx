@@ -90,11 +90,12 @@ export default function PledgeWidget({
       const sp = loadStripe(resp.publishable_key);
 
       // Try auto-confirm with saved payment method
-      if (patron?.default_payment_method) {
+      const savedPM = patron?.default_payment_method;
+      if (savedPM && resp.client_secret) {
         const stripe = await sp;
         if (stripe) {
           const result = await stripe.confirmCardSetup(resp.client_secret, {
-            payment_method: patron.default_payment_method,
+            payment_method: savedPM,
           });
           if (!result.error) {
             setExistingPledge({ id: resp.pledge_id, amount: finalAmount, status: "active", created_at: new Date().toISOString() });
@@ -109,7 +110,7 @@ export default function PledgeWidget({
 
       // Show payment modal
       setStripePromise(sp);
-      setClientSecret(resp.client_secret);
+      setClientSecret(resp.client_secret ?? "");
       setShowModal(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");

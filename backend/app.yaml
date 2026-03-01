@@ -6,7 +6,9 @@ env_variables:
   BASE_PATH: "/coinop"
   FRONTEND_URL: "https://bmander.com/coinop"
   CORS_ORIGINS: '["https://bmander.com"]'
-  # SECRET_KEY, STRIPE_*, SMTP_*, DATABASE_URL set via Secret Manager or here
+
+includes:
+  - env.yaml  # gitignored — contains SECRET_KEY, DATABASE_URL, STRIPE_*, SMTP_*
 
 handlers:
   - url: /coinop/assets

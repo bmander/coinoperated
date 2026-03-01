@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import type { Stripe } from "@stripe/stripe-js";
+import type { Stripe, StripeCardElement } from "@stripe/stripe-js";
 import type { SavedPaymentMethod } from "../api/types";
 import CardPaymentFields, { useCardPaymentSelection } from "./CardPaymentFields";
 
@@ -28,7 +28,7 @@ function PaymentForm({
     setSubmitting(true);
     setError("");
 
-    let paymentMethod: string | { card: ReturnType<typeof elements.getElement> };
+    let paymentMethod: string | { card: StripeCardElement };
     if (paymentSelection.usingSavedCard) {
       paymentMethod = paymentSelection.selectedPM;
     } else {

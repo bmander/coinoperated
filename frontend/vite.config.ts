@@ -8,7 +8,6 @@ export default defineConfig({
   base: process.env.VITE_BASE_PATH || '/',
   plugins: [react(), mkcert()],
   server: {
-    https: true,
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
