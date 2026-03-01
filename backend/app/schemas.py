@@ -58,7 +58,7 @@ class TaskRead(BaseReadSchema):
     pledge_total: int
     collected_total: int
     created_at: datetime
-    accepted_at: datetime | None
+    underway_at: datetime | None
     completed_at: datetime | None
     declined_at: datetime | None
 

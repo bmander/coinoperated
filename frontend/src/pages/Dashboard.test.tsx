@@ -39,8 +39,8 @@ describe("Dashboard", () => {
 
   it("renders pledge list with task links", async () => {
     mockFetchPledges.mockResolvedValue([
-      makePatronPledge({ id: "p1", amount: 5000, task: { id: "t1", title: "Fix road", status: "accepted" } }),
-      makePatronPledge({ id: "p2", amount: 1000, task: { id: "t2", title: "Plant trees", status: "open" } }),
+      makePatronPledge({ id: "p1", amount: 5000, task: { id: "t1", title: "Fix road", status: "underway" } }),
+      makePatronPledge({ id: "p2", amount: 1000, task: { id: "t2", title: "Plant trees", status: "proposed" } }),
     ]);
     mockFetchNotifications.mockResolvedValue([]);
 
@@ -51,7 +51,7 @@ describe("Dashboard", () => {
 
   it("renders task title links pointing to task detail pages", async () => {
     mockFetchPledges.mockResolvedValue([
-      makePatronPledge({ id: "p1", task: { id: "task-abc", title: "Fix road", status: "open" } }),
+      makePatronPledge({ id: "p1", task: { id: "task-abc", title: "Fix road", status: "proposed" } }),
     ]);
     mockFetchNotifications.mockResolvedValue([]);
 
@@ -62,8 +62,8 @@ describe("Dashboard", () => {
 
   it("renders PledgeWidget for each pledge row", async () => {
     mockFetchPledges.mockResolvedValue([
-      makePatronPledge({ id: "p1", task: { id: "t1", title: "Fix road", status: "open" } }),
-      makePatronPledge({ id: "p2", task: { id: "t2", title: "Plant trees", status: "accepted" } }),
+      makePatronPledge({ id: "p1", task: { id: "t1", title: "Fix road", status: "proposed" } }),
+      makePatronPledge({ id: "p2", task: { id: "t2", title: "Plant trees", status: "underway" } }),
     ]);
     mockFetchNotifications.mockResolvedValue([]);
 

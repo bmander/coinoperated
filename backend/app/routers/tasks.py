@@ -2,7 +2,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
-import stripe
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,15 +9,16 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.dependencies import get_active_patron, get_db
-from app.models import Patron, Pledge, PledgeStatus, Task, TaskStatus
+from app.models import Patron, Task, TaskStatus
 from app.notifications import notify_task_accepted, notify_task_completed, notify_task_declined
 from app.schemas import TaskCreate, TaskCreateResponse, TaskDetail, TaskListResponse, TaskRead, TaskUpdate
+from app.services.pledges import PaymentMethodOwnershipError, create_pledge_for_task
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 VALID_TRANSITIONS: dict[TaskStatus, set[TaskStatus]] = {
-    TaskStatus.open: {TaskStatus.accepted, TaskStatus.declined},
-    TaskStatus.accepted: {TaskStatus.collecting, TaskStatus.open},
+    TaskStatus.proposed: {TaskStatus.underway, TaskStatus.declined},
+    TaskStatus.underway: {TaskStatus.collecting, TaskStatus.proposed},
     TaskStatus.collecting: {TaskStatus.completed},
 }
 
@@ -96,51 +96,20 @@ async def create_task(
     publishable_key = None
 
     if payload.pledge_amount is not None:
-        if payload.payment_method_id:
-            # Reuse saved payment method — skip SetupIntent
-            from app.routers.pledges import verify_pm_ownership
-
-            verify_pm_ownership(payload.payment_method_id, patron.stripe_customer)
-
-            pledge = Pledge(
-                patron_id=patron.id,
-                task_id=task.id,
+        try:
+            result = await create_pledge_for_task(
+                db,
+                patron=patron,
+                task=task,
                 amount=payload.pledge_amount,
-                setup_intent=None,
-                status=PledgeStatus.active,
-                payment_method=payload.payment_method_id,
-                save_card=True,
-            )
-            db.add(pledge)
-            await db.flush()
-
-            task.pledge_count += 1
-            task.pledge_total += payload.pledge_amount
-
-            pledge_id = pledge.id
-            publishable_key = settings.stripe_publishable_key
-        else:
-            si = stripe.SetupIntent.create(
-                customer=patron.stripe_customer,
-                metadata={
-                    "pledge_task_id": str(task.id),
-                    "pledge_patron_id": str(patron.id),
-                },
-            )
-            pledge = Pledge(
-                patron_id=patron.id,
-                task_id=task.id,
-                amount=payload.pledge_amount,
-                setup_intent=si.id,
-                status=PledgeStatus.pending,
-                payment_method=None,
+                payment_method_id=payload.payment_method_id,
                 save_card=payload.save_card,
             )
-            db.add(pledge)
-            await db.flush()
-            pledge_id = pledge.id
-            client_secret = si.client_secret
-            publishable_key = settings.stripe_publishable_key
+        except PaymentMethodOwnershipError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        pledge_id = result.pledge.id
+        client_secret = result.client_secret
+        publishable_key = settings.stripe_publishable_key
 
     await db.commit()
     await db.refresh(task)
@@ -175,8 +144,8 @@ async def update_task(
 
         now = datetime.now(UTC)
 
-        if payload.status == TaskStatus.accepted:
-            task.accepted_at = now
+        if payload.status == TaskStatus.underway:
+            task.underway_at = now
             notify_fn = notify_task_accepted
         elif payload.status == TaskStatus.declined:
             task.declined_at = now
@@ -185,8 +154,8 @@ async def update_task(
             notify_fn = notify_task_completed
         elif payload.status == TaskStatus.completed:
             task.completed_at = now
-        elif payload.status == TaskStatus.open and old_status == TaskStatus.accepted:
-            task.accepted_at = None
+        elif payload.status == TaskStatus.proposed and old_status == TaskStatus.underway:
+            task.underway_at = None
 
         task.status = payload.status
 

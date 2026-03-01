@@ -16,7 +16,7 @@ describe("TaskCard", () => {
   it("renders title and status badge", () => {
     renderCard(makeTask());
     expect(screen.getByText("Fix the bridge")).toBeInTheDocument();
-    expect(screen.getByText("OPEN")).toBeInTheDocument();
+    expect(screen.getByText("PROPOSED")).toBeInTheDocument();
   });
 
   it("formats currency from cents to dollars", () => {
@@ -35,8 +35,8 @@ describe("TaskCard", () => {
     expect(screen.getByText(/5 backers/)).toBeInTheDocument();
   });
 
-  it("shows star icon for accepted status", () => {
-    renderCard(makeTask({ status: "accepted" }));
+  it("shows star icon for underway status", () => {
+    renderCard(makeTask({ status: "underway" }));
     expect(screen.getByText(/★/)).toBeInTheDocument();
   });
 

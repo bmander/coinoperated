@@ -18,10 +18,11 @@ from app.schemas import (
     PledgeUpdateRequest,
     PledgeUpdateResponse,
 )
+from app.services.pledges import PaymentMethodOwnershipError, create_pledge_for_task
 
 router = APIRouter(prefix="/api/tasks/{task_id}/pledges", tags=["pledges"])
 
-PLEDGEABLE_STATUSES = {TaskStatus.open, TaskStatus.accepted}
+PLEDGEABLE_STATUSES = {TaskStatus.proposed, TaskStatus.underway}
 
 
 async def _get_patron_pledge(
@@ -36,15 +37,6 @@ async def _get_patron_pledge(
             )
         )
     ).scalar_one_or_none()
-
-
-def verify_pm_ownership(payment_method_id: str, stripe_customer: str) -> None:
-    """Raise 400 if the payment method doesn't belong to the customer."""
-    pm = stripe.PaymentMethod.retrieve(payment_method_id)
-    if pm.customer != stripe_customer:
-        raise HTTPException(
-            status_code=400, detail="Payment method does not belong to you"
-        )
 
 
 def _cancel_setup_intent(setup_intent_id: str) -> None:
@@ -90,58 +82,24 @@ async def create_pledge(
     if existing:
         raise HTTPException(status_code=400, detail="You already have a pledge on this task")
 
-    # Reuse released pledge row if one exists (unique constraint on patron_id+task_id)
-    pledge = (
-        await db.execute(
-            select(Pledge).where(
-                Pledge.patron_id == patron.id,
-                Pledge.task_id == task_id,
-                Pledge.status == PledgeStatus.released,
-            )
+    try:
+        result = await create_pledge_for_task(
+            db,
+            patron=patron,
+            task=task,
+            amount=payload.amount,
+            payment_method_id=payload.payment_method_id,
+            save_card=payload.save_card,
         )
-    ).scalar_one_or_none()
-    if pledge is None:
-        pledge = Pledge(patron_id=patron.id, task_id=task_id)
-        db.add(pledge)
-
-    pledge.amount = payload.amount
-
-    if payload.payment_method_id:
-        # Reuse a saved payment method
-        verify_pm_ownership(payload.payment_method_id, patron.stripe_customer)
-        pledge.setup_intent = None
-        pledge.status = PledgeStatus.active
-        pledge.payment_method = payload.payment_method_id
-        pledge.save_card = True
-
-        task.pledge_count += 1
-        task.pledge_total += payload.amount
-
-        await db.commit()
-        await db.refresh(pledge)
-
-        return PledgeCreateResponse(
-            pledge_id=pledge.id,
-            client_secret=None,
-            publishable_key=settings.stripe_publishable_key,
-        )
-
-    # New card — existing SetupIntent flow
-    si = stripe.SetupIntent.create(
-        customer=patron.stripe_customer,
-        metadata={"pledge_task_id": str(task_id), "pledge_patron_id": str(patron.id)},
-    )
-    pledge.setup_intent = si.id
-    pledge.status = PledgeStatus.pending
-    pledge.payment_method = None
-    pledge.save_card = payload.save_card
+    except PaymentMethodOwnershipError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     await db.commit()
-    await db.refresh(pledge)
+    await db.refresh(result.pledge)
 
     return PledgeCreateResponse(
-        pledge_id=pledge.id,
-        client_secret=si.client_secret,
+        pledge_id=result.pledge.id,
+        client_secret=result.client_secret,
         publishable_key=settings.stripe_publishable_key,
     )
 

@@ -37,13 +37,13 @@ function makeTask(overrides: Partial<AdminTaskListResponse["items"][0]> = {}) {
     description: "A test task",
     criteria: null,
     submitted_by: null,
-    status: "open" as const,
+    status: "proposed" as const,
     evidence: null,
     pledge_count: 1,
     pledge_total: 5000,
     collected_total: 0,
     created_at: "2025-01-01T00:00:00Z",
-    accepted_at: null,
+    underway_at: null,
     completed_at: null,
     declined_at: null,
     pledges: [
@@ -113,15 +113,15 @@ describe("Admin", () => {
     });
   });
 
-  it("shows accept/decline for open tasks", async () => {
-    await renderAndExpandTask({ status: "open" });
+  it("shows accept/decline for proposed tasks", async () => {
+    await renderAndExpandTask({ status: "proposed" });
 
     expect(screen.getByText("Accept")).toBeInTheDocument();
     expect(screen.getByText("Decline")).toBeInTheDocument();
   });
 
-  it("shows update form and complete for accepted tasks", async () => {
-    await renderAndExpandTask({ status: "accepted" });
+  it("shows update form and complete for underway tasks", async () => {
+    await renderAndExpandTask({ status: "underway" });
 
     expect(screen.getByPlaceholderText(/progress update/i)).toBeInTheDocument();
     expect(screen.getByText("Post Update")).toBeInTheDocument();
@@ -142,7 +142,7 @@ describe("Admin", () => {
       body: "Progress!",
       created_at: "2025-01-02T00:00:00Z",
     });
-    await renderAndExpandTask({ status: "accepted" });
+    await renderAndExpandTask({ status: "underway" });
 
     const textarea = screen.getByPlaceholderText(/progress update/i);
     fireEvent.change(textarea, { target: { value: "Progress!" } });

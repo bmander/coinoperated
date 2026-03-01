@@ -114,7 +114,7 @@ async def test_get_task(authed_client):
     assert data["title"] == "Fix the bus"
     assert data["description"] == "It's broken"
     assert data["criteria"] == "Bus works"
-    assert data["status"] == "open"
+    assert data["status"] == "proposed"
     assert "updates" in data
     assert data["updates"] == []
 
@@ -143,7 +143,7 @@ async def test_create_task_basic(authed_client, test_patron):
     assert resp.status_code == 201
     data = resp.json()
     assert data["title"] == "New task"
-    assert data["status"] == "open"
+    assert data["status"] == "proposed"
     assert data["submitted_by"] == str(test_patron.id)
     assert data["pledge_id"] is None
     assert data["client_secret"] is None
@@ -212,7 +212,7 @@ async def test_create_task_non_admin_pledge_below_minimum(client, test_session_m
     assert resp.status_code == 422
 
 
-@patch("app.routers.tasks.stripe.SetupIntent.create")
+@patch("app.services.pledges.stripe.SetupIntent.create")
 async def test_create_task_non_admin_with_pledge(
     mock_si_create, client, test_session_maker
 ):
@@ -232,14 +232,14 @@ async def test_create_task_non_admin_with_pledge(
     assert resp.status_code == 201
     data = resp.json()
     assert data["title"] == "My task"
-    assert data["status"] == "open"
+    assert data["status"] == "proposed"
     assert data["pledge_id"] is not None
     assert data["client_secret"] == "seti_test_secret"
     assert data["publishable_key"] == settings.stripe_publishable_key
     mock_si_create.assert_called_once()
 
 
-@patch("app.routers.tasks.stripe.SetupIntent.create")
+@patch("app.services.pledges.stripe.SetupIntent.create")
 async def test_create_task_admin_with_optional_pledge(
     mock_si_create, authed_client, test_patron
 ):
@@ -266,12 +266,12 @@ async def test_create_task_admin_with_optional_pledge(
 async def test_update_task_accept(authed_client):
     task = await create_task(authed_client)
     resp = await authed_client.patch(
-        f"/api/tasks/{task['id']}", json={"status": "accepted"}
+        f"/api/tasks/{task['id']}", json={"status": "underway"}
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["status"] == "accepted"
-    assert data["accepted_at"] is not None
+    assert data["status"] == "underway"
+    assert data["underway_at"] is not None
 
 
 async def test_update_task_decline(authed_client):
@@ -287,20 +287,20 @@ async def test_update_task_decline(authed_client):
 
 async def test_update_task_abandon(authed_client):
     task = await create_task(authed_client)
-    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "accepted"})
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "underway"})
 
     resp = await authed_client.patch(
-        f"/api/tasks/{task['id']}", json={"status": "open"}
+        f"/api/tasks/{task['id']}", json={"status": "proposed"}
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["status"] == "open"
-    assert data["accepted_at"] is None
+    assert data["status"] == "proposed"
+    assert data["underway_at"] is None
 
 
 async def test_update_task_collecting(authed_client):
     task = await create_task(authed_client)
-    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "accepted"})
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "underway"})
 
     resp = await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "collecting"}
@@ -351,14 +351,14 @@ async def test_declined_is_terminal(authed_client):
     await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "declined"})
 
     resp = await authed_client.patch(
-        f"/api/tasks/{task['id']}", json={"status": "open"}
+        f"/api/tasks/{task['id']}", json={"status": "proposed"}
     )
     assert resp.status_code == 400
 
 
 async def test_completed_is_terminal(authed_client):
     task = await create_task(authed_client)
-    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "accepted"})
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "underway"})
     await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "collecting"}
     )
@@ -367,7 +367,7 @@ async def test_completed_is_terminal(authed_client):
     )
 
     resp = await authed_client.patch(
-        f"/api/tasks/{task['id']}", json={"status": "open"}
+        f"/api/tasks/{task['id']}", json={"status": "proposed"}
     )
     assert resp.status_code == 400
 
@@ -375,7 +375,7 @@ async def test_completed_is_terminal(authed_client):
 # --- POST /api/tasks with payment_method_id / save_card ---
 
 
-@patch("app.routers.tasks.stripe.PaymentMethod.retrieve")
+@patch("app.services.pledges.stripe.PaymentMethod.retrieve")
 async def test_create_task_with_saved_pm(mock_pm_retrieve, client, test_session_maker):
     patron = await create_patron_db(test_session_maker, "user4@example.com", "cus_user4")
     mock_pm = MagicMock()
@@ -405,7 +405,7 @@ async def test_create_task_with_saved_pm(mock_pm_retrieve, client, test_session_
     assert task_resp.json()["pledge_total"] == 500
 
 
-@patch("app.routers.tasks.stripe.SetupIntent.create")
+@patch("app.services.pledges.stripe.SetupIntent.create")
 async def test_create_task_save_card_false(mock_si_create, client, test_session_maker):
     mock_si_create.return_value = mock_setup_intent()
     patron = await create_patron_db(test_session_maker, "user5@example.com", "cus_user5")

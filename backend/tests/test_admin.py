@@ -263,7 +263,7 @@ async def test_collect_mixed_success_and_failure(mock_pi_create, client, test_se
 
 async def test_collect_rejects_non_collecting_task(client, test_session_maker):
     _admin, token = await _make_admin(test_session_maker)
-    task = await create_task(test_session_maker, status=TaskStatus.accepted)
+    task = await create_task(test_session_maker, status=TaskStatus.underway)
 
     with patch("app.dependencies.settings", _admin_settings()):
         resp = await client.post(
@@ -432,7 +432,7 @@ async def test_delete_task_succeeds(client, test_session_maker):
 
 async def test_delete_task_cascades_related_records(client, test_session_maker):
     _admin, token = await _make_admin(test_session_maker)
-    task = await create_task(test_session_maker, status=TaskStatus.accepted)
+    task = await create_task(test_session_maker, status=TaskStatus.underway)
     backer = await create_patron(test_session_maker, "backer@example.com", "cus_backer")
     pledge = await create_pledge(
         test_session_maker, patron_id=backer.id, task_id=task.id, amount=1000

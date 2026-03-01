@@ -12,7 +12,7 @@ export default function TaskCard({
   onPledge?: () => void;
 }) {
   return (
-    <div className="task-card">
+    <div className={`task-card task-card-${task.status}`}>
       <div className="task-card-content">
         <div className="task-card-main">
           <div className="task-card-title-row">
