@@ -130,7 +130,7 @@ export default function PledgeWidget({
     setShowModal(false);
   }
 
-  const canPledge = task.status === "open" || task.status === "accepted";
+  const canPledge = task.status === "proposed" || task.status === "underway";
   if (!canPledge) return null;
 
   return (

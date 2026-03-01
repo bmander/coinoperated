@@ -15,8 +15,8 @@ const SORT_MAP: Record<SortOption, { sort_by: "pledge_total" | "created_at"; sor
 
 const STATUS_OPTIONS: { value: TaskStatus | ""; label: string }[] = [
   { value: "", label: "All" },
-  { value: "open", label: "Open" },
-  { value: "accepted", label: "Accepted" },
+  { value: "proposed", label: "Proposed" },
+  { value: "underway", label: "Underway" },
   { value: "collecting", label: "Collecting" },
   { value: "completed", label: "Completed" },
   { value: "declined", label: "Declined" },
@@ -39,10 +39,11 @@ export default function TaskBoard() {
 
   return (
     <div className="task-board">
-      <p className="tagline">Infrastructure tasks, funded by people who care.</p>
+      <p className="tagline">Group fund a universal fix-it man. <Link to="/how-it-works">How this works</Link></p>
       <hr />
 
       <div className="controls">
+        <Link to="/tasks/new" className="btn btn-primary">Submit a Task</Link>
         <label>
           Sort:{" "}
           <select value={sort} onChange={(e) => setSort(e.target.value as SortOption)}>
@@ -75,9 +76,6 @@ export default function TaskBoard() {
         ))}
       </div>
 
-      <div className="board-footer">
-        <Link to="/tasks/new" className="btn btn-primary">Submit a Task</Link>
-      </div>
     </div>
   );
 }

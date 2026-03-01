@@ -131,7 +131,7 @@ async def create_patron(
 
 
 async def create_task(session_maker, **overrides) -> Task:
-    defaults = {"title": "Test task", "description": "A test task", "status": "open"}
+    defaults = {"title": "Test task", "description": "A test task", "status": "proposed"}
     defaults.update(overrides)
     async with session_maker() as session:
         task = Task(**defaults)

@@ -79,13 +79,13 @@ afterEach(() => {
 describe("PledgeWidget", () => {
   // --- Rendering ---
 
-  it("shows Pledge button for open tasks", () => {
-    renderWidget({ status: "open" });
+  it("shows Pledge button for proposed tasks", () => {
+    renderWidget({ status: "proposed" });
     expect(screen.getByRole("button", { name: "Pledge" })).toBeInTheDocument();
   });
 
-  it("shows Pledge button for accepted tasks", () => {
-    renderWidget({ status: "accepted" });
+  it("shows Pledge button for underway tasks", () => {
+    renderWidget({ status: "underway" });
     expect(screen.getByRole("button", { name: "Pledge" })).toBeInTheDocument();
   });
 

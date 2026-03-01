@@ -84,7 +84,7 @@ async def test_task_accepted_creates_notification(mock_send, client, test_sessio
     await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
 
     resp = await client.patch(
-        f"/api/tasks/{task.id}", json={"status": "accepted"}
+        f"/api/tasks/{task.id}", json={"status": "underway"}
     )
     assert resp.status_code == 200
 
@@ -107,7 +107,7 @@ async def test_task_accepted_creates_notification(mock_send, client, test_sessio
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
 async def test_task_collecting_creates_completed_notification(mock_send, client, test_session_maker):
     patron = await create_patron(test_session_maker, "notif_b@example.com", "cus_notif_b")
-    task = await create_task(test_session_maker, status=TaskStatus.accepted)
+    task = await create_task(test_session_maker, status=TaskStatus.underway)
     await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
 
     resp = await client.patch(
@@ -166,7 +166,7 @@ async def test_multiple_pledgers_get_notifications(mock_send, client, test_sessi
     )
 
     resp = await client.patch(
-        f"/api/tasks/{task.id}", json={"status": "accepted"}
+        f"/api/tasks/{task.id}", json={"status": "underway"}
     )
     assert resp.status_code == 200
 
@@ -190,10 +190,10 @@ async def test_email_failure_does_not_break_api(mock_send, client, test_session_
     await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
 
     resp = await client.patch(
-        f"/api/tasks/{task.id}", json={"status": "accepted"}
+        f"/api/tasks/{task.id}", json={"status": "underway"}
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "accepted"
+    assert resp.json()["status"] == "underway"
 
     # email_sent should be False since send_email returned False
     async with test_session_maker() as session:
@@ -216,7 +216,7 @@ async def test_no_pledgers_no_notifications(mock_send, client, test_session_make
     task = await create_task(test_session_maker)
 
     resp = await client.patch(
-        f"/api/tasks/{task.id}", json={"status": "accepted"}
+        f"/api/tasks/{task.id}", json={"status": "underway"}
     )
     assert resp.status_code == 200
 
@@ -377,7 +377,7 @@ async def test_pending_pledger_not_notified(mock_send, client, test_session_make
     )
 
     resp = await client.patch(
-        f"/api/tasks/{task.id}", json={"status": "accepted"}
+        f"/api/tasks/{task.id}", json={"status": "underway"}
     )
     assert resp.status_code == 200
 

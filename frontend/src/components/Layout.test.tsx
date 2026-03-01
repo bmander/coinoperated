@@ -23,7 +23,7 @@ describe("Layout", () => {
     mockUseAuth.mockReturnValue(mockAuth());
     renderWithRouter(<Layout />);
 
-    expect(screen.getByText("CoinOperatedBrandon")).toBeInTheDocument();
+    expect(screen.getByText("Coin Operated Brandon")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sign In" })).toHaveAttribute("href", "/signin");
   });
 

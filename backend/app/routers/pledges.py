@@ -22,7 +22,7 @@ from app.services.pledges import create_pledge_for_task
 
 router = APIRouter(prefix="/api/tasks/{task_id}/pledges", tags=["pledges"])
 
-PLEDGEABLE_STATUSES = {TaskStatus.open, TaskStatus.accepted}
+PLEDGEABLE_STATUSES = {TaskStatus.proposed, TaskStatus.underway}
 
 
 async def _get_patron_pledge(

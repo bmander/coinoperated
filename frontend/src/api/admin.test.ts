@@ -28,18 +28,18 @@ describe("fetchAdminTasks", () => {
 
 describe("patchTask", () => {
   it("sends PATCH with JSON body", async () => {
-    const task = { id: "t1", status: "accepted" };
+    const task = { id: "t1", status: "underway" };
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(task),
     });
 
-    const result = await patchTask("t1", { status: "accepted" });
+    const result = await patchTask("t1", { status: "underway" });
 
     expect(mockFetch).toHaveBeenCalledWith("/api/tasks/t1", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "accepted" }),
+      body: JSON.stringify({ status: "underway" }),
     });
     expect(result).toEqual(task);
   });

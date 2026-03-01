@@ -42,10 +42,10 @@ describe("TaskDetail", () => {
   });
 
   it("renders task title and status", async () => {
-    mockGetTask.mockResolvedValue(makeTaskDetail({ title: "Fix the bridge", status: "accepted" }));
+    mockGetTask.mockResolvedValue(makeTaskDetail({ title: "Fix the bridge", status: "underway" }));
     renderDetail();
     expect(await screen.findByText("Fix the bridge")).toBeInTheDocument();
-    expect(screen.getByText(/ACCEPTED/)).toBeInTheDocument();
+    expect(screen.getByText(/UNDERWAY/)).toBeInTheDocument();
   });
 
   it("renders description as markdown", async () => {
@@ -114,7 +114,7 @@ describe("TaskDetail", () => {
 
   it("hides evidence for non-completed tasks", async () => {
     mockGetTask.mockResolvedValue(makeTaskDetail({
-      status: "open",
+      status: "proposed",
       evidence: "Some evidence",
     }));
     renderDetail();
@@ -122,14 +122,14 @@ describe("TaskDetail", () => {
     expect(screen.queryByText("Completion Evidence")).not.toBeInTheDocument();
   });
 
-  it("shows Pledge button for open tasks", async () => {
-    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "open" }));
+  it("shows Pledge button for proposed tasks", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "proposed" }));
     renderDetail();
     expect(await screen.findByRole("button", { name: "Pledge" })).toBeInTheDocument();
   });
 
-  it("shows Pledge button for accepted tasks", async () => {
-    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "accepted" }));
+  it("shows Pledge button for underway tasks", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "underway" }));
     renderDetail();
     expect(await screen.findByRole("button", { name: "Pledge" })).toBeInTheDocument();
   });

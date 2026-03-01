@@ -98,12 +98,12 @@ function AdminTaskCard({
           {error && <p className="admin-error">{error}</p>}
 
           <div className="admin-actions">
-            {task.status === "open" && (
+            {task.status === "proposed" && (
               <>
                 <button
                   className="btn btn-accept"
                   disabled={busy}
-                  onClick={() => handleAction(() => patchTask(task.id, { status: "accepted" }))}
+                  onClick={() => handleAction(() => patchTask(task.id, { status: "underway" }))}
                 >
                   Accept
                 </button>
@@ -117,7 +117,7 @@ function AdminTaskCard({
               </>
             )}
 
-            {task.status === "accepted" && (
+            {task.status === "underway" && (
               <>
                 <div className="admin-update-form form-field">
                   <textarea
@@ -156,7 +156,7 @@ function AdminTaskCard({
                 <button
                   className="btn btn-decline"
                   disabled={busy}
-                  onClick={() => handleAction(() => patchTask(task.id, { status: "open" }))}
+                  onClick={() => handleAction(() => patchTask(task.id, { status: "proposed" }))}
                 >
                   Abandon
                 </button>

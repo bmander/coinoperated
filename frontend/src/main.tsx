@@ -12,6 +12,8 @@ import SubmitTask from './pages/SubmitTask'
 import SignIn from './pages/SignIn'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
+import HowItWorks from './pages/HowItWorks'
+import Swatches from './pages/Swatches'
 import RequireAdmin from './components/RequireAdmin'
 
 createRoot(document.getElementById('root')!).render(
@@ -22,6 +24,8 @@ createRoot(document.getElementById('root')!).render(
           <Route element={<Layout />}>
             <Route path="/" element={<TaskBoard />} />
             <Route path="/tasks/:taskId" element={<TaskDetail />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
+            <Route path="/swatches" element={<Swatches />} />
             <Route element={<RequireAuth />}>
               <Route path="/tasks/new" element={<SubmitTask />} />
               <Route path="/dashboard" element={<Dashboard />} />
