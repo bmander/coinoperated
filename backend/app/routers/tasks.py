@@ -12,7 +12,7 @@ from app.dependencies import get_active_patron, get_db
 from app.models import Patron, Task, TaskStatus
 from app.notifications import notify_task_accepted, notify_task_completed, notify_task_declined
 from app.schemas import TaskCreate, TaskCreateResponse, TaskDetail, TaskListResponse, TaskRead, TaskUpdate
-from app.services.pledges import create_pledge_for_task
+from app.services.pledges import PaymentMethodOwnershipError, create_pledge_for_task
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -96,14 +96,17 @@ async def create_task(
     publishable_key = None
 
     if payload.pledge_amount is not None:
-        result = await create_pledge_for_task(
-            db,
-            patron=patron,
-            task=task,
-            amount=payload.pledge_amount,
-            payment_method_id=payload.payment_method_id,
-            save_card=payload.save_card,
-        )
+        try:
+            result = await create_pledge_for_task(
+                db,
+                patron=patron,
+                task=task,
+                amount=payload.pledge_amount,
+                payment_method_id=payload.payment_method_id,
+                save_card=payload.save_card,
+            )
+        except PaymentMethodOwnershipError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         pledge_id = result.pledge.id
         client_secret = result.client_secret
         publishable_key = settings.stripe_publishable_key

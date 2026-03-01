@@ -18,7 +18,7 @@ from app.schemas import (
     PledgeUpdateRequest,
     PledgeUpdateResponse,
 )
-from app.services.pledges import create_pledge_for_task
+from app.services.pledges import PaymentMethodOwnershipError, create_pledge_for_task
 
 router = APIRouter(prefix="/api/tasks/{task_id}/pledges", tags=["pledges"])
 
@@ -82,14 +82,17 @@ async def create_pledge(
     if existing:
         raise HTTPException(status_code=400, detail="You already have a pledge on this task")
 
-    result = await create_pledge_for_task(
-        db,
-        patron=patron,
-        task=task,
-        amount=payload.amount,
-        payment_method_id=payload.payment_method_id,
-        save_card=payload.save_card,
-    )
+    try:
+        result = await create_pledge_for_task(
+            db,
+            patron=patron,
+            task=task,
+            amount=payload.amount,
+            payment_method_id=payload.payment_method_id,
+            save_card=payload.save_card,
+        )
+    except PaymentMethodOwnershipError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     await db.commit()
     await db.refresh(result.pledge)

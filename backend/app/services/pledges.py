@@ -1,20 +1,21 @@
 from dataclasses import dataclass
 
 import stripe
-from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Patron, Pledge, PledgeStatus, Task
 
 
+class PaymentMethodOwnershipError(ValueError):
+    """The payment method does not belong to the expected customer."""
+
+
 def verify_pm_ownership(payment_method_id: str, stripe_customer: str) -> None:
-    """Raise 400 if the payment method doesn't belong to the customer."""
+    """Raise if the payment method doesn't belong to the customer."""
     pm = stripe.PaymentMethod.retrieve(payment_method_id)
     if pm.customer != stripe_customer:
-        raise HTTPException(
-            status_code=400, detail="Payment method does not belong to you"
-        )
+        raise PaymentMethodOwnershipError("Payment method does not belong to you")
 
 
 @dataclass
