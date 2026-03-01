@@ -1,7 +1,5 @@
 import uuid
 
-import pytest
-
 from tests.conftest import create_patron, create_task
 
 
@@ -44,8 +42,8 @@ async def test_get_patron_does_not_expose_email(client, test_session_maker):
 
 async def test_get_patron_with_submitted_tasks(client, test_session_maker):
     patron = await create_patron(test_session_maker, "carol@example.com")
-    task1 = await create_task(test_session_maker, title="Fix the road", submitted_by=patron.id)
-    task2 = await create_task(test_session_maker, title="Build the park", submitted_by=patron.id)
+    await create_task(test_session_maker, title="Fix the road", submitted_by=patron.id)
+    await create_task(test_session_maker, title="Build the park", submitted_by=patron.id)
 
     resp = await client.get(f"/api/patrons/{patron.id}")
     assert resp.status_code == 200
