@@ -4,9 +4,9 @@ import react from '@vitejs/plugin-react'
 import mkcert from 'vite-plugin-mkcert'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   base: process.env.VITE_BASE_PATH || '/',
-  plugins: [react(), mkcert()],
+  plugins: [react(), ...(command === 'serve' ? [mkcert()] : [])],
   server: {
     proxy: {
       '/api': {
@@ -20,4 +20,4 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test-setup.ts'],
   },
-})
+}))
