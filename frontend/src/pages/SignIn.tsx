@@ -16,6 +16,7 @@ export default function SignIn() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [cooldown, setCooldown] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!cooldown) return;
@@ -31,12 +32,15 @@ export default function SignIn() {
 
   async function sendLink() {
     setError("");
+    setSending(true);
     try {
       await login(email);
       setSubmitted(true);
       setCooldown(true);
     } catch {
       setError("Something went wrong. Please try again.");
+    } finally {
+      setSending(false);
     }
   }
 
@@ -56,7 +60,7 @@ export default function SignIn() {
           type="button"
           className="btn btn-secondary"
           onClick={sendLink}
-          disabled={cooldown}
+          disabled={cooldown || sending}
         >
           {cooldown ? "Email sent" : "Re-send email"}
         </button>
@@ -83,7 +87,7 @@ export default function SignIn() {
             required
           />
         </div>
-        <button type="submit" className="btn btn-primary">
+        <button type="submit" className="btn btn-primary" disabled={sending}>
           Send sign-in link
         </button>
       </form>
