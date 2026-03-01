@@ -27,6 +27,12 @@ class PatronRead(BaseReadSchema):
     created_at: datetime
 
 
+class PatronPublicRead(BaseReadSchema):
+    id: uuid.UUID
+    display_name: str | None
+    created_at: datetime
+
+
 # --- Task ---
 
 
@@ -45,6 +51,7 @@ class TaskRead(BaseReadSchema):
     description: str
     criteria: str | None
     submitted_by: uuid.UUID | None
+    submitted_by_patron: PatronPublicRead | None = None
     status: TaskStatus
     evidence: str | None
     pledge_count: int
@@ -234,6 +241,10 @@ class PatronMe(BaseReadSchema):
     @property
     def has_payment_method(self) -> bool:
         return self.default_payment_method is not None
+
+
+class PatronProfileRead(PatronPublicRead):
+    submitted_tasks: list["TaskRead"] = []
 
 
 class AdminPatronRead(BaseReadSchema):

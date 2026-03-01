@@ -1,4 +1,4 @@
-import type { NotificationRead, PatronPledgeRead, SavedPaymentMethod } from "./types";
+import type { NotificationRead, PatronPledgeRead, PatronProfileRead, SavedPaymentMethod } from "./types";
 
 export async function fetchMyPledges(): Promise<PatronPledgeRead[]> {
   const res = await fetch("/api/patron/pledges");
@@ -15,6 +15,13 @@ export async function fetchMyNotifications(): Promise<NotificationRead[]> {
 export async function fetchPaymentMethods(): Promise<SavedPaymentMethod[]> {
   const res = await fetch("/api/patron/payment-methods");
   if (!res.ok) throw new Error(`Failed to fetch payment methods: ${res.status}`);
+  return res.json();
+}
+
+export async function getPatron(patronId: string): Promise<PatronProfileRead> {
+  const res = await fetch(`/api/patrons/${patronId}`);
+  if (res.status === 404) throw new Error("Patron not found");
+  if (!res.ok) throw new Error(`Failed to fetch patron: ${res.status}`);
   return res.json();
 }
 

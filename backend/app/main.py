@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import admin, auth, patron, pledges, tasks, webhooks
+from app.routers import admin, auth, patron, patrons, pledges, tasks, webhooks
 
 
 def create_app() -> FastAPI:
@@ -21,6 +21,7 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(auth.router)
     app.include_router(patron.router)
+    app.include_router(patrons.router)
     app.include_router(tasks.router)
     app.include_router(pledges.router)
     app.include_router(webhooks.router)

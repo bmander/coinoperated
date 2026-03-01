@@ -12,6 +12,7 @@ import SubmitTask from './pages/SubmitTask'
 import SignIn from './pages/SignIn'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
+import PatronProfile from './pages/PatronProfile'
 import RequireAdmin from './components/RequireAdmin'
 
 createRoot(document.getElementById('root')!).render(
@@ -22,6 +23,7 @@ createRoot(document.getElementById('root')!).render(
           <Route element={<Layout />}>
             <Route path="/" element={<TaskBoard />} />
             <Route path="/tasks/:taskId" element={<TaskDetail />} />
+            <Route path="/patrons/:patronId" element={<PatronProfile />} />
             <Route element={<RequireAuth />}>
               <Route path="/tasks/new" element={<SubmitTask />} />
               <Route path="/dashboard" element={<Dashboard />} />

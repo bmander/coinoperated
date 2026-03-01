@@ -36,6 +36,15 @@ export default function TaskDetail() {
         <StatusBadge status={task.status} />
         <h1 className="task-detail-title">{task.title}</h1>
         <p className="task-detail-stats">
+          {task.submitted_by_patron && (
+            <>
+              Submitted by{" "}
+              <Link to={`/patrons/${task.submitted_by_patron.id}`} className="task-detail-creator">
+                {task.submitted_by_patron.display_name ?? "Anonymous"}
+              </Link>
+              {" "}&middot;{" "}
+            </>
+          )}
           {formatBackers(task.pledge_count)} &middot;{" "}
           {formatCents(task.pledge_total)} pledged
           {task.status === "completed" && task.collected_total > 0 && (

@@ -32,7 +32,7 @@ async def list_tasks(
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ):
-    query = select(Task)
+    query = select(Task).options(selectinload(Task.submitted_by_patron))
     count_query = select(func.count()).select_from(Task)
 
     if status is not None:
@@ -52,7 +52,7 @@ async def list_tasks(
 async def get_task_or_404(
     db: AsyncSession, task_id: uuid.UUID, *, load_updates: bool = False
 ) -> Task:
-    query = select(Task).where(Task.id == task_id)
+    query = select(Task).where(Task.id == task_id).options(selectinload(Task.submitted_by_patron))
     if load_updates:
         query = query.options(selectinload(Task.updates))
     task = (await db.execute(query)).scalar_one_or_none()

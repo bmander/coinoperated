@@ -1,4 +1,4 @@
-import type { TaskRead, TaskDetailRead, TaskListResponse, UpdateRead, PatronPledgeRead, NotificationRead } from "../api/types";
+import type { TaskRead, TaskDetailRead, TaskListResponse, UpdateRead, PatronPledgeRead, NotificationRead, PatronProfileRead } from "../api/types";
 
 export function makeTask(overrides: Partial<TaskRead> = {}): TaskRead {
   return {
@@ -7,6 +7,7 @@ export function makeTask(overrides: Partial<TaskRead> = {}): TaskRead {
     description: "The bridge is broken",
     criteria: null,
     submitted_by: null,
+    submitted_by_patron: null,
     status: "open",
     evidence: null,
     pledge_count: 5,
@@ -53,6 +54,16 @@ export function makePatronPledge(overrides: Partial<PatronPledgeRead> = {}): Pat
       title: "Fix the bridge",
       status: "open",
     },
+    ...overrides,
+  };
+}
+
+export function makePatronProfile(overrides: Partial<PatronProfileRead> = {}): PatronProfileRead {
+  return {
+    id: "patron-1",
+    display_name: "Jane Doe",
+    created_at: "2025-01-01T00:00:00Z",
+    submitted_tasks: [],
     ...overrides,
   };
 }

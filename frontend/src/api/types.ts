@@ -1,11 +1,18 @@
 export type TaskStatus = "open" | "accepted" | "collecting" | "completed" | "declined";
 
+export interface PatronPublicRead {
+  id: string;
+  display_name: string | null;
+  created_at: string;
+}
+
 export interface TaskRead {
   id: string;
   title: string;
   description: string;
   criteria: string | null;
   submitted_by: string | null;
+  submitted_by_patron: PatronPublicRead | null;
   status: TaskStatus;
   evidence: string | null;
   pledge_count: number;
@@ -77,6 +84,10 @@ export interface PatronMe {
   is_banned: boolean;
   has_payment_method: boolean;
   default_payment_method: string | null;
+}
+
+export interface PatronProfileRead extends PatronPublicRead {
+  submitted_tasks: TaskRead[];
 }
 
 export interface AdminPatronRead {

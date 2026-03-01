@@ -52,4 +52,29 @@ describe("TaskCard", () => {
     renderCard(task);
     expect(screen.queryByRole("button", { name: "Pledge" })).not.toBeInTheDocument();
   });
+
+  it("shows creator name linking to patron page", () => {
+    const task = makeTask({
+      submitted_by: "patron-1",
+      submitted_by_patron: { id: "patron-1", display_name: "Alice", created_at: "2025-01-01T00:00:00Z" },
+    });
+    renderCard(task);
+    const link = screen.getByRole("link", { name: "Alice" });
+    expect(link).toHaveAttribute("href", "/patrons/patron-1");
+  });
+
+  it("shows Anonymous when creator has no display name", () => {
+    const task = makeTask({
+      submitted_by: "patron-1",
+      submitted_by_patron: { id: "patron-1", display_name: null, created_at: "2025-01-01T00:00:00Z" },
+    });
+    renderCard(task);
+    expect(screen.getByRole("link", { name: "Anonymous" })).toBeInTheDocument();
+  });
+
+  it("hides creator when submitted_by_patron is null", () => {
+    const task = makeTask({ submitted_by_patron: null });
+    renderCard(task);
+    expect(screen.queryByText("Anonymous")).not.toBeInTheDocument();
+  });
 });

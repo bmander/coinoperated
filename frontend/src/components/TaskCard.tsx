@@ -22,6 +22,14 @@ export default function TaskCard({
             </h3>
           </div>
           <p className="task-card-stats">
+            {task.submitted_by_patron && (
+              <>
+                <Link to={`/patrons/${task.submitted_by_patron.id}`} className="task-card-creator">
+                  {task.submitted_by_patron.display_name ?? "Anonymous"}
+                </Link>
+                {" "}&middot;{" "}
+              </>
+            )}
             {formatBackers(task.pledge_count)} &middot;{" "}
             {formatCents(task.pledge_total)} pledged
           </p>
