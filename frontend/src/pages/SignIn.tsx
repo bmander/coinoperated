@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import Spinner from "../components/Spinner";
 
 const RESEND_COOLDOWN_MS = 30_000;
 
@@ -62,7 +63,7 @@ export default function SignIn() {
           onClick={sendLink}
           disabled={cooldown || sending}
         >
-          {cooldown ? "Email sent" : "Re-send email"}
+          {sending ? <Spinner /> : cooldown ? "Email sent" : "Re-send email"}
         </button>
       </div>
     );
@@ -88,7 +89,7 @@ export default function SignIn() {
           />
         </div>
         <button type="submit" className="btn btn-primary" disabled={sending}>
-          Send sign-in link
+          {sending ? <><Spinner /> Sending...</> : "Send sign-in link"}
         </button>
       </form>
     </div>

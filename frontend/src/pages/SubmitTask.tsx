@@ -6,6 +6,7 @@ import { API_BASE } from "../api/client";
 import { createTask } from "../api/tasks";
 import { fetchPaymentMethods } from "../api/patron";
 import MarkdownField from "../components/MarkdownField";
+import Spinner from "../components/Spinner";
 import CardPaymentFields, { useCardPaymentSelection } from "../components/CardPaymentFields";
 import { useAuth } from "../contexts/AuthContext";
 import { MIN_PLEDGE_CENTS, PRESET_AMOUNTS } from "../constants";
@@ -188,7 +189,7 @@ function PledgedTaskForm({ savedMethods }: { savedMethods: SavedPaymentMethod[] 
         className="btn btn-primary"
         disabled={submitting || !stripe}
       >
-        {submitting ? "Submitting..." : "Submit Task"}
+        {submitting ? <><Spinner /> Submitting...</> : "Submit Task"}
       </button>
     </form>
   );
@@ -234,7 +235,7 @@ function AdminTaskForm() {
         className="btn btn-primary"
         disabled={submitting}
       >
-        {submitting ? "Submitting..." : "Submit Task"}
+        {submitting ? <><Spinner /> Submitting...</> : "Submit Task"}
       </button>
     </form>
   );

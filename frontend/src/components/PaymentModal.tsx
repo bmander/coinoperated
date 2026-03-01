@@ -3,6 +3,7 @@ import { Elements, CardElement, useStripe, useElements } from "@stripe/react-str
 import type { Stripe, StripeCardElement } from "@stripe/stripe-js";
 import type { SavedPaymentMethod } from "../api/types";
 import CardPaymentFields, { useCardPaymentSelection } from "./CardPaymentFields";
+import Spinner from "./Spinner";
 
 function PaymentForm({
   clientSecret,
@@ -72,7 +73,7 @@ function PaymentForm({
               className="btn btn-primary"
               disabled={submitting || !stripe}
             >
-              {submitting ? "Processing..." : "Confirm Pledge"}
+              {submitting ? <><Spinner /> Processing...</> : "Confirm Pledge"}
             </button>
             <button
               type="button"

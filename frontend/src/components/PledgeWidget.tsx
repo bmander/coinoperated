@@ -9,6 +9,7 @@ import { formatCents } from "../utils/formatting";
 import type { TaskStatus, PledgeMyResponse, SavedPaymentMethod } from "../api/types";
 import { isLivePledge } from "../api/types";
 import PaymentModal from "./PaymentModal";
+import Spinner from "./Spinner";
 
 const PRESET_AMOUNTS = [500, 1000, 2000]; // $5, $10, $20
 
@@ -185,7 +186,7 @@ export default function PledgeWidget({
               disabled={submitting || (!selectedAmount && !isCustom)}
               aria-label="Submit pledge"
             >
-              {submitting ? "..." : "✓"}
+              {submitting ? <Spinner /> : "✓"}
             </button>
             <button
               type="button"

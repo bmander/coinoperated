@@ -6,6 +6,7 @@ import useFetch from "../hooks/useFetch";
 import StatusBadge from "../components/StatusBadge";
 import PledgeWidget from "../components/PledgeWidget";
 import CardChip from "../components/CardChip";
+import Spinner from "../components/Spinner";
 
 function eventLabel(event: string): string {
   switch (event) {
@@ -52,7 +53,7 @@ function SavedPaymentMethods() {
                 onClick={() => handleDelete(pm.id)}
                 disabled={deleting === pm.id}
               >
-                {deleting === pm.id ? "Removing..." : "Remove"}
+                {deleting === pm.id ? <><Spinner /> Removing...</> : "Remove"}
               </button>
             </div>
           ))}

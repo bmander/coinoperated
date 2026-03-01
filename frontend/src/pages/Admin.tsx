@@ -4,6 +4,7 @@ import type { AdminPatronRead, AdminTaskRead, CollectResponse } from "../api/typ
 import { formatBackers, formatCents } from "../utils/formatting";
 import StatusBadge from "../components/StatusBadge";
 import useFetch from "../hooks/useFetch";
+import Spinner from "../components/Spinner";
 
 function PledgeTable({ pledges }: { pledges: AdminTaskRead["pledges"] }) {
   if (pledges.length === 0) return <p className="admin-no-pledges">No pledges yet.</p>;
@@ -105,14 +106,14 @@ function AdminTaskCard({
                   disabled={busy}
                   onClick={() => handleAction(() => patchTask(task.id, { status: "underway" }))}
                 >
-                  Accept
+                  {busy ? <Spinner /> : "Accept"}
                 </button>
                 <button
                   className="btn btn-decline"
                   disabled={busy}
                   onClick={() => handleAction(() => patchTask(task.id, { status: "declined" }))}
                 >
-                  Decline
+                  {busy ? <Spinner /> : "Decline"}
                 </button>
               </>
             )}
@@ -132,7 +133,7 @@ function AdminTaskCard({
                     disabled={busy || !updateBody.trim()}
                     onClick={handlePostUpdate}
                   >
-                    Post Update
+                    {busy ? <><Spinner /> Posting...</> : "Post Update"}
                   </button>
                 </div>
 
@@ -149,7 +150,7 @@ function AdminTaskCard({
                     disabled={busy}
                     onClick={handleMarkComplete}
                   >
-                    Mark Complete
+                    {busy ? <><Spinner /> Completing...</> : "Mark Complete"}
                   </button>
                 </div>
 
@@ -158,7 +159,7 @@ function AdminTaskCard({
                   disabled={busy}
                   onClick={() => handleAction(() => patchTask(task.id, { status: "proposed" }))}
                 >
-                  Abandon
+                  {busy ? <Spinner /> : "Abandon"}
                 </button>
               </>
             )}
@@ -185,7 +186,7 @@ function AdminTaskCard({
                       })
                     }
                   >
-                    Collect Payments
+                    {busy ? <><Spinner /> Collecting...</> : "Collect Payments"}
                   </button>
                 )}
               </>
@@ -209,7 +210,7 @@ function AdminTaskCard({
               }
             }}
           >
-            Delete Task
+            {busy ? <><Spinner /> Deleting...</> : "Delete Task"}
           </button>
         </div>
       )}
@@ -251,7 +252,7 @@ function PatronRow({
           disabled={busy}
           onClick={handleToggle}
         >
-          {patron.is_banned ? "Unban" : "Ban"}
+          {busy ? <Spinner /> : patron.is_banned ? "Unban" : "Ban"}
         </button>
       </td>
     </tr>
