@@ -4,8 +4,6 @@ A pledge-based task platform. Anyone can propose tasks, anyone can pledge money 
 
 No money moves until work is done. On completion, pledgers are charged via Stripe. Failed charges just fail. No contracts, no escrow, no democracy.
 
-See [DESIGN.md](DESIGN.md) for the full design document.
-
 ## How it works
 
 1. Sign in with your email via magic link
@@ -92,7 +90,6 @@ frontend/
     components/      # Layout, TaskCard, PledgeWidget, PaymentModal, ...
 docker-compose.yml   # PostgreSQL 16
 Makefile
-DESIGN.md
 ```
 
 ## Deployment
