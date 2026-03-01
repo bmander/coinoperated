@@ -1,0 +1,21 @@
+runtime: python312
+service: coinop
+entrypoint: gunicorn -k uvicorn.workers.UvicornWorker app.main:app --bind :$PORT
+
+env_variables:
+  BASE_PATH: "/coinop"
+  FRONTEND_URL: "https://bmander.com/coinop"
+  CORS_ORIGINS: '["https://bmander.com"]'
+  # SECRET_KEY, STRIPE_*, SMTP_*, DATABASE_URL set via Secret Manager or here
+
+handlers:
+  - url: /coinop/assets
+    static_dir: static/assets
+    secure: always
+  - url: /coinop/api/.*
+    script: auto
+    secure: always
+  - url: /coinop(/.*)?
+    static_files: static/index.html
+    upload: static/index.html
+    secure: always

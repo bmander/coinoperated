@@ -1,5 +1,5 @@
 import stripe
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
@@ -18,21 +18,24 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(admin.router)
-    app.include_router(auth.router)
-    app.include_router(patron.router)
-    app.include_router(patrons.router)
-    app.include_router(tasks.router)
-    app.include_router(pledges.router)
-    app.include_router(webhooks.router)
+    root = APIRouter(prefix=settings.base_path)
+    root.include_router(admin.router)
+    root.include_router(auth.router)
+    root.include_router(patron.router)
+    root.include_router(patrons.router)
+    root.include_router(tasks.router)
+    root.include_router(pledges.router)
+    root.include_router(webhooks.router)
 
-    @app.get("/api/health")
+    @root.get("/api/health")
     async def health_check():
         return {"status": "ok"}
 
-    @app.get("/api/config/stripe")
+    @root.get("/api/config/stripe")
     async def stripe_config():
         return {"publishable_key": settings.stripe_publishable_key}
+
+    app.include_router(root)
 
     return app
 

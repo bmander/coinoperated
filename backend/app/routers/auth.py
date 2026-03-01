@@ -94,6 +94,7 @@ async def verify(
         key="session",
         value=jwt_token,
         httponly=True,
+        secure=True,
         samesite="lax",
         max_age=settings.session_expiry_days * 86400,
     )

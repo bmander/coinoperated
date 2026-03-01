@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { API_BASE } from "../api/client";
 import { createTask } from "../api/tasks";
 import { fetchPaymentMethods } from "../api/patron";
 import MarkdownField from "../components/MarkdownField";
@@ -250,7 +251,7 @@ export default function SubmitTask() {
     if (isAdmin || isBanned) return;
 
     Promise.all([
-      fetch("/api/config/stripe").then((r) => r.json()),
+      fetch(`${API_BASE}/config/stripe`).then((r) => r.json()),
       fetchPaymentMethods().catch(() => [] as SavedPaymentMethod[]),
     ]).then(([config, methods]) => {
       if (config.publishable_key) {

@@ -1,0 +1,5 @@
+dispatch:
+  - url: "*/coinop"
+    service: coinop
+  - url: "*/coinop/*"
+    service: coinop

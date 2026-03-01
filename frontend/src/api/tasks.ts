@@ -1,3 +1,4 @@
+import { API_BASE } from "./client";
 import type { TaskCreateResponse, TaskDetailRead, TaskListResponse, TaskStatus } from "./types";
 
 export interface ListTasksParams {
@@ -17,14 +18,14 @@ export async function listTasks(params: ListTasksParams = {}): Promise<TaskListR
   if (params.limit !== undefined) searchParams.set("limit", String(params.limit));
 
   const query = searchParams.toString();
-  const url = `/api/tasks${query ? `?${query}` : ""}`;
+  const url = `${API_BASE}/tasks${query ? `?${query}` : ""}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch tasks: ${res.status}`);
   return res.json();
 }
 
 export async function getTask(taskId: string): Promise<TaskDetailRead> {
-  const res = await fetch(`/api/tasks/${taskId}`);
+  const res = await fetch(`${API_BASE}/tasks/${taskId}`);
   if (res.status === 404) throw new Error("Task not found");
   if (!res.ok) throw new Error(`Failed to fetch task: ${res.status}`);
   return res.json();
@@ -40,7 +41,7 @@ export interface CreateTaskPayload {
 }
 
 export async function createTask(payload: CreateTaskPayload): Promise<TaskCreateResponse> {
-  const res = await fetch("/api/tasks", {
+  const res = await fetch(`${API_BASE}/tasks`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
