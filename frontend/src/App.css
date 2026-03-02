@@ -15,18 +15,43 @@
   padding: 1rem 0;
 }
 
+.site-title-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
 .site-title {
   font-size: 1.4rem;
   font-weight: 700;
   color: #fff;
   text-decoration: none;
   background: #2a5a8a;
-  padding: 0.15rem 0.4rem;
+  padding: 0.4rem 1rem 0.6rem;
 }
 
 .site-title:hover {
   color: #fff;
   opacity: 0.85;
+}
+
+.splash-text {
+  position: absolute;
+  bottom: -0.15rem;
+  right: -1.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #ffd700;
+  white-space: nowrap;
+  transform-origin: center center;
+  transform: rotate(-12deg);
+  animation: splash-bounce 1.2s ease-in-out infinite;
+  pointer-events: none;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+@keyframes splash-bounce {
+  0%, 100% { transform: rotate(-12deg) scale(1); }
+  50% { transform: rotate(-12deg) scale(1.15); }
 }
 
 /* Task Board */

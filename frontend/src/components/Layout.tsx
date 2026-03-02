@@ -1,14 +1,46 @@
+import { useCallback, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+
+function randomSplash() {
+  return splashes[Math.floor(Math.random() * splashes.length)];
+}
+
+const splashes = [
+  "Acceptable!",
+  "Bullshit utopianism!",
+  "Email!",
+  "Cranky!",
+  "Actual size!",
+  "Fully automated!",
+  "Coin operated!",
+  "Ideation!",
+  "Cyber!",
+  "Stochastic!",
+  "Zug zug",
+  "Mathematical!"
+];
 
 export default function Layout() {
   const { patron, logout } = useAuth();
   const { pathname } = useLocation();
+  const [splash, setSplash] = useState(randomSplash);
+  const isHome = pathname === "/";
+
+  const handleLogoClick = useCallback((e: React.MouseEvent) => {
+    if (isHome) {
+      e.preventDefault();
+      setSplash(randomSplash());
+    }
+  }, [isHome]);
 
   return (
     <div className="layout">
       <header className="site-header">
-        <Link to="/" className="site-title">Coin Operated Brandon</Link>
+        <div className="site-title-wrapper">
+          <Link to="/" className="site-title" onClick={handleLogoClick}>Coin Operated Brandon</Link>
+          <span className="splash-text">{splash}</span>
+        </div>
         {patron ? (
           <div className="header-user">
             {pathname !== "/dashboard" && <Link to="/dashboard" className="btn btn-secondary">Dashboard</Link>}
