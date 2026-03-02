@@ -1,5 +1,6 @@
 from typing import Annotated
 
+import logging
 import stripe
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -9,6 +10,8 @@ from sqlalchemy.orm import selectinload
 from app.dependencies import get_current_patron, get_db
 from app.models import LIVE_PLEDGE_STATUSES, Notification, Patron, Pledge
 from app.schemas import PatronNotificationRead, PatronPledgeRead, SavedPaymentMethodRead
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/patron", tags=["patron"])
 
@@ -31,7 +34,11 @@ async def list_my_pledges(
 async def list_payment_methods(
     patron: Annotated[Patron, Depends(get_current_patron)],
 ):
-    result = stripe.PaymentMethod.list(customer=patron.stripe_customer, type="card")
+    try:
+        result = stripe.PaymentMethod.list(customer=patron.stripe_customer, type="card")
+    except stripe.InvalidRequestError as exc:
+        logger.warning("Stripe customer %s invalid: %s", patron.stripe_customer, exc)
+        return []
     return [
         SavedPaymentMethodRead(
             id=pm.id,

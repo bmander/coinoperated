@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import stripe
 
 from app.models import NotificationType, PledgeStatus
 from tests.conftest import auth_cookies, create_notification, create_patron, create_pledge, create_task
@@ -293,6 +294,20 @@ class TestPaymentMethods:
         mock_pm_list.assert_called_once_with(
             customer=test_patron.stripe_customer, type="card"
         )
+
+    @patch("app.routers.patron.stripe.PaymentMethod.list")
+    async def test_list_payment_methods_returns_empty_on_invalid_customer(
+        self, mock_pm_list, client, test_session_maker, test_patron
+    ):
+        mock_pm_list.side_effect = stripe.InvalidRequestError(
+            "No such customer: 'cus_test'", param="customer"
+        )
+
+        resp = await client.get(
+            "/api/patron/payment-methods", cookies=auth_cookies(test_patron)
+        )
+        assert resp.status_code == 200
+        assert resp.json() == []
 
     async def test_list_payment_methods_requires_auth(self, client):
         resp = await client.get("/api/patron/payment-methods")
