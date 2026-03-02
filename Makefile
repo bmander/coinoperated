@@ -6,12 +6,13 @@ STRIPE := $(or $(shell command -v stripe 2>/dev/null),$(HOME)/.local/bin/stripe)
 # Start everything for local development
 dev: install
 	@bash -c '\
+	TAILSCALE_IP=$${TAILSCALE_IP:-$$(grep -s "^TAILSCALE_IP=" .env | cut -d= -f2-)}; \
 	export STRIPE_WEBHOOK_SECRET=$$($(STRIPE) listen --print-secret); \
 	cleanup() { kill 0; wait; }; \
 	trap cleanup EXIT INT TERM; \
 	docker compose up db & \
 	(cd backend && $(CURDIR)/$(VENV)/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000) & \
-	(cd frontend && npm run dev) & \
+	(cd frontend && npm run dev $${TAILSCALE_IP:+-- --host $$TAILSCALE_IP}) & \
 	$(STRIPE) listen --forward-to localhost:8000/api/webhooks/stripe & \
 	wait'
 
