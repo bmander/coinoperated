@@ -8,7 +8,7 @@ function randomSplash() {
 
 const splashes = [
   "Acceptable!",
-  "Bullshit utopianism!",
+  "Utopian bullshit!",
   "Email!",
   "Cranky!",
   "Actual size!",
