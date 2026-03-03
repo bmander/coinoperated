@@ -18,6 +18,10 @@ from app.models import (
 logger = logging.getLogger(__name__)
 
 
+def _format_dollars(cents: int) -> str:
+    return f"${cents / 100:.2f}"
+
+
 # --- Templates ---
 
 # Each returns (subject, body). Fan-out templates take (task, pledge) so the
@@ -35,7 +39,7 @@ def _task_accepted_email(task: Task, pledge: Pledge) -> tuple[str, str]:
 
 
 def _task_review_started_email(task: Task, pledge: Pledge) -> tuple[str, str]:
-    dollars = f"${pledge.amount / 100:.2f}"
+    dollars = _format_dollars(pledge.amount)
     subject = f"Review period started: {task.title}"
     body = (
         f"The task \"{task.title}\" has been marked as complete.\n"
@@ -46,7 +50,7 @@ def _task_review_started_email(task: Task, pledge: Pledge) -> tuple[str, str]:
 
 
 def _task_completed_email(task: Task, pledge: Pledge) -> tuple[str, str]:
-    dollars = f"${pledge.amount / 100:.2f}"
+    dollars = _format_dollars(pledge.amount)
     subject = f"Task completed: {task.title}"
     body = (
         f"The task \"{task.title}\" has been completed!\n"
@@ -66,7 +70,7 @@ def _task_declined_email(task: Task, pledge: Pledge) -> tuple[str, str]:
 
 
 def _charge_succeeded_email(task: Task, amount: int) -> tuple[str, str]:
-    dollars = f"${amount / 100:.2f}"
+    dollars = _format_dollars(amount)
     subject = f"Payment collected: {dollars} for {task.title}"
     body = (
         f"Your payment of {dollars} for \"{task.title}\" was successfully collected.\n"
@@ -76,7 +80,7 @@ def _charge_succeeded_email(task: Task, amount: int) -> tuple[str, str]:
 
 
 def _charge_failed_email(task: Task, amount: int) -> tuple[str, str]:
-    dollars = f"${amount / 100:.2f}"
+    dollars = _format_dollars(amount)
     subject = f"Payment failed: {dollars} for {task.title}"
     body = (
         f"We were unable to collect your payment of {dollars} for \"{task.title}\".\n"

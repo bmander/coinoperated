@@ -1,9 +1,10 @@
+import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
+from sqlalchemy import text, update as sa_update
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 from testcontainers.postgres import PostgresContainer
@@ -158,6 +159,18 @@ async def create_pledge(session_maker, *, patron_id, task_id, **overrides) -> Pl
         await session.commit()
         await session.refresh(pledge)
         return pledge
+
+
+async def backdate_review(session_maker, task_id, days_ago=8):
+    """Set review_at to the past so the review period has elapsed."""
+    task_uuid = task_id if isinstance(task_id, uuid.UUID) else uuid.UUID(task_id)
+    async with session_maker() as session:
+        await session.execute(
+            sa_update(Task)
+            .where(Task.id == task_uuid)
+            .values(review_at=datetime.now(UTC) - timedelta(days=days_ago))
+        )
+        await session.commit()
 
 
 async def create_notification(

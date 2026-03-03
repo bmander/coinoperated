@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -19,14 +20,28 @@ from app.schemas import LoginRequest, PatronMe
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+_ALLOWED_ORIGINS: set[str] | None = None
+
+
+def _get_allowed_origins() -> set[str]:
+    global _ALLOWED_ORIGINS
+    if _ALLOWED_ORIGINS is None:
+        _ALLOWED_ORIGINS = {settings.frontend_url}
+        if settings.allowed_origins:
+            _ALLOWED_ORIGINS.update(
+                o.strip() for o in settings.allowed_origins.split(",") if o.strip()
+            )
+    return _ALLOWED_ORIGINS
+
 
 def _frontend_origin(request: Request) -> str:
     """Derive the frontend origin from the request, falling back to settings."""
     referer = request.headers.get("referer")
     if referer:
-        from urllib.parse import urlparse
         parsed = urlparse(referer)
-        return f"{parsed.scheme}://{parsed.netloc}"
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+        if origin in _get_allowed_origins():
+            return origin
     return settings.frontend_url
 
 

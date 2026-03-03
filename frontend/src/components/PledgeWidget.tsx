@@ -5,7 +5,7 @@ import type { Stripe } from "@stripe/stripe-js";
 import { useAuth } from "../contexts/AuthContext";
 import { createPledge, deletePledge, getMyPledge, updatePledge } from "../api/pledges";
 import { fetchPaymentMethods } from "../api/patron";
-import { formatCents } from "../utils/formatting";
+import { formatCents, getErrorMessage } from "../utils/formatting";
 import type { TaskStatus, PledgeMyResponse, SavedPaymentMethod } from "../api/types";
 import { isLivePledge } from "../api/types";
 import ConfirmModal from "./ConfirmModal";
@@ -31,6 +31,7 @@ export default function PledgeWidget({
   const [error, setError] = useState("");
   const [existingPledge, setExistingPledge] = useState<PledgeMyResponse | null>(null);
   const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
+  const [confirmingRevoke, setConfirmingRevoke] = useState(false);
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -115,7 +116,7 @@ export default function PledgeWidget({
       setClientSecret(resp.client_secret ?? "");
       setShowModal(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -132,8 +133,6 @@ export default function PledgeWidget({
     deletePledge(task.id).catch(() => {});
     setShowModal(false);
   }
-
-  const [confirmingRevoke, setConfirmingRevoke] = useState(false);
 
   const canPledge = task.status === "proposed" || task.status === "underway" || task.status === "review";
 

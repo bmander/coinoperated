@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     smtp_from_name: str = "CoinOperated"
     smtp_use_tls: bool = True
     staging: bool = False
+    allowed_origins: str = ""  # comma-separated extra origins for auth redirects
     base_path: str = ""  # "/coinop" in production
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}

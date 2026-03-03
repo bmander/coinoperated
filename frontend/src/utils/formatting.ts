@@ -13,3 +13,7 @@ export function statusLabel(status: string): string {
 export function formatBackers(count: number): string {
   return `${count} ${count === 1 ? "backer" : "backers"}`;
 }
+
+export function getErrorMessage(err: unknown, fallback = "Something went wrong"): string {
+  return err instanceof Error ? err.message : fallback;
+}

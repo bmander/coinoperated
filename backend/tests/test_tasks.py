@@ -1,13 +1,12 @@
 import uuid
-from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy import select, update as sa_update
+from sqlalchemy import select
 
 from app.config import settings
-from app.models import Pledge, Task as TaskModel
-from tests.conftest import auth_cookies, mock_setup_intent
+from app.models import Pledge
+from tests.conftest import auth_cookies, backdate_review, mock_setup_intent
 from tests.conftest import create_patron as create_patron_db
 
 # --- Helpers ---
@@ -31,17 +30,6 @@ def _patch_admin_settings():
     """Make the default test patron (test@example.com) an admin for task CRUD tests."""
     with patch("app.routers.tasks.settings", _admin_settings()):
         yield
-
-
-async def backdate_review(session_maker, task_id, days_ago=8):
-    """Set review_at to the past so the review period has elapsed."""
-    async with session_maker() as session:
-        await session.execute(
-            sa_update(TaskModel)
-            .where(TaskModel.id == uuid.UUID(task_id))
-            .values(review_at=datetime.now(UTC) - timedelta(days=days_ago))
-        )
-        await session.commit()
 
 
 async def create_task(client, **overrides):

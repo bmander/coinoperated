@@ -68,10 +68,7 @@ function AdminTaskCard({
 
   const handleMarkComplete = () =>
     handleAction(async () => {
-      if (evidence) {
-        await patchTask(task.id, { evidence });
-      }
-      await patchTask(task.id, { status: "review" });
+      await patchTask(task.id, { ...(evidence ? { evidence } : {}), status: "review" });
     });
 
   return (

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getErrorMessage } from "../utils/formatting";
 import Spinner from "./Spinner";
 
 export default function ConfirmModal({
@@ -25,7 +26,7 @@ export default function ConfirmModal({
     try {
       await onConfirm();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
