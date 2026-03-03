@@ -1,4 +1,3 @@
-import { useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import Markdown from "react-markdown";
 import { getTask } from "../api/tasks";
@@ -22,13 +21,11 @@ function MarkdownSection({ title, children, className }: { title: string; childr
 
 export default function TaskDetail() {
   const { taskId } = useParams<{ taskId: string }>();
-  const [refreshKey, setRefreshKey] = useState(0);
-  const { data: task, loading, error } = useFetch(
+  const { data: task, loading, error, refetch } = useFetch(
     () => getTask(taskId!),
-    [taskId, refreshKey],
+    [taskId],
   );
   const { patron } = useAuth();
-  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   if (loading) return <p className="page-message">Loading task...</p>;
   if (error) return <p className="page-message page-error">Error: {error}</p>;
@@ -88,7 +85,12 @@ export default function TaskDetail() {
       )}
 
       {patron?.is_admin && (
-        <AdminTaskActions task={task} onAction={refresh} />
+        <section className="task-detail-section">
+          <h2>Admin Actions</h2>
+          <div className="admin-actions">
+            <AdminTaskActions task={task} onAction={refetch} />
+          </div>
+        </section>
       )}
 
       <PledgeWidget task={task} />

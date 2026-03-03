@@ -1,5 +1,5 @@
 import { API_BASE, fetchJson, fetchVoid } from "./client";
-import type { AdminPatronListResponse, AdminPatronRead, AdminTaskListResponse, CollectResponse, TaskRead, UpdateRead } from "./types";
+import type { AdminPatronListResponse, AdminPatronRead, AdminTaskListResponse, CollectResponse, TaskRead, TaskStatus, UpdateRead } from "./types";
 
 export async function fetchAdminTasks(): Promise<AdminTaskListResponse> {
   return fetchJson(`${API_BASE}/admin/tasks`);
@@ -7,7 +7,7 @@ export async function fetchAdminTasks(): Promise<AdminTaskListResponse> {
 
 export async function patchTask(
   taskId: string,
-  payload: { status?: string; evidence?: string },
+  payload: { status?: TaskStatus; evidence?: string },
 ): Promise<TaskRead> {
   return fetchJson(`${API_BASE}/tasks/${taskId}`, {
     method: "PATCH",

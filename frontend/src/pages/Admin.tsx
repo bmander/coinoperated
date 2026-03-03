@@ -1,8 +1,9 @@
 import { useState, useCallback } from "react";
-import { banPatron, collectPayments, deleteTask, fetchAdminPatrons, fetchAdminTasks, patchTask, postUpdate, unbanPatron } from "../api/admin";
+import { banPatron, collectPayments, deleteTask, fetchAdminPatrons, fetchAdminTasks, patchTask, unbanPatron } from "../api/admin";
 import type { AdminPatronRead, AdminTaskRead, CollectResponse } from "../api/types";
-import { formatBackers, formatCents } from "../utils/formatting";
+import { formatBackers, formatCents, getErrorMessage } from "../utils/formatting";
 import StatusBadge from "../components/StatusBadge";
+import AdminTaskActions from "../components/AdminTaskActions";
 import useFetch from "../hooks/useFetch";
 import Spinner from "../components/Spinner";
 
@@ -41,8 +42,6 @@ function AdminTaskCard({
   onAction: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [updateBody, setUpdateBody] = useState("");
-  const [evidence, setEvidence] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [collectResult, setCollectResult] = useState<CollectResponse | null>(null);
@@ -54,22 +53,11 @@ function AdminTaskCard({
       await action();
       onAction();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Action failed");
+      setError(getErrorMessage(e, "Action failed"));
     } finally {
       setBusy(false);
     }
   };
-
-  const handlePostUpdate = () =>
-    handleAction(async () => {
-      await postUpdate(task.id, updateBody);
-      setUpdateBody("");
-    });
-
-  const handleMarkComplete = () =>
-    handleAction(async () => {
-      await patchTask(task.id, { ...(evidence ? { evidence } : {}), status: "review" });
-    });
 
   return (
     <div className="admin-task-card">
@@ -96,89 +84,18 @@ function AdminTaskCard({
           {error && <p className="admin-error">{error}</p>}
 
           <div className="admin-actions">
-            {task.status === "proposed" && (
-              <>
-                <button
-                  className="btn btn-accept"
-                  disabled={busy}
-                  onClick={() => handleAction(() => patchTask(task.id, { status: "underway" }))}
-                >
-                  {busy ? <Spinner /> : "Accept"}
-                </button>
-                <button
-                  className="btn btn-decline"
-                  disabled={busy}
-                  onClick={() => handleAction(() => patchTask(task.id, { status: "declined" }))}
-                >
-                  {busy ? <Spinner /> : "Decline"}
-                </button>
-              </>
-            )}
-
-            {task.status === "underway" && (
-              <>
-                <div className="admin-update-form form-field">
-                  <textarea
-                    className="admin-textarea"
-                    placeholder="Post a progress update (Markdown)..."
-                    value={updateBody}
-                    onChange={(e) => setUpdateBody(e.target.value)}
-                    rows={3}
-                  />
-                  <button
-                    className="btn btn-primary"
-                    disabled={busy || !updateBody.trim()}
-                    onClick={handlePostUpdate}
-                  >
-                    {busy ? <><Spinner /> Posting...</> : "Post Update"}
-                  </button>
-                </div>
-
-                <div className="admin-complete-form form-field">
-                  <textarea
-                    className="admin-textarea"
-                    placeholder="Evidence of completion (Markdown)..."
-                    value={evidence}
-                    onChange={(e) => setEvidence(e.target.value)}
-                    rows={3}
-                  />
-                  <button
-                    className="btn btn-accept"
-                    disabled={busy}
-                    onClick={handleMarkComplete}
-                  >
-                    {busy ? <><Spinner /> Completing...</> : "Mark Complete"}
-                  </button>
-                </div>
-
-                <button
-                  className="btn btn-decline"
-                  disabled={busy}
-                  onClick={() => handleAction(() => patchTask(task.id, { status: "proposed" }))}
-                >
-                  {busy ? <Spinner /> : "Abandon"}
-                </button>
-              </>
-            )}
+            <AdminTaskActions task={task} onAction={onAction} />
 
             {task.status === "review" && (
-              <>
-                <p>
-                  Review started{" "}
-                  {task.review_at
-                    ? new Date(task.review_at).toLocaleDateString()
-                    : "—"}
-                </p>
-                <button
-                  className="btn btn-accept"
-                  disabled={busy}
-                  onClick={() =>
-                    handleAction(() => patchTask(task.id, { status: "collecting" }))
-                  }
-                >
-                  {busy ? <><Spinner /> Collecting...</> : "End Review & Collect"}
-                </button>
-              </>
+              <button
+                className="btn btn-accept"
+                disabled={busy}
+                onClick={() =>
+                  handleAction(() => patchTask(task.id, { status: "collecting" }))
+                }
+              >
+                {busy ? <><Spinner /> Collecting...</> : "End Review & Collect"}
+              </button>
             )}
 
             {task.status === "collecting" && (
