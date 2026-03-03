@@ -5,65 +5,14 @@ import { Elements, CardElement, useStripe, useElements } from "@stripe/react-str
 import { API_BASE } from "../api/client";
 import { createTask } from "../api/tasks";
 import { fetchPaymentMethods } from "../api/patron";
-import MarkdownField from "../components/MarkdownField";
 import Spinner from "../components/Spinner";
+import { TaskFormFields } from "../components/TaskForm";
+import TaskForm from "../components/TaskForm";
 import CardPaymentFields, { useCardPaymentSelection } from "../components/CardPaymentFields";
 import { useAuth } from "../contexts/AuthContext";
 import { MIN_PLEDGE_CENTS, PRESET_AMOUNTS } from "../constants";
 import { formatCents } from "../utils/formatting";
 import type { SavedPaymentMethod } from "../api/types";
-
-export function TaskFormFields({
-  title,
-  setTitle,
-  description,
-  setDescription,
-  criteria,
-  setCriteria,
-}: {
-  title: string;
-  setTitle: (v: string) => void;
-  description: string;
-  setDescription: (v: string) => void;
-  criteria: string;
-  setCriteria: (v: string) => void;
-}) {
-  return (
-    <>
-      <div className="form-field">
-        <label htmlFor="title">Title *</label>
-        <input
-          id="title"
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Short, descriptive title"
-          required
-          maxLength={500}
-        />
-      </div>
-
-      <MarkdownField
-        id="description"
-        label="Description *"
-        value={description}
-        onChange={setDescription}
-        placeholder="Full description of the task (Markdown supported)"
-        required
-        rows={8}
-      />
-
-      <MarkdownField
-        id="criteria"
-        label="Delivery Criteria"
-        value={criteria}
-        onChange={setCriteria}
-        placeholder='What does "done" look like? (Markdown supported)'
-        rows={4}
-      />
-    </>
-  );
-}
 
 function PledgedTaskForm({ savedMethods }: { savedMethods: SavedPaymentMethod[] }) {
   const stripe = useStripe();
@@ -195,52 +144,6 @@ function PledgedTaskForm({ savedMethods }: { savedMethods: SavedPaymentMethod[] 
   );
 }
 
-function AdminTaskForm() {
-  const navigate = useNavigate();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [criteria, setCriteria] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError("");
-    setSubmitting(true);
-    try {
-      const task = await createTask({
-        title: title.trim(),
-        description: description.trim(),
-        criteria: criteria.trim() || undefined,
-      });
-      navigate(`/tasks/${task.id}`);
-    } catch {
-      setError("Failed to submit task. Please try again.");
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="submit-task-form">
-      <TaskFormFields
-        title={title} setTitle={setTitle}
-        description={description} setDescription={setDescription}
-        criteria={criteria} setCriteria={setCriteria}
-      />
-
-      {error && <p className="form-error">{error}</p>}
-
-      <button
-        type="submit"
-        className="btn btn-primary"
-        disabled={submitting}
-      >
-        {submitting ? <><Spinner /> Submitting...</> : "Submit Task"}
-      </button>
-    </form>
-  );
-}
-
 export default function SubmitTask() {
   const { patron } = useAuth();
   const isAdmin = patron?.is_admin ?? false;
@@ -281,7 +184,12 @@ export default function SubmitTask() {
           Propose a task for Brandon to work on. Describe what you'd like done and
           what "done" looks like.
         </p>
-        <AdminTaskForm />
+        <TaskForm
+          onSubmit={async (data) => {
+            const task = await createTask(data);
+            return `/tasks/${task.id}`;
+          }}
+        />
       </div>
     );
   }

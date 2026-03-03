@@ -57,7 +57,7 @@ async def clean_tables(test_engine):
 
 
 @pytest.fixture
-async def client(test_session_maker):
+def test_app(test_session_maker):
     from app.main import create_app
 
     app = create_app()
@@ -68,9 +68,13 @@ async def client(test_session_maker):
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_session_factory] = lambda: test_session_maker
+    return app
 
+
+@pytest.fixture
+async def client(test_app):
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=test_app), base_url="http://test"
     ) as c:
         yield c
 
@@ -88,30 +92,14 @@ async def authed_client(test_patron, client):
 
 
 @pytest.fixture
-async def admin_client(test_session_maker):
+async def admin_client(test_session_maker, test_app):
     """An HTTP client authenticated as an admin patron with settings patched."""
-    from app.main import create_app
-
     admin = await create_patron(test_session_maker, ADMIN_EMAIL, "cus_admin_conftest")
     token = create_jwt(admin.id, settings.secret_key, expiry_days=30)
 
-    class FakeSettings:
-        admin_email = ADMIN_EMAIL
-        secret_key = settings.secret_key
-        stripe_publishable_key = settings.stripe_publishable_key
-
-    app = create_app()
-
-    async def override_get_db():
-        async with test_session_maker() as session:
-            yield session
-
-    app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_session_factory] = lambda: test_session_maker
-
-    with patch("app.dependencies.settings", FakeSettings()):
+    with patch.object(settings, "admin_email", ADMIN_EMAIL):
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
+            transport=ASGITransport(app=test_app), base_url="http://test"
         ) as c:
             c.cookies.set("session", token)
             yield c

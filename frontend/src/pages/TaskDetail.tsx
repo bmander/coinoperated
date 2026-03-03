@@ -38,7 +38,7 @@ export default function TaskDetail() {
       <div className="task-detail-header">
         <div className="task-detail-header-top">
           <StatusBadge status={task.status} />
-          {isAdmin && <Link to={`/tasks/${task.id}/edit`} className="btn btn-secondary btn-small">Edit</Link>}
+          {isAdmin && <Link to={`/tasks/${task.id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>}
         </div>
         <h1 className="task-detail-title">{task.title}</h1>
         <p className="task-detail-stats">
