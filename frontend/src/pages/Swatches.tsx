@@ -24,7 +24,9 @@ const SWATCHES: { section: string; items: Swatch[] }[] = [
     section: "Backgrounds",
     items: [
       { color: "#ffffff", label: "Layout / card background", usages: [".layout", ".modal-card", "inputs", ".markdown-body pre"] },
+      { color: "#f6f4f0", label: "Description tint", usages: [".markdown-body--description"] },
       { color: "#f4f4f4", label: "Page background", usages: [":root background-color", ".markdown-body"] },
+      { color: "#f0f0f6", label: "Criteria tint", usages: [".markdown-body--criteria"] },
       { color: "#f0f0f0", label: "Payment method chip", usages: [".pm-chip"] },
     ],
   },
