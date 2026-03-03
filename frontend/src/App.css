@@ -4,18 +4,27 @@
   margin: 0 auto;
   padding: 0 1rem;
   background-color: #ffffff;
-  min-height: 100vh;
+  min-height: 100dvh;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.layout > main {
+  flex: 1;
 }
 
 .site-footer {
-  padding: 2rem 0 1rem;
-  text-align: center;
+  padding: 0.25rem 1rem;
+  text-align: right;
   font-size: 0.85rem;
+  background-color: #2a5a8a;
+  color: #ddd;
+  margin: 0 -1rem;
 }
 
 .site-footer a {
-  color: #646cff;
+  color: #fff;
   text-decoration: none;
 }
 
