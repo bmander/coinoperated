@@ -2,12 +2,15 @@ import { screen } from "@testing-library/react";
 import { Route, Routes } from "react-router-dom";
 import TaskDetail from "./TaskDetail";
 import { getTask } from "../api/tasks";
+import { getMyPledge } from "../api/pledges";
+import { fetchPaymentMethods } from "../api/patron";
 import { makeTaskDetail, makeUpdate } from "../test/factories";
 import { renderWithRouter } from "../test/render";
 
 vi.mock("../api/tasks");
 vi.mock("../api/pledges");
 vi.mock("../api/patron");
+vi.mock("../api/admin");
 vi.mock("@stripe/stripe-js");
 
 const mockUseAuth = vi.fn();
@@ -16,6 +19,8 @@ vi.mock("../contexts/AuthContext", () => ({
 }));
 
 const mockGetTask = vi.mocked(getTask);
+const mockGetMyPledge = vi.mocked(getMyPledge);
+const mockFetchPaymentMethods = vi.mocked(fetchPaymentMethods);
 
 function renderDetail(taskId = "abc-123") {
   return renderWithRouter(
@@ -171,5 +176,32 @@ describe("TaskDetail", () => {
     mockGetTask.mockRejectedValue(new Error("Task not found"));
     renderDetail();
     expect(await screen.findByText("Error: Task not found")).toBeInTheDocument();
+  });
+
+  it("shows admin actions when user is admin", async () => {
+    mockUseAuth.mockReturnValue({ patron: { is_admin: true }, loading: false, login: vi.fn(), logout: vi.fn() });
+    mockGetMyPledge.mockResolvedValue(null);
+    mockFetchPaymentMethods.mockResolvedValue([]);
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "proposed" }));
+    renderDetail();
+    expect(await screen.findByText("Admin Actions")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Accept" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
+  });
+
+  it("hides admin actions for non-admin users", async () => {
+    mockUseAuth.mockReturnValue({ patron: { is_admin: false }, loading: false, login: vi.fn(), logout: vi.fn() });
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "proposed" }));
+    renderDetail();
+    await screen.findByText("Description");
+    expect(screen.queryByText("Admin Actions")).not.toBeInTheDocument();
+  });
+
+  it("hides admin actions when not logged in", async () => {
+    mockUseAuth.mockReturnValue({ patron: null, loading: false, login: vi.fn(), logout: vi.fn() });
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "proposed" }));
+    renderDetail();
+    await screen.findByText("Description");
+    expect(screen.queryByText("Admin Actions")).not.toBeInTheDocument();
   });
 });

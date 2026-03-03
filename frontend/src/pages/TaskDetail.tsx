@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import Markdown from "react-markdown";
 import { getTask } from "../api/tasks";
@@ -5,6 +6,8 @@ import { formatBackers, formatCents } from "../utils/formatting";
 import StatusBadge from "../components/StatusBadge";
 import useFetch from "../hooks/useFetch";
 import PledgeWidget from "../components/PledgeWidget";
+import AdminTaskActions from "../components/AdminTaskActions";
+import { useAuth } from "../contexts/AuthContext";
 
 function MarkdownSection({ title, children, className }: { title: string; children: string; className?: string }) {
   return (
@@ -19,10 +22,13 @@ function MarkdownSection({ title, children, className }: { title: string; childr
 
 export default function TaskDetail() {
   const { taskId } = useParams<{ taskId: string }>();
+  const [refreshKey, setRefreshKey] = useState(0);
   const { data: task, loading, error } = useFetch(
     () => getTask(taskId!),
-    [taskId],
+    [taskId, refreshKey],
   );
+  const { patron } = useAuth();
+  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   if (loading) return <p className="page-message">Loading task...</p>;
   if (error) return <p className="page-message page-error">Error: {error}</p>;
@@ -79,6 +85,10 @@ export default function TaskDetail() {
 
       {(task.status === "completed" || task.status === "review") && task.evidence && (
         <MarkdownSection title="Completion Evidence">{task.evidence}</MarkdownSection>
+      )}
+
+      {patron?.is_admin && (
+        <AdminTaskActions task={task} onAction={refresh} />
       )}
 
       <PledgeWidget task={task} />
