@@ -71,7 +71,7 @@ function AdminTaskCard({
       if (evidence) {
         await patchTask(task.id, { evidence });
       }
-      await patchTask(task.id, { status: "collecting" });
+      await patchTask(task.id, { status: "review" });
     });
 
   return (
@@ -160,6 +160,26 @@ function AdminTaskCard({
                   onClick={() => handleAction(() => patchTask(task.id, { status: "proposed" }))}
                 >
                   {busy ? <Spinner /> : "Abandon"}
+                </button>
+              </>
+            )}
+
+            {task.status === "review" && (
+              <>
+                <p>
+                  Review started{" "}
+                  {task.review_at
+                    ? new Date(task.review_at).toLocaleDateString()
+                    : "—"}
+                </p>
+                <button
+                  className="btn btn-accept"
+                  disabled={busy}
+                  onClick={() =>
+                    handleAction(() => patchTask(task.id, { status: "collecting" }))
+                  }
+                >
+                  {busy ? <><Spinner /> Collecting...</> : "End Review & Collect"}
                 </button>
               </>
             )}

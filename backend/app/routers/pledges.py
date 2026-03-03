@@ -22,7 +22,7 @@ from app.services.pledges import PaymentMethodOwnershipError, create_pledge_for_
 
 router = APIRouter(prefix="/api/tasks/{task_id}/pledges", tags=["pledges"])
 
-PLEDGEABLE_STATUSES = {TaskStatus.proposed, TaskStatus.underway}
+PLEDGEABLE_STATUSES = {TaskStatus.proposed, TaskStatus.underway, TaskStatus.review}
 
 
 async def _get_patron_pledge(

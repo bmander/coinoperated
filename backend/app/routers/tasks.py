@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from app.config import settings
 from app.dependencies import get_active_patron, get_db
 from app.models import Patron, Task, TaskStatus
-from app.notifications import notify_task_accepted, notify_task_completed, notify_task_declined
+from app.notifications import notify_task_accepted, notify_task_completed, notify_task_declined, notify_task_review_started
 from app.schemas import TaskCreate, TaskCreateResponse, TaskDetail, TaskListResponse, TaskRead, TaskUpdate
 from app.services.pledges import PaymentMethodOwnershipError, create_pledge_for_task
 
@@ -18,7 +18,8 @@ router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 VALID_TRANSITIONS: dict[TaskStatus, set[TaskStatus]] = {
     TaskStatus.proposed: {TaskStatus.underway, TaskStatus.declined},
-    TaskStatus.underway: {TaskStatus.collecting, TaskStatus.proposed},
+    TaskStatus.underway: {TaskStatus.review, TaskStatus.proposed},
+    TaskStatus.review: {TaskStatus.collecting},
     TaskStatus.collecting: {TaskStatus.completed},
 }
 
@@ -150,7 +151,20 @@ async def update_task(
         elif payload.status == TaskStatus.declined:
             task.declined_at = now
             notify_fn = notify_task_declined
+        elif payload.status == TaskStatus.review:
+            task.review_at = now
+            notify_fn = notify_task_review_started
         elif payload.status == TaskStatus.collecting:
+            if old_status == TaskStatus.review:
+                review_end = task.review_at + timedelta(days=7)
+                if now < review_end:
+                    remaining = review_end - now
+                    days = remaining.days
+                    hours = remaining.seconds // 3600
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Review period not over. {days}d {hours}h remaining.",
+                    )
             notify_fn = notify_task_completed
         elif payload.status == TaskStatus.completed:
             task.completed_at = now

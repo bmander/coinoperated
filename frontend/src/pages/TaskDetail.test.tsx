@@ -122,6 +122,16 @@ describe("TaskDetail", () => {
     expect(screen.queryByText("Completion Evidence")).not.toBeInTheDocument();
   });
 
+  it("shows evidence during review", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({
+      status: "review",
+      evidence: "PR merged and deployed",
+    }));
+    renderDetail();
+    expect(await screen.findByText("Completion Evidence")).toBeInTheDocument();
+    expect(screen.getByText("PR merged and deployed")).toBeInTheDocument();
+  });
+
   it("shows Pledge button for proposed tasks", async () => {
     mockGetTask.mockResolvedValue(makeTaskDetail({ status: "proposed" }));
     renderDetail();

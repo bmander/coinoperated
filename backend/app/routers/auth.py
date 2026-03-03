@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,11 +20,14 @@ from app.schemas import LoginRequest, PatronMe
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-def _error_redirect(error_code: str) -> RedirectResponse:
-    return RedirectResponse(
-        url=f"{settings.frontend_url}/signin?error={error_code}",
-        status_code=302,
-    )
+def _frontend_origin(request: Request) -> str:
+    """Derive the frontend origin from the request, falling back to settings."""
+    referer = request.headers.get("referer")
+    if referer:
+        from urllib.parse import urlparse
+        parsed = urlparse(referer)
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return settings.frontend_url
 
 
 @router.post("/login")
@@ -47,24 +50,34 @@ async def login(
     link = f"{settings.frontend_url}/api/auth/verify?token={token}"
     await send_magic_link(payload.email, link)
 
-    return {"message": "Check your email"}
+    response = {"message": "Check your email"}
+    if settings.staging:
+        response["magic_token"] = token
+    return response
 
 
 @router.get("/verify")
 async def verify(
+    request: Request,
     token: Annotated[str, Query()],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    frontend = _frontend_origin(request)
+
     result = await db.execute(
         select(MagicLinkToken).where(MagicLinkToken.token == token)
     )
     magic_token = result.scalar_one_or_none()
 
     if magic_token is None or magic_token.used:
-        return _error_redirect("invalid_token")
+        return RedirectResponse(
+            url=f"{frontend}/signin?error=invalid_token", status_code=302
+        )
 
     if magic_token.expires_at < datetime.now(UTC):
-        return _error_redirect("expired_token")
+        return RedirectResponse(
+            url=f"{frontend}/signin?error=expired_token", status_code=302
+        )
 
     magic_token.used = True
     await db.flush()
@@ -89,7 +102,7 @@ async def verify(
 
     jwt_token = create_jwt(patron.id, settings.secret_key, settings.session_expiry_days)
 
-    response = RedirectResponse(url=f"{settings.frontend_url}/", status_code=302)
+    response = RedirectResponse(url=f"{frontend}/", status_code=302)
     response.set_cookie(
         key="session",
         value=jwt_token,

@@ -99,6 +99,71 @@ describe("PledgeWidget", () => {
     expect(container.innerHTML).toBe("");
   });
 
+  it("shows Pledge button during review when no pledge exists", () => {
+    renderWidget({ status: "review" });
+    expect(screen.getByRole("button", { name: "Pledge" })).toBeInTheDocument();
+  });
+
+  it("shows Revoke Pledge during review when patron has active pledge", async () => {
+    mockGetMyPledge.mockResolvedValue({
+      id: "pledge-1",
+      amount: 2500,
+      status: "active",
+      created_at: "2025-01-15T00:00:00Z",
+    });
+
+    renderWidget({ status: "review" });
+
+    expect(await screen.findByText("$25")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revoke Pledge" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument();
+  });
+
+  it("shows confirmation modal before revoking pledge during review", async () => {
+    mockGetMyPledge.mockResolvedValue({
+      id: "pledge-1",
+      amount: 2500,
+      status: "active",
+      created_at: "2025-01-15T00:00:00Z",
+    });
+    mockDeletePledge.mockResolvedValue(undefined);
+
+    const onPledge = vi.fn();
+    renderWidget({ status: "review" }, onPledge);
+
+    // Click Revoke Pledge — should show confirmation modal, not delete yet
+    await userEvent.click(await screen.findByRole("button", { name: "Revoke Pledge" }));
+    expect(screen.getByText("Revoke your pledge?")).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to revoke your \$25 pledge/)).toBeInTheDocument();
+    expect(mockDeletePledge).not.toHaveBeenCalled();
+
+    // Confirm revocation
+    await userEvent.click(screen.getByRole("button", { name: "Yes, revoke" }));
+
+    await waitFor(() => {
+      expect(mockDeletePledge).toHaveBeenCalledWith("abc-123");
+    });
+    expect(onPledge).toHaveBeenCalled();
+  });
+
+  it("dismisses revoke modal when Cancel is clicked", async () => {
+    mockGetMyPledge.mockResolvedValue({
+      id: "pledge-1",
+      amount: 2500,
+      status: "active",
+      created_at: "2025-01-15T00:00:00Z",
+    });
+
+    renderWidget({ status: "review" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Revoke Pledge" }));
+    expect(screen.getByText("Revoke your pledge?")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByText("Revoke your pledge?")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revoke Pledge" })).toBeInTheDocument();
+  });
+
   // --- Auth redirect ---
 
   it("redirects to /signin when not logged in", async () => {

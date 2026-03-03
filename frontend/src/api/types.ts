@@ -1,4 +1,4 @@
-export type TaskStatus = "proposed" | "underway" | "collecting" | "completed" | "declined";
+export type TaskStatus = "proposed" | "underway" | "review" | "collecting" | "completed" | "declined";
 
 export interface PatronPublicRead {
   id: string;
@@ -20,6 +20,7 @@ export interface TaskRead {
   collected_total: number;
   created_at: string;
   underway_at: string | null;
+  review_at: string | null;
   completed_at: string | null;
   declined_at: string | null;
 }

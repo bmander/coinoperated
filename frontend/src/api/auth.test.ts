@@ -9,14 +9,31 @@ afterEach(() => {
 
 describe("login", () => {
   it("posts email to /api/auth/login", async () => {
-    mockFetch.mockResolvedValue({ ok: true });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ message: "Check your email" }),
+    });
 
-    await login("test@example.com");
+    const result = await login("test@example.com");
     expect(mockFetch).toHaveBeenCalledWith("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: "test@example.com" }),
     });
+    expect(result).toEqual({ message: "Check your email" });
+  });
+
+  it("returns magic_token when staging", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        message: "Check your email",
+        magic_token: "abc123",
+      }),
+    });
+
+    const result = await login("test@example.com");
+    expect(result.magic_token).toBe("abc123");
   });
 
   it("throws on non-ok response", async () => {

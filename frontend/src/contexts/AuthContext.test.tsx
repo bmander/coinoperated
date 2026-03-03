@@ -72,7 +72,7 @@ describe("AuthContext", () => {
 
   it("calls login API", async () => {
     mockFetchMe.mockResolvedValue(null);
-    mockLogin.mockResolvedValue(undefined);
+    mockLogin.mockResolvedValue({ message: "Check your email" });
 
     render(
       <AuthProvider>

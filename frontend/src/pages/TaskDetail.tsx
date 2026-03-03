@@ -77,7 +77,7 @@ export default function TaskDetail() {
         </section>
       )}
 
-      {task.status === "completed" && task.evidence && (
+      {(task.status === "completed" || task.status === "review") && task.evidence && (
         <MarkdownSection title="Completion Evidence">{task.evidence}</MarkdownSection>
       )}
 

@@ -1,10 +1,11 @@
 import asyncio
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import stripe
 
-from app.models import NotificationType, PledgeStatus
+from app.models import NotificationType, PledgeStatus, TaskStatus
 from tests.conftest import auth_cookies, create_notification, create_patron, create_pledge, create_task
 
 
@@ -182,7 +183,12 @@ class TestNotificationCreation:
     async def test_notification_created_on_collecting(
         self, mock_send, client, test_session_maker, test_patron
     ):
-        task = await create_task(test_session_maker, title="Fix road", status="underway")
+        task = await create_task(
+            test_session_maker,
+            title="Fix road",
+            status=TaskStatus.review,
+            review_at=datetime.now(UTC) - timedelta(days=8),
+        )
         await create_pledge(
             test_session_maker, patron_id=test_patron.id, task_id=task.id
         )

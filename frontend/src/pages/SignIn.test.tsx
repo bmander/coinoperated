@@ -32,7 +32,7 @@ describe("SignIn", () => {
   });
 
   it("shows check-email message after successful submit", async () => {
-    mockLogin.mockResolvedValue(undefined);
+    mockLogin.mockResolvedValue({ message: "Check your email" });
     renderWithRouter(<SignIn />, ["/signin"]);
 
     await userEvent.type(screen.getByLabelText("Email address"), "test@example.com");
@@ -45,9 +45,37 @@ describe("SignIn", () => {
     expect(mockLogin).toHaveBeenCalledWith("test@example.com");
   });
 
+  it("shows magic link when returned by staging backend", async () => {
+    mockLogin.mockResolvedValue({
+      message: "Check your email",
+      magic_token: "abc123",
+    });
+    renderWithRouter(<SignIn />, ["/signin"]);
+
+    await userEvent.type(screen.getByLabelText("Email address"), "test@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Send sign-in link" }));
+
+    const link = await screen.findByRole("link", { name: /sign in directly/i });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute("href", expect.stringContaining("/api/auth/verify?token=abc123"));
+  });
+
+  it("does not show magic link in production", async () => {
+    mockLogin.mockResolvedValue({ message: "Check your email" });
+    renderWithRouter(<SignIn />, ["/signin"]);
+
+    await userEvent.type(screen.getByLabelText("Email address"), "test@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Send sign-in link" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Check your email")).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("link", { name: /sign in directly/i })).not.toBeInTheDocument();
+  });
+
   it("disables re-send button during cooldown then re-enables", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    mockLogin.mockResolvedValue(undefined);
+    mockLogin.mockResolvedValue({ message: "Check your email" });
     renderWithRouter(<SignIn />, ["/signin"]);
 
     await userEvent.type(screen.getByLabelText("Email address"), "test@example.com");

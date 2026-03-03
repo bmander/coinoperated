@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import type { ReactNode } from "react";
 import type { PatronMe } from "../api/types";
+import type { LoginResponse } from "../api/auth";
 import * as authApi from "../api/auth";
 
 interface AuthContextValue {
   patron: PatronMe | null;
   loading: boolean;
-  login: (email: string) => Promise<void>;
+  login: (email: string) => Promise<LoginResponse>;
   logout: () => Promise<void>;
 }
 
@@ -21,7 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string) => {
-    await authApi.login(email);
+    return authApi.login(email);
   }, []);
 
   const logout = useCallback(async () => {

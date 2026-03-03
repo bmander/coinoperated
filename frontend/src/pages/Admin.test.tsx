@@ -44,6 +44,7 @@ function makeTask(overrides: Partial<AdminTaskListResponse["items"][0]> = {}) {
     collected_total: 0,
     created_at: "2025-01-01T00:00:00Z",
     underway_at: null,
+    review_at: null,
     completed_at: null,
     declined_at: null,
     pledges: [
@@ -127,6 +128,16 @@ describe("Admin", () => {
     expect(screen.getByText("Post Update")).toBeInTheDocument();
     expect(screen.getByText("Mark Complete")).toBeInTheDocument();
     expect(screen.getByText("Abandon")).toBeInTheDocument();
+  });
+
+  it("shows review info and End Review button for review tasks", async () => {
+    await renderAndExpandTask({
+      status: "review",
+      review_at: "2026-02-20T00:00:00Z",
+    });
+
+    expect(screen.getByText(/Review started/)).toBeInTheDocument();
+    expect(screen.getByText("End Review & Collect")).toBeInTheDocument();
   });
 
   it("shows collecting indicator", async () => {

@@ -137,6 +137,7 @@
 
 .task-card-proposed::before { background: #e6f4e6; }
 .task-card-underway::before { background: #e6e6f4; }
+.task-card-review::before { background: #f4e6f4; }
 .task-card-collecting::before { background: #f4f4e6; }
 .task-card-completed::before { background: #d4ead4; }
 .task-card-declined::before { background: #f4e6e6; }
@@ -192,6 +193,10 @@
 .status-underway {
   background: #e6e6f4;
   color: #44c;
+}
+.status-review {
+  background: #f4e6f4;
+  color: #884488;
 }
 .status-collecting {
   background: #f4f4e6;
@@ -965,9 +970,10 @@
 .modal-card {
   background: #fff;
   padding: 2rem;
-  width: 100%;
+  width: calc(100% - 2rem);
   max-width: 420px;
   border: 1px solid #ddd;
+  box-sizing: border-box;
 }
 
 .modal-card h3 {

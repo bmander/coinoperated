@@ -5,7 +5,8 @@ import { statusLabel } from "../utils/formatting";
 const GLOSSARY: { status: TaskStatus; description: string }[] = [
   { status: "proposed", description: "Proposed and waiting for review" },
   { status: "underway", description: "Work has begun" },
-  { status: "collecting", description: "Complete \u2014 payments being collected" },
+  { status: "review", description: "Complete \u2014 pledgers reviewing work" },
+  { status: "collecting", description: "Review done \u2014 payments being collected" },
   { status: "completed", description: "Done and fully paid out" },
   { status: "declined", description: "Won\u2019t be worked on; pledges released" },
 ];

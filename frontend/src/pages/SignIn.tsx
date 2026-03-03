@@ -18,6 +18,7 @@ export default function SignIn() {
   const [error, setError] = useState("");
   const [cooldown, setCooldown] = useState(false);
   const [sending, setSending] = useState(false);
+  const [magicToken, setMagicToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (!cooldown) return;
@@ -35,7 +36,8 @@ export default function SignIn() {
     setError("");
     setSending(true);
     try {
-      await login(email);
+      const resp = await login(email);
+      setMagicToken(resp.magic_token ?? null);
       setSubmitted(true);
       setCooldown(true);
     } catch {
@@ -57,6 +59,13 @@ export default function SignIn() {
         <p className="signin-message">
           We sent a sign-in link to <strong>{email}</strong>
         </p>
+        {magicToken && (
+          <p className="signin-message">
+            <a href={`${window.location.origin}/api/auth/verify?token=${magicToken}`}>
+              Sign in directly (staging only)
+            </a>
+          </p>
+        )}
         <button
           type="button"
           className="btn btn-secondary"

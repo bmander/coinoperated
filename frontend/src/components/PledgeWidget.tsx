@@ -8,6 +8,7 @@ import { fetchPaymentMethods } from "../api/patron";
 import { formatCents } from "../utils/formatting";
 import type { TaskStatus, PledgeMyResponse, SavedPaymentMethod } from "../api/types";
 import { isLivePledge } from "../api/types";
+import ConfirmModal from "./ConfirmModal";
 import PaymentModal from "./PaymentModal";
 import Spinner from "./Spinner";
 
@@ -132,7 +133,10 @@ export default function PledgeWidget({
     setShowModal(false);
   }
 
-  const canPledge = task.status === "proposed" || task.status === "underway";
+  const [confirmingRevoke, setConfirmingRevoke] = useState(false);
+
+  const canPledge = task.status === "proposed" || task.status === "underway" || task.status === "review";
+
   if (!canPledge) return null;
 
   return (
@@ -203,6 +207,14 @@ export default function PledgeWidget({
             <button className="btn btn-sm btn-secondary" onClick={handlePledgeClick}>
               Change
             </button>
+            {task.status === "review" && (
+              <button
+                className="btn btn-sm btn-decline"
+                onClick={() => setConfirmingRevoke(true)}
+              >
+                Revoke Pledge
+              </button>
+            )}
           </span>
         ) : (
           <button className="btn btn-sm btn-primary" onClick={handlePledgeClick}>
@@ -218,6 +230,22 @@ export default function PledgeWidget({
           savedMethods={savedMethods}
           onSuccess={handleModalSuccess}
           onCancel={handleModalCancel}
+        />
+      )}
+
+      {confirmingRevoke && (
+        <ConfirmModal
+          title="Revoke your pledge?"
+          description={`Are you sure you want to revoke your ${isLivePledge(existingPledge) ? formatCents(existingPledge.amount) : ""} pledge? This cannot be undone.`}
+          confirmLabel="Yes, revoke"
+          confirmingLabel="Revoking..."
+          onConfirm={async () => {
+            await deletePledge(task.id);
+            setExistingPledge(null);
+            setConfirmingRevoke(false);
+            onPledge?.();
+          }}
+          onCancel={() => setConfirmingRevoke(false)}
         />
       )}
     </>

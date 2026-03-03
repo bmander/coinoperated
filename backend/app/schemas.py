@@ -59,6 +59,7 @@ class TaskRead(BaseReadSchema):
     collected_total: int
     created_at: datetime
     underway_at: datetime | None
+    review_at: datetime | None
     completed_at: datetime | None
     declined_at: datetime | None
 

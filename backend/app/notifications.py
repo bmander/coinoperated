@@ -34,6 +34,17 @@ def _task_accepted_email(task: Task, pledge: Pledge) -> tuple[str, str]:
     return subject, body
 
 
+def _task_review_started_email(task: Task, pledge: Pledge) -> tuple[str, str]:
+    dollars = f"${pledge.amount / 100:.2f}"
+    subject = f"Review period started: {task.title}"
+    body = (
+        f"The task \"{task.title}\" has been marked as complete.\n"
+        f"You have 1 week to review the work before your pledge of {dollars} is collected.\n"
+        f"If you're not satisfied, you can revoke your pledge during this period."
+    )
+    return subject, body
+
+
 def _task_completed_email(task: Task, pledge: Pledge) -> tuple[str, str]:
     dollars = f"${pledge.amount / 100:.2f}"
     subject = f"Task completed: {task.title}"
@@ -123,6 +134,10 @@ async def _notify_pledgers(
 
 async def notify_task_accepted(db: AsyncSession, task: Task) -> None:
     await _notify_pledgers(db, task, NotificationType.task_accepted, _task_accepted_email)
+
+
+async def notify_task_review_started(db: AsyncSession, task: Task) -> None:
+    await _notify_pledgers(db, task, NotificationType.task_review_started, _task_review_started_email)
 
 
 async def notify_task_completed(db: AsyncSession, task: Task) -> None:

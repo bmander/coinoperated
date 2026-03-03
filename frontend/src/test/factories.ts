@@ -15,6 +15,7 @@ export function makeTask(overrides: Partial<TaskRead> = {}): TaskRead {
     collected_total: 0,
     created_at: "2025-01-01T00:00:00Z",
     underway_at: null,
+    review_at: null,
     completed_at: null,
     declined_at: null,
     ...overrides,

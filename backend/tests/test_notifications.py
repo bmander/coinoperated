@@ -1,17 +1,19 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
-from sqlalchemy import select
+from sqlalchemy import select, update as sa_update
 
 from app.auth import create_jwt
 from app.config import settings
-from app.models import Notification, NotificationType, Pledge, PledgeStatus, TaskStatus
+from app.models import Notification, NotificationType, Pledge, PledgeStatus, Task as TaskModel, TaskStatus
 from app.notifications import (
     _charge_failed_email,
     _charge_succeeded_email,
     _task_accepted_email,
     _task_completed_email,
     _task_declined_email,
+    _task_review_started_email,
 )
 from tests.conftest import create_patron, create_pledge, create_task
 
@@ -56,6 +58,20 @@ async def test_task_declined_template(test_session_maker):
     assert "Rewrite in Rust" in subject
     assert "declined" in subject.lower()
     assert "released" in body.lower()
+
+
+async def test_task_review_started_template(test_session_maker):
+    patron = await create_patron(test_session_maker, "tmpl_rev@example.com", "cus_tmpl_rev")
+    task = await create_task(test_session_maker, title="Improve search")
+    pledge = await create_pledge(
+        test_session_maker, patron_id=patron.id, task_id=task.id, amount=2000
+    )
+    subject, body = _task_review_started_email(task, pledge)
+    assert "Improve search" in subject
+    assert "review" in subject.lower()
+    assert "$20.00" in body
+    assert "1 week" in body
+    assert "revoke" in body.lower()
 
 
 async def test_charge_succeeded_template(test_session_maker):
@@ -105,9 +121,39 @@ async def test_task_accepted_creates_notification(mock_send, client, test_sessio
 
 
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
+async def test_task_review_creates_notification(mock_send, client, test_session_maker):
+    patron = await create_patron(test_session_maker, "notif_rev@example.com", "cus_notif_rev")
+    task = await create_task(test_session_maker, status=TaskStatus.underway)
+    await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
+
+    resp = await client.patch(
+        f"/api/tasks/{task.id}", json={"status": "review"}
+    )
+    assert resp.status_code == 200
+
+    async with test_session_maker() as session:
+        result = await session.execute(
+            select(Notification).where(
+                Notification.task_id == task.id,
+                Notification.type == NotificationType.task_review_started,
+            )
+        )
+        notifications = result.scalars().all()
+        assert len(notifications) == 1
+        assert "review" in notifications[0].subject.lower()
+        assert notifications[0].email_sent is True
+
+    mock_send.assert_called_once()
+
+
+@patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
 async def test_task_collecting_creates_completed_notification(mock_send, client, test_session_maker):
     patron = await create_patron(test_session_maker, "notif_b@example.com", "cus_notif_b")
-    task = await create_task(test_session_maker, status=TaskStatus.underway)
+    task = await create_task(
+        test_session_maker,
+        status=TaskStatus.review,
+        review_at=datetime.now(UTC) - timedelta(days=8),
+    )
     await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
 
     resp = await client.patch(

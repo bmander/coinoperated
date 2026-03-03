@@ -1,11 +1,12 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, update as sa_update
 
 from app.config import settings
-from app.models import Pledge
+from app.models import Pledge, Task as TaskModel
 from tests.conftest import auth_cookies, mock_setup_intent
 from tests.conftest import create_patron as create_patron_db
 
@@ -30,6 +31,17 @@ def _patch_admin_settings():
     """Make the default test patron (test@example.com) an admin for task CRUD tests."""
     with patch("app.routers.tasks.settings", _admin_settings()):
         yield
+
+
+async def backdate_review(session_maker, task_id, days_ago=8):
+    """Set review_at to the past so the review period has elapsed."""
+    async with session_maker() as session:
+        await session.execute(
+            sa_update(TaskModel)
+            .where(TaskModel.id == uuid.UUID(task_id))
+            .values(review_at=datetime.now(UTC) - timedelta(days=days_ago))
+        )
+        await session.commit()
 
 
 async def create_task(client, **overrides):
@@ -298,15 +310,29 @@ async def test_update_task_abandon(authed_client):
     assert data["underway_at"] is None
 
 
-async def test_update_task_collecting(authed_client):
+async def test_update_task_review(authed_client):
+    task = await create_task(authed_client)
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "underway"})
+
+    resp = await authed_client.patch(
+        f"/api/tasks/{task['id']}", json={"status": "review"}
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "review"
+    assert data["review_at"] is not None
+
+
+async def test_underway_to_collecting_invalid(authed_client):
+    """Direct underway -> collecting is no longer valid; must go through review."""
     task = await create_task(authed_client)
     await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "underway"})
 
     resp = await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "collecting"}
     )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "collecting"
+    assert resp.status_code == 400
+    assert "Invalid status transition" in resp.json()["detail"]
 
 
 async def test_update_task_invalid_transition(authed_client):
@@ -356,15 +382,13 @@ async def test_declined_is_terminal(authed_client):
     assert resp.status_code == 400
 
 
-async def test_completed_is_terminal(authed_client):
+async def test_completed_is_terminal(authed_client, test_session_maker):
     task = await create_task(authed_client)
     await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "underway"})
-    await authed_client.patch(
-        f"/api/tasks/{task['id']}", json={"status": "collecting"}
-    )
-    await authed_client.patch(
-        f"/api/tasks/{task['id']}", json={"status": "completed"}
-    )
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "review"})
+    await backdate_review(test_session_maker, task["id"])
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "collecting"})
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "completed"})
 
     resp = await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "proposed"}
@@ -434,3 +458,33 @@ async def test_create_task_save_card_false(mock_si_create, client, test_session_
             )
         ).scalar_one()
         assert pledge.save_card is False
+
+
+# --- Review phase tests ---
+
+
+async def test_review_to_collecting_too_early(authed_client, test_session_maker):
+    """Cannot transition review -> collecting before 1 week."""
+    task = await create_task(authed_client)
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "underway"})
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "review"})
+
+    resp = await authed_client.patch(
+        f"/api/tasks/{task['id']}", json={"status": "collecting"}
+    )
+    assert resp.status_code == 400
+    assert "Review period not over" in resp.json()["detail"]
+
+
+async def test_review_to_collecting_after_week(authed_client, test_session_maker):
+    """Can transition review -> collecting after 1 week."""
+    task = await create_task(authed_client)
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "underway"})
+    await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "review"})
+    await backdate_review(test_session_maker, task["id"])
+
+    resp = await authed_client.patch(
+        f"/api/tasks/{task['id']}", json={"status": "collecting"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "collecting"

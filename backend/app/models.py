@@ -29,6 +29,7 @@ class Base(DeclarativeBase):
 class TaskStatus(enum.StrEnum):
     proposed = "proposed"
     underway = "underway"
+    review = "review"
     collecting = "collecting"
     completed = "completed"
     declined = "declined"
@@ -47,6 +48,7 @@ LIVE_PLEDGE_STATUSES = [PledgeStatus.active, PledgeStatus.pending]
 
 class NotificationType(enum.StrEnum):
     task_accepted = "task_accepted"
+    task_review_started = "task_review_started"
     task_completed = "task_completed"
     task_declined = "task_declined"
     charge_succeeded = "charge_succeeded"
@@ -117,6 +119,7 @@ class Task(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     underway_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    review_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     declined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
