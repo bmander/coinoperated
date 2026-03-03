@@ -2,15 +2,21 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
-from app.dependencies import get_active_patron, get_db
+from app.dependencies import get_active_patron, get_db, get_session_factory
 from app.models import Patron, Task, TaskStatus
-from app.notifications import notify_task_accepted, notify_task_completed, notify_task_declined, notify_task_review_started
+from app.notifications import (
+    notify_task_accepted,
+    notify_task_completed,
+    notify_task_declined,
+    notify_task_review_started,
+    send_pending_emails,
+)
 from app.schemas import TaskCreate, TaskCreateResponse, TaskDetail, TaskListResponse, TaskRead, TaskUpdate
 from app.services.pledges import PaymentMethodOwnershipError, create_pledge_for_task
 
@@ -129,6 +135,8 @@ async def update_task(
     task_id: uuid.UUID,
     payload: TaskUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
+    session_factory=Depends(get_session_factory),
 ):
     task = await get_task_or_404(db, task_id)
 
@@ -176,9 +184,14 @@ async def update_task(
     for field, value in payload.model_dump(exclude_unset=True, exclude={"status"}).items():
         setattr(task, field, value)
 
+    pending_emails = []
     if notify_fn is not None:
-        await notify_fn(db, task)
+        pending_emails = await notify_fn(db, task)
 
     await db.commit()
     await db.refresh(task)
+
+    if pending_emails:
+        background_tasks.add_task(send_pending_emails, pending_emails, session_factory)
+
     return task

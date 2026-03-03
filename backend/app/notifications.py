@@ -1,5 +1,8 @@
+import asyncio
 import logging
+import uuid
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +20,14 @@ from app.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class PendingEmail:
+    notification_id: uuid.UUID
+    to: str
+    subject: str
+    body: str
 
 
 def _format_dollars(cents: int) -> str:
@@ -118,7 +129,7 @@ async def _load_disabled_patron_ids(
     return set(result.scalars().all())
 
 
-async def _persist_and_send(
+async def _persist_notification(
     db: AsyncSession,
     patron: Patron,
     task: Task,
@@ -127,7 +138,8 @@ async def _persist_and_send(
     body: str,
     *,
     email_disabled: bool = False,
-) -> None:
+) -> PendingEmail | None:
+    """Persist a notification record. Returns a PendingEmail if an email should be sent."""
     notification = Notification(
         patron_id=patron.id,
         task_id=task.id,
@@ -137,8 +149,14 @@ async def _persist_and_send(
     )
     db.add(notification)
     await db.flush()
-    if not email_disabled:
-        notification.email_sent = await send_email(patron.email, subject, body)
+    if email_disabled:
+        return None
+    return PendingEmail(
+        notification_id=notification.id,
+        to=patron.email,
+        subject=subject,
+        body=body,
+    )
 
 
 async def _notify_pledgers(
@@ -146,57 +164,87 @@ async def _notify_pledgers(
     task: Task,
     ntype: NotificationType,
     template_fn: Callable[[Task, Pledge], tuple[str, str]],
-) -> None:
+) -> list[PendingEmail]:
     pledges = await _get_active_pledgers(db, task.id)
     disabled = await _load_disabled_patron_ids(
         db, [p.patron.id for p in pledges], ntype
     )
+    pending: list[PendingEmail] = []
     for pledge in pledges:
         subject, body = template_fn(task, pledge)
-        await _persist_and_send(
+        email = await _persist_notification(
             db, pledge.patron, task, ntype, subject, body,
             email_disabled=pledge.patron.id in disabled,
         )
+        if email is not None:
+            pending.append(email)
+    return pending
+
+
+async def send_pending_emails(
+    pending: list[PendingEmail], session_factory
+) -> None:
+    """Send queued emails concurrently and update notification records.
+
+    Designed to run as a background task after the HTTP response is sent.
+    """
+    if not pending:
+        return
+
+    async def _send_one(item: PendingEmail) -> tuple[uuid.UUID, bool]:
+        success = await send_email(item.to, item.subject, item.body)
+        return item.notification_id, success
+
+    results = await asyncio.gather(*(_send_one(item) for item in pending))
+
+    async with session_factory() as db:
+        for notification_id, success in results:
+            notification = await db.get(Notification, notification_id)
+            if notification is not None:
+                notification.email_sent = success
+        await db.commit()
 
 
 # --- Public API ---
 
 
-async def notify_task_accepted(db: AsyncSession, task: Task) -> None:
-    await _notify_pledgers(db, task, NotificationType.task_accepted, _task_accepted_email)
+async def notify_task_accepted(db: AsyncSession, task: Task) -> list[PendingEmail]:
+    return await _notify_pledgers(db, task, NotificationType.task_accepted, _task_accepted_email)
 
 
-async def notify_task_review_started(db: AsyncSession, task: Task) -> None:
-    await _notify_pledgers(db, task, NotificationType.task_review_started, _task_review_started_email)
+async def notify_task_review_started(db: AsyncSession, task: Task) -> list[PendingEmail]:
+    return await _notify_pledgers(db, task, NotificationType.task_review_started, _task_review_started_email)
 
 
-async def notify_task_completed(db: AsyncSession, task: Task) -> None:
-    await _notify_pledgers(db, task, NotificationType.task_completed, _task_completed_email)
+async def notify_task_completed(db: AsyncSession, task: Task) -> list[PendingEmail]:
+    return await _notify_pledgers(db, task, NotificationType.task_completed, _task_completed_email)
 
 
-async def notify_task_declined(db: AsyncSession, task: Task) -> None:
-    await _notify_pledgers(db, task, NotificationType.task_declined, _task_declined_email)
+async def notify_task_declined(db: AsyncSession, task: Task) -> list[PendingEmail]:
+    return await _notify_pledgers(db, task, NotificationType.task_declined, _task_declined_email)
 
 
 async def notify_charge_succeeded(
     db: AsyncSession, patron: Patron, task: Task, amount: int
-) -> None:
+) -> list[PendingEmail]:
     ntype = NotificationType.charge_succeeded
     disabled = await _load_disabled_patron_ids(db, [patron.id], ntype)
     subject, body = _charge_succeeded_email(task, amount)
-    await _persist_and_send(
+    email = await _persist_notification(
         db, patron, task, ntype, subject, body,
         email_disabled=patron.id in disabled,
     )
+    return [email] if email is not None else []
 
 
 async def notify_charge_failed(
     db: AsyncSession, patron: Patron, task: Task, amount: int
-) -> None:
+) -> list[PendingEmail]:
     ntype = NotificationType.charge_failed
     disabled = await _load_disabled_patron_ids(db, [patron.id], ntype)
     subject, body = _charge_failed_email(task, amount)
-    await _persist_and_send(
+    email = await _persist_notification(
         db, patron, task, ntype, subject, body,
         email_disabled=patron.id in disabled,
     )
+    return [email] if email is not None else []
