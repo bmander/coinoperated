@@ -15,7 +15,7 @@
 }
 
 .site-footer {
-  margin: 0 -1rem 0;
+  margin: 0 -1rem;
   padding: 0.25rem 1rem;
   text-align: right;
   font-size: 0.85rem;
@@ -32,11 +32,16 @@
   text-decoration: underline;
 }
 
+.site-footer svg {
+  vertical-align: -0.15em;
+  margin-right: 0.35em;
+}
+
 .site-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: calc(1rem + env(safe-area-inset-top, 0px)) 0 1rem;
+  padding: 1rem 0;
 }
 
 .site-title-wrapper {
