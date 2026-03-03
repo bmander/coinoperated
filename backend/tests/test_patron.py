@@ -141,14 +141,14 @@ class TestPatronNotifications:
 class TestNotificationCreation:
     @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
     async def test_notification_created_on_task_accepted(
-        self, mock_send, client, test_session_maker, test_patron
+        self, mock_send, admin_client, client, test_session_maker, test_patron
     ):
         task = await create_task(test_session_maker, title="Paint mural")
         await create_pledge(
             test_session_maker, patron_id=test_patron.id, task_id=task.id
         )
 
-        resp = await client.patch(
+        resp = await admin_client.patch(
             f"/api/tasks/{task.id}",
             json={"status": "underway"},
         )
@@ -163,14 +163,14 @@ class TestNotificationCreation:
 
     @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
     async def test_notification_created_on_task_declined(
-        self, mock_send, client, test_session_maker, test_patron
+        self, mock_send, admin_client, client, test_session_maker, test_patron
     ):
         task = await create_task(test_session_maker, title="Build bridge")
         await create_pledge(
             test_session_maker, patron_id=test_patron.id, task_id=task.id
         )
 
-        await client.patch(f"/api/tasks/{task.id}", json={"status": "declined"})
+        await admin_client.patch(f"/api/tasks/{task.id}", json={"status": "declined"})
 
         notif_resp = await client.get(
             "/api/patron/notifications", cookies=auth_cookies(test_patron)
@@ -181,7 +181,7 @@ class TestNotificationCreation:
 
     @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
     async def test_notification_created_on_collecting(
-        self, mock_send, client, test_session_maker, test_patron
+        self, mock_send, admin_client, client, test_session_maker, test_patron
     ):
         task = await create_task(
             test_session_maker,
@@ -194,7 +194,7 @@ class TestNotificationCreation:
         )
 
         # Notification fires on collecting transition
-        await client.patch(f"/api/tasks/{task.id}", json={"status": "collecting"})
+        await admin_client.patch(f"/api/tasks/{task.id}", json={"status": "collecting"})
 
         notif_resp = await client.get(
             "/api/patron/notifications", cookies=auth_cookies(test_patron)
@@ -204,7 +204,7 @@ class TestNotificationCreation:
         assert data[0]["event"] == "task_completed"
 
     async def test_no_notification_for_released_pledge(
-        self, client, test_session_maker, test_patron
+        self, admin_client, client, test_session_maker, test_patron
     ):
         task = await create_task(test_session_maker)
         await create_pledge(
@@ -214,7 +214,7 @@ class TestNotificationCreation:
             status=PledgeStatus.released,
         )
 
-        await client.patch(f"/api/tasks/{task.id}", json={"status": "underway"})
+        await admin_client.patch(f"/api/tasks/{task.id}", json={"status": "underway"})
 
         notif_resp = await client.get(
             "/api/patron/notifications", cookies=auth_cookies(test_patron)
@@ -223,7 +223,7 @@ class TestNotificationCreation:
 
     @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
     async def test_multiple_patrons_each_get_notification(
-        self, mock_send, client, test_session_maker, test_patron
+        self, mock_send, admin_client, client, test_session_maker, test_patron
     ):
         patron2 = await create_patron(
             test_session_maker, "patron2@example.com", "cus_p2"
@@ -242,7 +242,7 @@ class TestNotificationCreation:
             setup_intent="si_2",
         )
 
-        await client.patch(f"/api/tasks/{task.id}", json={"status": "underway"})
+        await admin_client.patch(f"/api/tasks/{task.id}", json={"status": "underway"})
 
         resp1 = await client.get(
             "/api/patron/notifications", cookies=auth_cookies(test_patron)
@@ -256,7 +256,7 @@ class TestNotificationCreation:
         assert resp2.json()[0]["event"] == "task_accepted"
 
     async def test_no_notification_for_non_status_update(
-        self, client, test_session_maker, test_patron
+        self, admin_client, client, test_session_maker, test_patron
     ):
         task = await create_task(test_session_maker)
         await create_pledge(
@@ -264,7 +264,7 @@ class TestNotificationCreation:
         )
 
         # Field-only update, no status change
-        await client.patch(f"/api/tasks/{task.id}", json={"title": "New title"})
+        await admin_client.patch(f"/api/tasks/{task.id}", json={"title": "New title"})
 
         notif_resp = await client.get(
             "/api/patron/notifications", cookies=auth_cookies(test_patron)

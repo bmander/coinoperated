@@ -28,7 +28,8 @@ def _admin_settings():
 @pytest.fixture(autouse=True)
 def _patch_admin_settings():
     """Make the default test patron (test@example.com) an admin for task CRUD tests."""
-    with patch("app.routers.tasks.settings", _admin_settings()):
+    fake = _admin_settings()
+    with patch("app.routers.tasks.settings", fake), patch("app.dependencies.settings", fake):
         yield
 
 
@@ -353,8 +354,8 @@ async def test_update_task_edit_fields(authed_client):
     assert data["description"] == "Updated desc"
 
 
-async def test_update_task_not_found(client):
-    resp = await client.patch(
+async def test_update_task_not_found(authed_client):
+    resp = await authed_client.patch(
         f"/api/tasks/{uuid.uuid4()}", json={"title": "Nope"}
     )
     assert resp.status_code == 404

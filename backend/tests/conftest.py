@@ -1,6 +1,6 @@
 import uuid
 from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -13,6 +13,8 @@ from app.auth import create_jwt
 from app.config import settings
 from app.dependencies import get_db, get_session_factory
 from app.models import Base, EmailPreference, MagicLinkToken, Notification, NotificationType, Patron, Pledge, PledgeStatus, Task
+
+ADMIN_EMAIL = "admin@test.example.com"
 
 
 @pytest.fixture(scope="session")
@@ -83,6 +85,36 @@ async def authed_client(test_patron, client):
     token = create_jwt(test_patron.id, settings.secret_key, expiry_days=30)
     client.cookies.set("session", token)
     yield client
+
+
+@pytest.fixture
+async def admin_client(test_session_maker):
+    """An HTTP client authenticated as an admin patron with settings patched."""
+    from app.main import create_app
+
+    admin = await create_patron(test_session_maker, ADMIN_EMAIL, "cus_admin_conftest")
+    token = create_jwt(admin.id, settings.secret_key, expiry_days=30)
+
+    class FakeSettings:
+        admin_email = ADMIN_EMAIL
+        secret_key = settings.secret_key
+        stripe_publishable_key = settings.stripe_publishable_key
+
+    app = create_app()
+
+    async def override_get_db():
+        async with test_session_maker() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_session_factory] = lambda: test_session_maker
+
+    with patch("app.dependencies.settings", FakeSettings()):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as c:
+            c.cookies.set("session", token)
+            yield c
 
 
 def mock_setup_intent(si_id="si_test_123", client_secret="seti_test_secret"):

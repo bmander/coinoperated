@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
-from app.dependencies import get_active_patron, get_db, get_session_factory
+from app.dependencies import get_active_patron, get_admin_patron, get_db, get_session_factory
 from app.models import Patron, Task, TaskStatus
 from app.notifications import (
     notify_task_accepted,
@@ -136,6 +136,7 @@ async def update_task(
     payload: TaskUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
     background_tasks: BackgroundTasks,
+    _admin: Annotated[Patron, Depends(get_admin_patron)],
     session_factory=Depends(get_session_factory),
 ):
     task = await get_task_or_404(db, task_id)

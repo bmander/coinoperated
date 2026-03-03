@@ -13,7 +13,7 @@ import { MIN_PLEDGE_CENTS, PRESET_AMOUNTS } from "../constants";
 import { formatCents } from "../utils/formatting";
 import type { SavedPaymentMethod } from "../api/types";
 
-function TaskFormFields({
+export function TaskFormFields({
   title,
   setTitle,
   description,

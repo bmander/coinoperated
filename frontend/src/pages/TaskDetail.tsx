@@ -5,6 +5,7 @@ import { formatBackers, formatCents } from "../utils/formatting";
 import StatusBadge from "../components/StatusBadge";
 import useFetch from "../hooks/useFetch";
 import PledgeWidget from "../components/PledgeWidget";
+import { useAuth } from "../contexts/AuthContext";
 
 function MarkdownSection({ title, children, className }: { title: string; children: string; className?: string }) {
   return (
@@ -19,6 +20,8 @@ function MarkdownSection({ title, children, className }: { title: string; childr
 
 export default function TaskDetail() {
   const { taskId } = useParams<{ taskId: string }>();
+  const { patron } = useAuth();
+  const isAdmin = patron?.is_admin ?? false;
   const { data: task, loading, error } = useFetch(
     () => getTask(taskId!),
     [taskId],
@@ -33,7 +36,10 @@ export default function TaskDetail() {
       <Link to="/" className="back-link">&larr; All Tasks</Link>
 
       <div className="task-detail-header">
-        <StatusBadge status={task.status} />
+        <div className="task-detail-header-top">
+          <StatusBadge status={task.status} />
+          {isAdmin && <Link to={`/tasks/${task.id}/edit`} className="btn btn-secondary btn-small">Edit</Link>}
+        </div>
         <h1 className="task-detail-title">{task.title}</h1>
         <p className="task-detail-stats">
           {task.submitted_by_patron && (
