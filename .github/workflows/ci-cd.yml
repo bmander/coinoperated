@@ -104,6 +104,20 @@ jobs:
             SMTP_FROM_EMAIL: "${{ secrets.SMTP_FROM_EMAIL }}"
           SECRETS
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: pip install -e ".[dev]"
+        working-directory: backend
+
+      - name: Run database migrations
+        run: alembic upgrade head
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Deploy to App Engine
         run: gcloud app deploy --quiet
         working-directory: backend
