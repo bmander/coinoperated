@@ -1,4 +1,4 @@
-import { fetchMyPledges, fetchMyNotifications, fetchPaymentMethods, deletePaymentMethod } from "./patron";
+import { fetchMyPledges, fetchMyNotifications, fetchPaymentMethods, deletePaymentMethod, fetchEmailPreferences, updateEmailPreferences } from "./patron";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -95,6 +95,58 @@ describe("deletePaymentMethod", () => {
 
     await expect(deletePaymentMethod("pm_123")).rejects.toThrow(
       "Payment method is in use by an active pledge",
+    );
+  });
+});
+
+describe("fetchEmailPreferences", () => {
+  it("fetches from /api/patron/email-preferences", async () => {
+    const mockData = [{ notification_type: "task_accepted", enabled: true }];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockData),
+    } as Response);
+
+    const result = await fetchEmailPreferences();
+    expect(fetch).toHaveBeenCalledWith("/api/patron/email-preferences");
+    expect(result).toEqual(mockData);
+  });
+
+  it("throws on non-ok response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 401,
+    } as Response);
+
+    await expect(fetchEmailPreferences()).rejects.toThrow("Failed to fetch email preferences: 401");
+  });
+});
+
+describe("updateEmailPreferences", () => {
+  it("sends PUT with preferences payload", async () => {
+    const mockData = [{ notification_type: "task_accepted", enabled: false }];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockData),
+    } as Response);
+
+    const result = await updateEmailPreferences({ task_accepted: false });
+    expect(fetch).toHaveBeenCalledWith("/api/patron/email-preferences", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ preferences: { task_accepted: false } }),
+    });
+    expect(result).toEqual(mockData);
+  });
+
+  it("throws on non-ok response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 500,
+    } as Response);
+
+    await expect(updateEmailPreferences({ task_accepted: false })).rejects.toThrow(
+      "Failed to update email preferences: 500",
     );
   });
 });

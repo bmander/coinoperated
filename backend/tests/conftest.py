@@ -12,7 +12,7 @@ from testcontainers.postgres import PostgresContainer
 from app.auth import create_jwt
 from app.config import settings
 from app.dependencies import get_db
-from app.models import Base, MagicLinkToken, Notification, NotificationType, Patron, Pledge, PledgeStatus, Task
+from app.models import Base, EmailPreference, MagicLinkToken, Notification, NotificationType, Patron, Pledge, PledgeStatus, Task
 
 
 @pytest.fixture(scope="session")
@@ -50,7 +50,7 @@ async def setup_db(test_engine):
 async def clean_tables(test_engine):
     yield
     async with test_engine.begin() as conn:
-        for table in ("notification", "magic_link_token", "update", "pledge", "task", "patron"):
+        for table in ("email_preference", "notification", "magic_link_token", "update", "pledge", "task", "patron"):
             await conn.execute(text(f'DELETE FROM "{table}"'))
 
 
@@ -191,3 +191,18 @@ async def create_notification(
         await session.commit()
         await session.refresh(notification)
         return notification
+
+
+async def create_email_preference(
+    session_maker, *, patron_id, notification_type, enabled=True
+) -> EmailPreference:
+    async with session_maker() as session:
+        pref = EmailPreference(
+            patron_id=patron_id,
+            notification_type=notification_type,
+            enabled=enabled,
+        )
+        session.add(pref)
+        await session.commit()
+        await session.refresh(pref)
+        return pref

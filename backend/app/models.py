@@ -91,6 +91,7 @@ class Patron(Base):
     pledges: Mapped[list["Pledge"]] = relationship(back_populates="patron")
     submitted_tasks: Mapped[list["Task"]] = relationship(back_populates="submitted_by_patron")
     notifications: Mapped[list["Notification"]] = relationship(back_populates="patron")
+    email_preferences: Mapped[list["EmailPreference"]] = relationship(back_populates="patron")
 
 
 class Task(Base):
@@ -210,3 +211,27 @@ class Notification(Base):
     @property
     def task_title(self) -> str:
         return self.task.title
+
+
+class EmailPreference(Base):
+    __tablename__ = "email_preference"
+    __table_args__ = (
+        UniqueConstraint("patron_id", "notification_type"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    patron_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("patron.id"), nullable=False
+    )
+    notification_type: Mapped[NotificationType] = mapped_column(
+        Enum(NotificationType, name="notification_type", create_type=False),
+        nullable=False,
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    patron: Mapped[Patron] = relationship(back_populates="email_preferences")

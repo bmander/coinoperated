@@ -135,6 +135,19 @@ export function isLivePledge(pledge: PledgeMyResponse | null): pledge is PledgeM
 
 export type NotificationEvent = "task_accepted" | "task_review_started" | "task_completed" | "task_declined";
 
+export type NotificationType =
+  | "task_accepted"
+  | "task_review_started"
+  | "task_completed"
+  | "task_declined"
+  | "charge_succeeded"
+  | "charge_failed";
+
+export interface EmailPreference {
+  notification_type: NotificationType;
+  enabled: boolean;
+}
+
 export interface PatronPledgeTaskSummary {
   id: string;
   title: string;

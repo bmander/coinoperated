@@ -271,3 +271,15 @@ class NotificationRead(BaseReadSchema):
     body: str
     email_sent: bool
     created_at: datetime
+
+
+# --- Email Preferences ---
+
+
+class EmailPreferenceRead(BaseReadSchema):
+    notification_type: NotificationType
+    enabled: bool
+
+
+class EmailPreferenceUpdate(BaseModel):
+    preferences: dict[NotificationType, bool]

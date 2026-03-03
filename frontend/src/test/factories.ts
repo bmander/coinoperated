@@ -1,4 +1,4 @@
-import type { TaskRead, TaskDetailRead, TaskListResponse, UpdateRead, PatronPledgeRead, NotificationRead, PatronProfileRead } from "../api/types";
+import type { TaskRead, TaskDetailRead, TaskListResponse, UpdateRead, PatronPledgeRead, NotificationRead, PatronProfileRead, EmailPreference } from "../api/types";
 
 export function makeTask(overrides: Partial<TaskRead> = {}): TaskRead {
   return {
@@ -77,6 +77,14 @@ export function makeNotification(overrides: Partial<NotificationRead> = {}): Not
     event: "task_accepted",
     message: 'Task "Fix the bridge" has been accepted',
     created_at: "2025-02-01T00:00:00Z",
+    ...overrides,
+  };
+}
+
+export function makeEmailPreference(overrides: Partial<EmailPreference> = {}): EmailPreference {
+  return {
+    notification_type: "task_accepted",
+    enabled: true,
     ...overrides,
   };
 }

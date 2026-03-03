@@ -1,9 +1,9 @@
 import { screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import Dashboard from "./Dashboard";
-import { fetchMyPledges, fetchMyNotifications, fetchPaymentMethods, deletePaymentMethod } from "../api/patron";
+import { fetchMyPledges, fetchMyNotifications, fetchPaymentMethods, deletePaymentMethod, fetchEmailPreferences, updateEmailPreferences } from "../api/patron";
 import { getMyPledge } from "../api/pledges";
-import { makePatronPledge, makeNotification } from "../test/factories";
+import { makePatronPledge, makeNotification, makeEmailPreference } from "../test/factories";
 import { renderWithRouter } from "../test/render";
 
 vi.mock("../api/patron");
@@ -18,10 +18,13 @@ const mockFetchNotifications = vi.mocked(fetchMyNotifications);
 const mockFetchPaymentMethods = vi.mocked(fetchPaymentMethods);
 const mockDeletePaymentMethod = vi.mocked(deletePaymentMethod);
 const mockGetMyPledge = vi.mocked(getMyPledge);
+const mockFetchEmailPreferences = vi.mocked(fetchEmailPreferences);
+const mockUpdateEmailPreferences = vi.mocked(updateEmailPreferences);
 
 beforeEach(() => {
   mockFetchPaymentMethods.mockResolvedValue([]);
   mockGetMyPledge.mockResolvedValue(null);
+  mockFetchEmailPreferences.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -149,5 +152,48 @@ describe("Dashboard", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Remove" }));
     expect(await screen.findByText("Payment method is in use by an active pledge")).toBeInTheDocument();
+  });
+
+  it("renders email preference toggles", async () => {
+    mockFetchPledges.mockResolvedValue([]);
+    mockFetchNotifications.mockResolvedValue([]);
+    mockFetchEmailPreferences.mockResolvedValue([
+      makeEmailPreference({ notification_type: "task_accepted", enabled: true }),
+      makeEmailPreference({ notification_type: "task_completed", enabled: false }),
+    ]);
+
+    renderWithRouter(<Dashboard />);
+    expect(await screen.findByText("Task accepted")).toBeInTheDocument();
+    expect(screen.getByText("Task completed")).toBeInTheDocument();
+
+    const checkboxes = screen.getAllByRole("checkbox");
+    const acceptedCheckbox = checkboxes.find(
+      (cb) => cb.closest("label")?.textContent?.includes("Task accepted")
+    ) as HTMLInputElement;
+    const completedCheckbox = checkboxes.find(
+      (cb) => cb.closest("label")?.textContent?.includes("Task completed")
+    ) as HTMLInputElement;
+    expect(acceptedCheckbox.checked).toBe(true);
+    expect(completedCheckbox.checked).toBe(false);
+  });
+
+  it("toggles an email preference on click", async () => {
+    mockFetchPledges.mockResolvedValue([]);
+    mockFetchNotifications.mockResolvedValue([]);
+    mockFetchEmailPreferences.mockResolvedValue([
+      makeEmailPreference({ notification_type: "task_accepted", enabled: true }),
+    ]);
+    mockUpdateEmailPreferences.mockResolvedValue([
+      makeEmailPreference({ notification_type: "task_accepted", enabled: false }),
+    ]);
+
+    renderWithRouter(<Dashboard />);
+    await screen.findByText("Task accepted");
+
+    const checkbox = screen.getAllByRole("checkbox").find(
+      (cb) => cb.closest("label")?.textContent?.includes("Task accepted")
+    )!;
+    await userEvent.click(checkbox);
+    expect(mockUpdateEmailPreferences).toHaveBeenCalledWith({ task_accepted: false });
   });
 });

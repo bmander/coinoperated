@@ -1,5 +1,5 @@
 import { API_BASE } from "./client";
-import type { NotificationRead, PatronPledgeRead, PatronProfileRead, SavedPaymentMethod } from "./types";
+import type { EmailPreference, NotificationRead, NotificationType, PatronPledgeRead, PatronProfileRead, SavedPaymentMethod } from "./types";
 
 export async function fetchMyPledges(): Promise<PatronPledgeRead[]> {
   const res = await fetch(`${API_BASE}/patron/pledges`);
@@ -34,4 +34,22 @@ export async function deletePaymentMethod(pmId: string): Promise<void> {
     const data = await res.json().catch(() => null);
     throw new Error(data?.detail ?? `Failed to delete payment method: ${res.status}`);
   }
+}
+
+export async function fetchEmailPreferences(): Promise<EmailPreference[]> {
+  const res = await fetch(`${API_BASE}/patron/email-preferences`);
+  if (!res.ok) throw new Error(`Failed to fetch email preferences: ${res.status}`);
+  return res.json();
+}
+
+export async function updateEmailPreferences(
+  preferences: Partial<Record<NotificationType, boolean>>
+): Promise<EmailPreference[]> {
+  const res = await fetch(`${API_BASE}/patron/email-preferences`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ preferences }),
+  });
+  if (!res.ok) throw new Error(`Failed to update email preferences: ${res.status}`);
+  return res.json();
 }

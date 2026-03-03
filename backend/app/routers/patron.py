@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.dependencies import get_current_patron, get_db
-from app.models import LIVE_PLEDGE_STATUSES, Notification, Patron, Pledge
-from app.schemas import PatronNotificationRead, PatronPledgeRead, SavedPaymentMethodRead
+from app.models import LIVE_PLEDGE_STATUSES, EmailPreference, Notification, NotificationType, Patron, Pledge
+from app.schemas import EmailPreferenceRead, EmailPreferenceUpdate, PatronNotificationRead, PatronPledgeRead, SavedPaymentMethodRead
 
 logger = logging.getLogger(__name__)
 
@@ -96,3 +96,49 @@ async def list_my_notifications(
         .order_by(Notification.created_at.desc())
     )
     return result.scalars().all()
+
+
+@router.get("/email-preferences", response_model=list[EmailPreferenceRead])
+async def list_email_preferences(
+    patron: Annotated[Patron, Depends(get_current_patron)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(
+        select(EmailPreference).where(EmailPreference.patron_id == patron.id)
+    )
+    saved = {pref.notification_type: pref.enabled for pref in result.scalars().all()}
+    # Return all notification types, defaulting to enabled if no row exists
+    return [
+        EmailPreferenceRead(notification_type=nt, enabled=saved.get(nt, True))
+        for nt in NotificationType
+    ]
+
+
+@router.put("/email-preferences", response_model=list[EmailPreferenceRead])
+async def update_email_preferences(
+    body: EmailPreferenceUpdate,
+    patron: Annotated[Patron, Depends(get_current_patron)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(
+        select(EmailPreference).where(EmailPreference.patron_id == patron.id)
+    )
+    existing = {pref.notification_type: pref for pref in result.scalars().all()}
+
+    for ntype, enabled in body.preferences.items():
+        if ntype in existing:
+            existing[ntype].enabled = enabled
+        else:
+            pref = EmailPreference(
+                patron_id=patron.id, notification_type=ntype, enabled=enabled
+            )
+            db.add(pref)
+            existing[ntype] = pref
+
+    await db.commit()
+
+    # Return full set of preferences
+    return [
+        EmailPreferenceRead(notification_type=nt, enabled=existing[nt].enabled if nt in existing else True)
+        for nt in NotificationType
+    ]

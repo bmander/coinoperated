@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchMyPledges, fetchMyNotifications, fetchPaymentMethods, deletePaymentMethod } from "../api/patron";
-import type { PatronPledgeRead, NotificationRead, SavedPaymentMethod } from "../api/types";
+import { fetchMyPledges, fetchMyNotifications, fetchPaymentMethods, deletePaymentMethod, fetchEmailPreferences, updateEmailPreferences } from "../api/patron";
+import type { PatronPledgeRead, NotificationRead, SavedPaymentMethod, EmailPreference, NotificationType } from "../api/types";
 import useFetch from "../hooks/useFetch";
 import StatusBadge from "../components/StatusBadge";
 import PledgeWidget from "../components/PledgeWidget";
@@ -15,6 +15,58 @@ function eventLabel(event: string): string {
     case "task_declined": return "Declined";
     default: return event;
   }
+}
+
+const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
+  task_accepted: "Task accepted",
+  task_review_started: "Review period started",
+  task_completed: "Task completed",
+  task_declined: "Task declined",
+  charge_succeeded: "Payment collected",
+  charge_failed: "Payment failed",
+};
+
+function EmailPreferences() {
+  const { data: preferences, loading, error, refetch } = useFetch<EmailPreference[]>(fetchEmailPreferences, []);
+  const [updating, setUpdating] = useState<NotificationType | null>(null);
+  const [updateError, setUpdateError] = useState("");
+
+  async function handleToggle(type: NotificationType, enabled: boolean) {
+    setUpdating(type);
+    setUpdateError("");
+    try {
+      await updateEmailPreferences({ [type]: !enabled });
+      refetch();
+    } catch (err) {
+      setUpdateError(err instanceof Error ? err.message : "Failed to update preference");
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  return (
+    <section className="dashboard-section">
+      <h2>Email Notifications</h2>
+      {loading && <p className="page-message">Loading preferences...</p>}
+      {error && <p className="page-message page-error">Error: {error}</p>}
+      {updateError && <p className="page-message page-error">{updateError}</p>}
+      {preferences && (
+        <div className="email-preferences-list">
+          {preferences.map((pref) => (
+            <label key={pref.notification_type} className="email-preference-item">
+              <input
+                type="checkbox"
+                checked={pref.enabled}
+                disabled={updating === pref.notification_type}
+                onChange={() => handleToggle(pref.notification_type, pref.enabled)}
+              />
+              <span>{NOTIFICATION_TYPE_LABELS[pref.notification_type]}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
 
 function SavedPaymentMethods() {
@@ -94,6 +146,8 @@ export default function Dashboard() {
       </section>
 
       <SavedPaymentMethods />
+
+      <EmailPreferences />
 
       <section className="dashboard-section">
         <h2>Notifications</h2>

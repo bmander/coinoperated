@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from app.email import send_email
 from app.models import (
+    EmailPreference,
     Notification,
     NotificationType,
     Patron,
@@ -101,6 +102,17 @@ async def _get_active_pledgers(db: AsyncSession, task_id) -> list[Pledge]:
     return list(result.scalars().all())
 
 
+async def _is_email_enabled(db: AsyncSession, patron_id, ntype: NotificationType) -> bool:
+    result = await db.execute(
+        select(EmailPreference).where(
+            EmailPreference.patron_id == patron_id,
+            EmailPreference.notification_type == ntype,
+        )
+    )
+    pref = result.scalar_one_or_none()
+    return pref.enabled if pref is not None else True
+
+
 async def _persist_and_send(
     db: AsyncSession,
     patron: Patron,
@@ -118,7 +130,8 @@ async def _persist_and_send(
     )
     db.add(notification)
     await db.flush()
-    notification.email_sent = await send_email(patron.email, subject, body)
+    if await _is_email_enabled(db, patron.id, ntype):
+        notification.email_sent = await send_email(patron.email, subject, body)
 
 
 async def _notify_pledgers(
