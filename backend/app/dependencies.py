@@ -15,6 +15,10 @@ async def get_db():
         yield session
 
 
+def get_session_factory():
+    return async_session
+
+
 async def _resolve_patron(request: Request, db: AsyncSession) -> Patron | None:
     token = request.cookies.get("session")
     if not token:

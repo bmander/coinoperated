@@ -11,7 +11,7 @@ from testcontainers.postgres import PostgresContainer
 
 from app.auth import create_jwt
 from app.config import settings
-from app.dependencies import get_db
+from app.dependencies import get_db, get_session_factory
 from app.models import Base, EmailPreference, MagicLinkToken, Notification, NotificationType, Patron, Pledge, PledgeStatus, Task
 
 
@@ -65,6 +65,7 @@ async def client(test_session_maker):
             yield session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_session_factory] = lambda: test_session_maker
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"

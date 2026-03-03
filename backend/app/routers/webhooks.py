@@ -3,15 +3,15 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 import stripe
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
-from app.dependencies import get_db
+from app.dependencies import get_db, get_session_factory
 from app.models import Patron, Pledge, PledgeStatus, Task
-from app.notifications import notify_charge_failed, notify_charge_succeeded
+from app.notifications import notify_charge_failed, notify_charge_succeeded, schedule_emails
 from app.routers.pledges import maybe_detach_pm
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
@@ -33,6 +33,8 @@ async def _get_pledge_by_payment_intent(
 async def stripe_webhook(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
+    session_factory=Depends(get_session_factory),
 ):
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
@@ -45,6 +47,8 @@ async def stripe_webhook(
         raise HTTPException(status_code=400, detail="Invalid payload") from err
     except stripe.error.SignatureVerificationError as err:
         raise HTTPException(status_code=400, detail="Invalid signature") from err
+
+    pending_emails = []
 
     if event["type"] == "setup_intent.succeeded":
         si = event["data"]["object"]
@@ -96,7 +100,7 @@ async def stripe_webhook(
         if pledge.status != PledgeStatus.collected:
             pledge.status = PledgeStatus.collected
             pledge.collected_at = datetime.now(UTC)
-            await notify_charge_succeeded(db, pledge.patron, pledge.task, pledge.amount)
+            pending_emails = await notify_charge_succeeded(db, pledge.patron, pledge.task, pledge.amount)
             await db.commit()
 
             if not pledge.save_card and pledge.payment_method:
@@ -115,10 +119,11 @@ async def stripe_webhook(
             if task:
                 task.collected_total = max(0, task.collected_total - pledge.amount)
 
-            await notify_charge_failed(db, pledge.patron, pledge.task, pledge.amount)
+            pending_emails = await notify_charge_failed(db, pledge.patron, pledge.task, pledge.amount)
             await db.commit()
 
             if not pledge.save_card and pledge.payment_method:
                 await maybe_detach_pm(db, pledge.payment_method, exclude_pledge_id=pledge.id)
 
+    schedule_emails(background_tasks, pending_emails, session_factory)
     return {"status": "ok"}

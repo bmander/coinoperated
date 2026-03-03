@@ -8,14 +8,16 @@ from app.auth import create_jwt
 from app.config import settings
 from app.models import Notification, NotificationType, Pledge, PledgeStatus, Task as TaskModel, TaskStatus
 from app.notifications import (
+    PendingEmail,
     _charge_failed_email,
     _charge_succeeded_email,
     _task_accepted_email,
     _task_completed_email,
     _task_declined_email,
     _task_review_started_email,
+    send_pending_emails,
 )
-from tests.conftest import create_patron, create_pledge, create_task
+from tests.conftest import create_patron, create_pledge, create_notification, create_task
 
 # --- Helpers ---
 
@@ -222,6 +224,7 @@ async def test_multiple_pledgers_get_notifications(mock_send, client, test_sessi
         )
         notifications = result.scalars().all()
         assert len(notifications) == 2
+        assert all(n.email_sent is True for n in notifications)
 
     assert mock_send.call_count == 2
 
@@ -434,6 +437,90 @@ async def test_pending_pledger_not_notified(mock_send, client, test_session_make
         assert result.scalars().all() == []
 
     mock_send.assert_not_called()
+
+
+# --- Background email sending ---
+
+
+@patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
+async def test_send_pending_emails_marks_sent(mock_send, test_session_maker):
+    """send_pending_emails sends emails and sets email_sent=True via bulk UPDATE."""
+    patron = await create_patron(test_session_maker, "bg_ok@example.com", "cus_bg_ok")
+    task = await create_task(test_session_maker)
+    n = await create_notification(
+        test_session_maker, patron_id=patron.id, task_id=task.id,
+        email_sent=False,
+    )
+
+    pending = [PendingEmail(n.id, patron.email, n.subject, n.body)]
+    await send_pending_emails(pending, test_session_maker)
+
+    async with test_session_maker() as session:
+        updated = await session.get(Notification, n.id)
+        assert updated.email_sent is True
+
+    mock_send.assert_called_once_with(patron.email, n.subject, n.body)
+
+
+@patch("app.notifications.send_email", new_callable=AsyncMock)
+async def test_send_pending_emails_mixed_success_failure(mock_send, test_session_maker):
+    """When some emails succeed and others fail, each notification gets the correct email_sent value."""
+    patron1 = await create_patron(test_session_maker, "mix_a@example.com", "cus_mix_a")
+    patron2 = await create_patron(test_session_maker, "mix_b@example.com", "cus_mix_b")
+    task = await create_task(test_session_maker)
+    n1 = await create_notification(
+        test_session_maker, patron_id=patron1.id, task_id=task.id,
+        subject="Good", email_sent=False,
+    )
+    n2 = await create_notification(
+        test_session_maker, patron_id=patron2.id, task_id=task.id,
+        subject="Bad", email_sent=False,
+    )
+
+    # First call succeeds, second fails
+    mock_send.side_effect = [True, False]
+    pending = [
+        PendingEmail(n1.id, patron1.email, n1.subject, n1.body),
+        PendingEmail(n2.id, patron2.email, n2.subject, n2.body),
+    ]
+    await send_pending_emails(pending, test_session_maker)
+
+    async with test_session_maker() as session:
+        r1 = await session.get(Notification, n1.id)
+        r2 = await session.get(Notification, n2.id)
+        assert r1.email_sent is True
+        assert r2.email_sent is False
+
+    assert mock_send.call_count == 2
+
+
+@patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
+async def test_notification_persisted_before_email_sent(mock_send, client, test_session_maker):
+    """The notification row is committed to the DB before send_email runs."""
+    patron = await create_patron(test_session_maker, "order@example.com", "cus_order")
+    task = await create_task(test_session_maker)
+    await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
+
+    notification_exists_at_send_time = []
+
+    async def spy_send_email(to, subject, body):
+        # Check the DB from a fresh session while send_email is running
+        async with test_session_maker() as session:
+            result = await session.execute(
+                select(Notification).where(Notification.task_id == task.id)
+            )
+            notification_exists_at_send_time.append(len(result.scalars().all()))
+        return True
+
+    mock_send.side_effect = spy_send_email
+
+    resp = await client.patch(
+        f"/api/tasks/{task.id}", json={"status": "underway"}
+    )
+    assert resp.status_code == 200
+
+    # The notification row existed in the DB when send_email was called
+    assert notification_exists_at_send_time == [1]
 
 
 # --- send_email() direct tests ---
