@@ -189,6 +189,19 @@ describe("TaskDetail", () => {
     expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
   });
 
+  it("shows admin update and complete forms for underway tasks", async () => {
+    mockUseAuth.mockReturnValue({ patron: { is_admin: true }, loading: false, login: vi.fn(), logout: vi.fn() });
+    mockGetMyPledge.mockResolvedValue(null);
+    mockFetchPaymentMethods.mockResolvedValue([]);
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "underway" }));
+    renderDetail();
+    expect(await screen.findByText("Admin Actions")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/progress update/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Post Update" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark Complete" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Abandon" })).toBeInTheDocument();
+  });
+
   it("hides admin actions for non-admin users", async () => {
     mockUseAuth.mockReturnValue({ patron: { is_admin: false }, loading: false, login: vi.fn(), logout: vi.fn() });
     mockGetTask.mockResolvedValue(makeTaskDetail({ status: "proposed" }));

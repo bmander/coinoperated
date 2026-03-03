@@ -46,19 +46,49 @@ describe("AdminTaskActions", () => {
     expect(screen.getByRole("button", { name: "Abandon" })).toBeInTheDocument();
   });
 
-  it("posts an update when form is submitted", async () => {
+  it("posts an update and clears textarea", async () => {
     const onAction = vi.fn();
     mockPostUpdate.mockResolvedValue({ id: "u1", task_id: "t1", body: "progress", created_at: "" });
     render(<AdminTaskActions task={makeTask({ status: "underway", id: "t1" })} onAction={onAction} />);
-    await userEvent.type(screen.getByPlaceholderText(/progress update/i), "progress");
+    const textarea = screen.getByPlaceholderText(/progress update/i);
+    await userEvent.type(textarea, "progress");
     await userEvent.click(screen.getByRole("button", { name: "Post Update" }));
     expect(mockPostUpdate).toHaveBeenCalledWith("t1", "progress");
     expect(onAction).toHaveBeenCalled();
+    expect(textarea).toHaveValue("");
   });
 
   it("disables Post Update button when textarea is empty", () => {
     render(<AdminTaskActions task={makeTask({ status: "underway" })} onAction={vi.fn()} />);
     expect(screen.getByRole("button", { name: "Post Update" })).toBeDisabled();
+  });
+
+  it("marks complete without evidence", async () => {
+    const onAction = vi.fn();
+    mockPatchTask.mockResolvedValue(makeTask({ status: "review" }));
+    render(<AdminTaskActions task={makeTask({ status: "underway", id: "t1" })} onAction={onAction} />);
+    await userEvent.click(screen.getByRole("button", { name: "Mark Complete" }));
+    expect(mockPatchTask).toHaveBeenCalledWith("t1", { status: "review" });
+    expect(onAction).toHaveBeenCalled();
+  });
+
+  it("marks complete with evidence and clears textarea", async () => {
+    mockPatchTask.mockResolvedValue(makeTask({ status: "review" }));
+    render(<AdminTaskActions task={makeTask({ status: "underway", id: "t1" })} onAction={vi.fn()} />);
+    const textarea = screen.getByPlaceholderText(/evidence/i);
+    await userEvent.type(textarea, "PR merged");
+    await userEvent.click(screen.getByRole("button", { name: "Mark Complete" }));
+    expect(mockPatchTask).toHaveBeenCalledWith("t1", { evidence: "PR merged", status: "review" });
+    expect(textarea).toHaveValue("");
+  });
+
+  it("calls patchTask with proposed on Abandon click", async () => {
+    const onAction = vi.fn();
+    mockPatchTask.mockResolvedValue(makeTask({ status: "proposed" }));
+    render(<AdminTaskActions task={makeTask({ status: "underway", id: "t1" })} onAction={onAction} />);
+    await userEvent.click(screen.getByRole("button", { name: "Abandon" }));
+    expect(mockPatchTask).toHaveBeenCalledWith("t1", { status: "proposed" });
+    expect(onAction).toHaveBeenCalled();
   });
 
   it("shows review info for review status", () => {
