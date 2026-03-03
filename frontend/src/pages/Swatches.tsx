@@ -6,7 +6,7 @@ const SWATCHES: { section: string; items: Swatch[] }[] = [
   {
     section: "Brand",
     items: [
-      { color: "#2a5a8a", label: "Site title background", usages: [".site-title background"] },
+      { color: "#2a5a8a", label: "Site title background", usages: [".site-title background", ".site-footer background"] },
       { color: "#646cff", label: "Primary / accent", usages: [".btn-primary", "links", ".tagline a", ".pledge-amt-btn:hover border", ".preview-toggle"] },
       { color: "#747bff", label: "Link hover", usages: ["a:hover"] },
     ],

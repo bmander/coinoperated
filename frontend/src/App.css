@@ -4,8 +4,37 @@
   margin: 0 auto;
   padding: 0 1rem;
   background-color: #ffffff;
-  min-height: 100vh;
+  min-height: 100dvh;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.layout > main {
+  flex: 1;
+}
+
+.site-footer {
+  margin: 0 -1rem;
+  padding: 0.25rem 1rem;
+  text-align: right;
+  font-size: 0.85rem;
+  background-color: #2a5a8a;
+  color: #ddd;
+}
+
+.site-footer a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  text-decoration: underline;
+}
+
+.site-footer svg {
+  vertical-align: -0.15em;
+  margin-right: 0.35em;
 }
 
 .site-header {

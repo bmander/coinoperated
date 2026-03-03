@@ -5,3 +5,4 @@ __pycache__/
 backend/.env
 backend/env.yaml
 backend/static/
+.playwright-mcp/
