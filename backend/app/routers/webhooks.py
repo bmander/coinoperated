@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.config import settings
 from app.dependencies import get_db, get_session_factory
 from app.models import Patron, Pledge, PledgeStatus, Task
-from app.notifications import notify_charge_failed, notify_charge_succeeded, send_pending_emails
+from app.notifications import notify_charge_failed, notify_charge_succeeded, schedule_emails
 from app.routers.pledges import maybe_detach_pm
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
@@ -125,7 +125,5 @@ async def stripe_webhook(
             if not pledge.save_card and pledge.payment_method:
                 await maybe_detach_pm(db, pledge.payment_method, exclude_pledge_id=pledge.id)
 
-    if pending_emails:
-        background_tasks.add_task(send_pending_emails, pending_emails, session_factory)
-
+    schedule_emails(background_tasks, pending_emails, session_factory)
     return {"status": "ok"}

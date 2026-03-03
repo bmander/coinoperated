@@ -15,7 +15,7 @@ from app.notifications import (
     notify_task_completed,
     notify_task_declined,
     notify_task_review_started,
-    send_pending_emails,
+    schedule_emails,
 )
 from app.schemas import TaskCreate, TaskCreateResponse, TaskDetail, TaskListResponse, TaskRead, TaskUpdate
 from app.services.pledges import PaymentMethodOwnershipError, create_pledge_for_task
@@ -190,8 +190,5 @@ async def update_task(
 
     await db.commit()
     await db.refresh(task)
-
-    if pending_emails:
-        background_tasks.add_task(send_pending_emails, pending_emails, session_factory)
-
+    schedule_emails(background_tasks, pending_emails, session_factory)
     return task
