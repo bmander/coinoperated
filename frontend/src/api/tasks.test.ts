@@ -37,9 +37,9 @@ describe("listTasks", () => {
   });
 
   it("throws on non-ok response", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 500 });
+    mockFetch.mockResolvedValue({ ok: false, status: 500, json: () => Promise.reject() });
 
-    await expect(listTasks()).rejects.toThrow("Failed to fetch tasks: 500");
+    await expect(listTasks()).rejects.toThrow("HTTP 500");
   });
 });
 

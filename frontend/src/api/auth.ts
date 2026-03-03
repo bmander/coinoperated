@@ -1,4 +1,4 @@
-import { API_BASE } from "./client";
+import { API_BASE, fetchJson, fetchVoid } from "./client";
 import type { PatronMe } from "./types";
 
 export interface LoginResponse {
@@ -7,13 +7,11 @@ export interface LoginResponse {
 }
 
 export async function login(email: string): Promise<LoginResponse> {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+  return fetchJson(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
   });
-  if (!res.ok) throw new Error(`Login failed: ${res.status}`);
-  return res.json();
 }
 
 export async function fetchMe(): Promise<PatronMe | null> {
@@ -24,6 +22,5 @@ export async function fetchMe(): Promise<PatronMe | null> {
 }
 
 export async function logout(): Promise<void> {
-  const res = await fetch(`${API_BASE}/auth/logout`, { method: "POST" });
-  if (!res.ok) throw new Error(`Logout failed: ${res.status}`);
+  return fetchVoid(`${API_BASE}/auth/logout`, { method: "POST" });
 }

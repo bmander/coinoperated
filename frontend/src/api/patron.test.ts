@@ -21,9 +21,10 @@ describe("fetchMyPledges", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: 401,
+      json: () => Promise.reject(),
     } as Response);
 
-    await expect(fetchMyPledges()).rejects.toThrow("Failed to fetch pledges: 401");
+    await expect(fetchMyPledges()).rejects.toThrow("HTTP 401");
   });
 });
 
@@ -44,9 +45,10 @@ describe("fetchMyNotifications", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: 500,
+      json: () => Promise.reject(),
     } as Response);
 
-    await expect(fetchMyNotifications()).rejects.toThrow("Failed to fetch notifications: 500");
+    await expect(fetchMyNotifications()).rejects.toThrow("HTTP 500");
   });
 });
 
@@ -67,9 +69,10 @@ describe("fetchPaymentMethods", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: 401,
+      json: () => Promise.reject(),
     } as Response);
 
-    await expect(fetchPaymentMethods()).rejects.toThrow("Failed to fetch payment methods: 401");
+    await expect(fetchPaymentMethods()).rejects.toThrow("HTTP 401");
   });
 });
 
@@ -116,9 +119,10 @@ describe("fetchEmailPreferences", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: 401,
+      json: () => Promise.reject(),
     } as Response);
 
-    await expect(fetchEmailPreferences()).rejects.toThrow("Failed to fetch email preferences: 401");
+    await expect(fetchEmailPreferences()).rejects.toThrow("HTTP 401");
   });
 });
 
@@ -143,10 +147,11 @@ describe("updateEmailPreferences", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: 500,
+      json: () => Promise.reject(),
     } as Response);
 
     await expect(updateEmailPreferences({ task_accepted: false })).rejects.toThrow(
-      "Failed to update email preferences: 500",
+      "HTTP 500",
     );
   });
 });

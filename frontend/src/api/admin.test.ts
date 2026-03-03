@@ -20,9 +20,9 @@ describe("fetchAdminTasks", () => {
   });
 
   it("throws on non-ok response", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 403 });
+    mockFetch.mockResolvedValue({ ok: false, status: 403, json: () => Promise.reject() });
 
-    await expect(fetchAdminTasks()).rejects.toThrow("Failed to fetch admin tasks: 403");
+    await expect(fetchAdminTasks()).rejects.toThrow("HTTP 403");
   });
 });
 
@@ -57,9 +57,9 @@ describe("patchTask", () => {
   });
 
   it("throws on non-ok response", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 400 });
+    mockFetch.mockResolvedValue({ ok: false, status: 400, json: () => Promise.reject() });
 
-    await expect(patchTask("t1", { status: "completed" })).rejects.toThrow("Failed to update task: 400");
+    await expect(patchTask("t1", { status: "completed" })).rejects.toThrow("HTTP 400");
   });
 });
 
@@ -82,9 +82,9 @@ describe("postUpdate", () => {
   });
 
   it("throws on non-ok response", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 403 });
+    mockFetch.mockResolvedValue({ ok: false, status: 403, json: () => Promise.reject() });
 
-    await expect(postUpdate("t1", "hi")).rejects.toThrow("Failed to post update: 403");
+    await expect(postUpdate("t1", "hi")).rejects.toThrow("HTTP 403");
   });
 });
 
@@ -101,9 +101,9 @@ describe("fetchAdminPatrons", () => {
   });
 
   it("throws on non-ok response", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 403 });
+    mockFetch.mockResolvedValue({ ok: false, status: 403, json: () => Promise.reject() });
 
-    await expect(fetchAdminPatrons()).rejects.toThrow("Failed to fetch patrons: 403");
+    await expect(fetchAdminPatrons()).rejects.toThrow("HTTP 403");
   });
 });
 
@@ -121,9 +121,9 @@ describe("banPatron", () => {
   });
 
   it("throws on non-ok response", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 404 });
+    mockFetch.mockResolvedValue({ ok: false, status: 404, json: () => Promise.reject() });
 
-    await expect(banPatron("p1")).rejects.toThrow("Failed to ban patron: 404");
+    await expect(banPatron("p1")).rejects.toThrow("HTTP 404");
   });
 });
 
@@ -141,9 +141,9 @@ describe("unbanPatron", () => {
   });
 
   it("throws on non-ok response", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 404 });
+    mockFetch.mockResolvedValue({ ok: false, status: 404, json: () => Promise.reject() });
 
-    await expect(unbanPatron("p1")).rejects.toThrow("Failed to unban patron: 404");
+    await expect(unbanPatron("p1")).rejects.toThrow("HTTP 404");
   });
 });
 
@@ -159,8 +159,8 @@ describe("deleteTask", () => {
   });
 
   it("throws on non-ok response", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 404 });
+    mockFetch.mockResolvedValue({ ok: false, status: 404, json: () => Promise.reject() });
 
-    await expect(deleteTask("t1")).rejects.toThrow("Failed to delete task: 404");
+    await expect(deleteTask("t1")).rejects.toThrow("HTTP 404");
   });
 });

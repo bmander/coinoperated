@@ -37,9 +37,9 @@ describe("login", () => {
   });
 
   it("throws on non-ok response", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 500 });
+    mockFetch.mockResolvedValue({ ok: false, status: 500, json: () => Promise.reject() });
 
-    await expect(login("test@example.com")).rejects.toThrow("Login failed: 500");
+    await expect(login("test@example.com")).rejects.toThrow("HTTP 500");
   });
 });
 
@@ -80,8 +80,8 @@ describe("logout", () => {
   });
 
   it("throws on non-ok response", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 500 });
+    mockFetch.mockResolvedValue({ ok: false, status: 500, json: () => Promise.reject() });
 
-    await expect(logout()).rejects.toThrow("Logout failed: 500");
+    await expect(logout()).rejects.toThrow("HTTP 500");
   });
 });
