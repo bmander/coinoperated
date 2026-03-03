@@ -24,14 +24,14 @@ const SWATCHES: { section: string; items: Swatch[] }[] = [
     section: "Backgrounds",
     items: [
       { color: "#ffffff", label: "Layout / card background", usages: [".layout", ".modal-card", "inputs"] },
-      { color: "#f4f4f4", label: "Page background", usages: [":root background-color", ".markdown-body pre"] },
+      { color: "#f4f4f4", label: "Page background", usages: [":root background-color", ".markdown-body", ".markdown-body pre"] },
       { color: "#f0f0f0", label: "Payment method chip", usages: [".pm-chip"] },
     ],
   },
   {
     section: "Borders",
     items: [
-      { color: "#ddd", label: "Default border", usages: [".task-card", ".pledge-list-item", ".modal-card", "hr", "section h2 border-bottom"] },
+      { color: "#ddd", label: "Default border", usages: [".task-card", ".pledge-list-item", ".modal-card", "hr", "section h2 border-bottom", ".markdown-body"] },
       { color: "#ccc", label: "Input / secondary border", usages: ["inputs", "selects", ".btn-secondary", ".update-item border-left"] },
     ],
   },
