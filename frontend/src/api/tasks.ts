@@ -1,4 +1,4 @@
-import { API_BASE } from "./client";
+import { API_BASE, fetchJson } from "./client";
 import type { TaskCreateResponse, TaskDetailRead, TaskListResponse, TaskStatus } from "./types";
 
 export interface ListTasksParams {
@@ -19,9 +19,7 @@ export async function listTasks(params: ListTasksParams = {}): Promise<TaskListR
 
   const query = searchParams.toString();
   const url = `${API_BASE}/tasks${query ? `?${query}` : ""}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch tasks: ${res.status}`);
-  return res.json();
+  return fetchJson(url);
 }
 
 export async function getTask(taskId: string): Promise<TaskDetailRead> {

@@ -1,4 +1,4 @@
-import { listTasks, createTask } from "./tasks";
+import { listTasks, getTask, createTask } from "./tasks";
 
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
@@ -37,9 +37,35 @@ describe("listTasks", () => {
   });
 
   it("throws on non-ok response", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 500, json: () => Promise.reject() });
+
+    await expect(listTasks()).rejects.toThrow("HTTP 500");
+  });
+});
+
+describe("getTask", () => {
+  it("returns task data on success", async () => {
+    const task = { id: "t1", title: "Fix bug", status: "proposed" };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(task),
+    });
+
+    const result = await getTask("t1");
+    expect(mockFetch).toHaveBeenCalledWith("/api/tasks/t1");
+    expect(result).toEqual(task);
+  });
+
+  it("throws 'Task not found' on 404", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 404 });
+
+    await expect(getTask("t1")).rejects.toThrow("Task not found");
+  });
+
+  it("throws on other error status", async () => {
     mockFetch.mockResolvedValue({ ok: false, status: 500 });
 
-    await expect(listTasks()).rejects.toThrow("Failed to fetch tasks: 500");
+    await expect(getTask("t1")).rejects.toThrow("Failed to fetch task: 500");
   });
 });
 

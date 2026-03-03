@@ -74,7 +74,7 @@ describe("createPledge", () => {
     });
 
     await expect(createPledge("task-1", 500)).rejects.toThrow(
-      "Failed to create pledge: 500",
+      "HTTP 500",
     );
   });
 });
@@ -141,7 +141,7 @@ describe("updatePledge", () => {
     });
 
     await expect(updatePledge("task-1", 2500)).rejects.toThrow(
-      "Failed to update pledge: 500",
+      "HTTP 500",
     );
   });
 });
