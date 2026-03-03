@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -25,7 +26,7 @@ def upgrade() -> None:
         sa.Column("patron_id", sa.UUID(), sa.ForeignKey("patron.id"), nullable=False),
         sa.Column(
             "notification_type",
-            sa.Enum(
+            postgresql.ENUM(
                 "task_accepted",
                 "task_review_started",
                 "task_completed",
