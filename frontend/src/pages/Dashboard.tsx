@@ -7,6 +7,8 @@ import StatusBadge from "../components/StatusBadge";
 import PledgeWidget from "../components/PledgeWidget";
 import CardChip from "../components/CardChip";
 import Spinner from "../components/Spinner";
+import SaveIndicator from "../components/SaveIndicator";
+import { getErrorMessage } from "../utils/formatting";
 
 function eventLabel(event: string): string {
   switch (event) {
@@ -29,7 +31,10 @@ const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
 function EmailPreferences() {
   const { data: preferences, loading, error, refetch } = useFetch<EmailPreference[]>(fetchEmailPreferences, []);
   const [updating, setUpdating] = useState<NotificationType | null>(null);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
   const [updateError, setUpdateError] = useState("");
+
+  const busy = updating !== null || bulkUpdating;
 
   async function handleToggle(type: NotificationType, enabled: boolean) {
     setUpdating(type);
@@ -38,15 +43,35 @@ function EmailPreferences() {
       await updateEmailPreferences({ [type]: !enabled });
       refetch();
     } catch (err) {
-      setUpdateError(err instanceof Error ? err.message : "Failed to update preference");
+      setUpdateError(getErrorMessage(err, "Failed to update preference"));
     } finally {
       setUpdating(null);
+    }
+  }
+
+  async function handleSetAll(enabled: boolean) {
+    setBulkUpdating(true);
+    setUpdateError("");
+    try {
+      const payload = Object.fromEntries(
+        Object.keys(NOTIFICATION_TYPE_LABELS).map(type => [type, enabled])
+      ) as Record<NotificationType, boolean>;
+      await updateEmailPreferences(payload);
+      refetch();
+    } catch (err) {
+      setUpdateError(getErrorMessage(err, "Failed to update preferences"));
+    } finally {
+      setBulkUpdating(false);
     }
   }
 
   return (
     <section className="dashboard-section">
       <h2>Email Notifications</h2>
+      <div className="section-header-actions">
+        <button className="btn-link" disabled={busy} onClick={() => handleSetAll(true)}>Select all</button>
+        <button className="btn-link" disabled={busy} onClick={() => handleSetAll(false)}>Unselect all</button>
+      </div>
       {loading && <p className="page-message">Loading preferences...</p>}
       {error && <p className="page-message page-error">Error: {error}</p>}
       {updateError && <p className="page-message page-error">{updateError}</p>}
@@ -57,7 +82,7 @@ function EmailPreferences() {
               <input
                 type="checkbox"
                 checked={pref.enabled}
-                disabled={updating === pref.notification_type}
+                disabled={busy}
                 onChange={() => handleToggle(pref.notification_type, pref.enabled)}
               />
               <span>{NOTIFICATION_TYPE_LABELS[pref.notification_type]}</span>
@@ -65,6 +90,7 @@ function EmailPreferences() {
           ))}
         </div>
       )}
+      <SaveIndicator busy={busy} />
     </section>
   );
 }

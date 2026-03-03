@@ -867,10 +867,70 @@
   color: #555;
 }
 
+.section-header-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #646cff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0;
+}
+
+.btn-link:hover {
+  text-decoration: underline;
+}
+
+.btn-link:disabled {
+  color: #aaa;
+  cursor: default;
+  text-decoration: none;
+}
+
+.save-indicator-wrapper {
+  height: 1.5rem;
+  text-align: center;
+}
+
+.save-indicator {
+  font-size: 0.85rem;
+  color: #888;
+  margin: 0;
+}
+
+.save-indicator-done {
+  animation: save-done-fade 2s ease-out forwards;
+}
+
+@keyframes save-done-fade {
+  0%, 60% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.animated-ellipsis::after {
+  content: "";
+  display: inline-block;
+  width: 1.2em;
+  text-align: left;
+  animation: ellipsis-cycle 1.2s steps(4, end) infinite;
+}
+
+@keyframes ellipsis-cycle {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75% { content: "..."; }
+}
+
 .email-preferences-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.2rem;
 }
 
 .email-preference-item {

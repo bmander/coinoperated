@@ -177,6 +177,60 @@ describe("Dashboard", () => {
     expect(completedCheckbox.checked).toBe(false);
   });
 
+  it("select all sets all preferences to enabled", async () => {
+    mockFetchPledges.mockResolvedValue([]);
+    mockFetchNotifications.mockResolvedValue([]);
+    mockFetchEmailPreferences.mockResolvedValue([
+      makeEmailPreference({ notification_type: "task_accepted", enabled: true }),
+      makeEmailPreference({ notification_type: "task_review_started", enabled: false }),
+      makeEmailPreference({ notification_type: "task_completed", enabled: false }),
+      makeEmailPreference({ notification_type: "task_declined", enabled: true }),
+      makeEmailPreference({ notification_type: "charge_succeeded", enabled: false }),
+      makeEmailPreference({ notification_type: "charge_failed", enabled: true }),
+    ]);
+    mockUpdateEmailPreferences.mockResolvedValue([]);
+
+    renderWithRouter(<Dashboard />);
+    await screen.findByText("Task accepted");
+
+    await userEvent.click(screen.getByRole("button", { name: "Select all" }));
+    expect(mockUpdateEmailPreferences).toHaveBeenCalledWith({
+      task_accepted: true,
+      task_review_started: true,
+      task_completed: true,
+      task_declined: true,
+      charge_succeeded: true,
+      charge_failed: true,
+    });
+  });
+
+  it("unselect all sets all preferences to disabled", async () => {
+    mockFetchPledges.mockResolvedValue([]);
+    mockFetchNotifications.mockResolvedValue([]);
+    mockFetchEmailPreferences.mockResolvedValue([
+      makeEmailPreference({ notification_type: "task_accepted", enabled: true }),
+      makeEmailPreference({ notification_type: "task_review_started", enabled: true }),
+      makeEmailPreference({ notification_type: "task_completed", enabled: false }),
+      makeEmailPreference({ notification_type: "task_declined", enabled: true }),
+      makeEmailPreference({ notification_type: "charge_succeeded", enabled: true }),
+      makeEmailPreference({ notification_type: "charge_failed", enabled: false }),
+    ]);
+    mockUpdateEmailPreferences.mockResolvedValue([]);
+
+    renderWithRouter(<Dashboard />);
+    await screen.findByText("Task accepted");
+
+    await userEvent.click(screen.getByRole("button", { name: "Unselect all" }));
+    expect(mockUpdateEmailPreferences).toHaveBeenCalledWith({
+      task_accepted: false,
+      task_review_started: false,
+      task_completed: false,
+      task_declined: false,
+      charge_succeeded: false,
+      charge_failed: false,
+    });
+  });
+
   it("toggles an email preference on click", async () => {
     mockFetchPledges.mockResolvedValue([]);
     mockFetchNotifications.mockResolvedValue([]);
