@@ -1,4 +1,4 @@
-import { fetchMyPledges, fetchMyNotifications, fetchPaymentMethods, deletePaymentMethod, fetchEmailPreferences, updateEmailPreferences } from "./patron";
+import { fetchMyPledges, fetchMyNotifications, fetchPaymentMethods, getPatron, deletePaymentMethod, fetchEmailPreferences, updateEmailPreferences } from "./patron";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -73,6 +73,39 @@ describe("fetchPaymentMethods", () => {
     } as Response);
 
     await expect(fetchPaymentMethods()).rejects.toThrow("HTTP 401");
+  });
+});
+
+describe("getPatron", () => {
+  it("fetches patron by id", async () => {
+    const patron = { id: "p1", display_name: "Alice", pledge_total: 5000 };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(patron),
+    } as Response);
+
+    const result = await getPatron("p1");
+    expect(fetch).toHaveBeenCalledWith("/api/patrons/p1");
+    expect(result).toEqual(patron);
+  });
+
+  it("throws 'Patron not found' on 404", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 404,
+    } as Response);
+
+    await expect(getPatron("p1")).rejects.toThrow("Patron not found");
+  });
+
+  it("throws on other error status", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 500,
+    } as Response);
+
+    await expect(getPatron("p1")).rejects.toThrow("Failed to fetch patron: 500");
   });
 });
 

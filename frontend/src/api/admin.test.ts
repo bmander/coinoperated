@@ -1,4 +1,4 @@
-import { banPatron, deleteTask, fetchAdminPatrons, fetchAdminTasks, patchTask, postUpdate, unbanPatron } from "./admin";
+import { banPatron, collectPayments, deleteTask, fetchAdminPatrons, fetchAdminTasks, patchTask, postUpdate, unbanPatron } from "./admin";
 
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
@@ -144,6 +144,26 @@ describe("unbanPatron", () => {
     mockFetch.mockResolvedValue({ ok: false, status: 404, json: () => Promise.reject() });
 
     await expect(unbanPatron("p1")).rejects.toThrow("HTTP 404");
+  });
+});
+
+describe("collectPayments", () => {
+  it("sends POST to /api/tasks/:id/collect", async () => {
+    const response = { collected: 3, failed: 0 };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(response),
+    });
+
+    const result = await collectPayments("t1");
+    expect(mockFetch).toHaveBeenCalledWith("/api/tasks/t1/collect", { method: "POST" });
+    expect(result).toEqual(response);
+  });
+
+  it("throws on non-ok response", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 403, json: () => Promise.reject() });
+
+    await expect(collectPayments("t1")).rejects.toThrow("HTTP 403");
   });
 });
 
