@@ -83,6 +83,21 @@
   50% { transform: rotate(-12deg) scale(1.15); }
 }
 
+@media (max-width: 480px) {
+  .site-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .splash-text {
+    display: none;
+  }
+
+  .site-title {
+    font-size: 1.15rem;
+  }
+}
+
 /* Task Board */
 .tagline {
   color: #888;
