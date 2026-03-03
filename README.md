@@ -37,7 +37,7 @@ No money moves until work is done. On completion, pledgers are charged via Strip
 
 ```sh
 make install    # Create Python venv, install backend + frontend deps
-cp backend/.env.example backend/.env   # Configure local env vars
+cp .env.example .env                   # Configure local env vars
 ```
 
 ### Run

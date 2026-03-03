@@ -1,4 +1,9 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
+
+# Resolve the root .env relative to this file: backend/app/config.py -> repo root
+_root_env = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
@@ -23,7 +28,7 @@ class Settings(BaseSettings):
     allowed_origins: str = ""  # comma-separated extra origins for auth redirects
     base_path: str = ""  # "/coinop" in production
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": str(_root_env), "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()
