@@ -8,6 +8,21 @@
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
 }
 
+.site-footer {
+  padding: 2rem 0 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.site-footer a {
+  color: #646cff;
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  text-decoration: underline;
+}
+
 .site-header {
   display: flex;
   justify-content: space-between;

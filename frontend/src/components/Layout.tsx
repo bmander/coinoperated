@@ -55,6 +55,9 @@ export default function Layout() {
       <main>
         <Outlet />
       </main>
+      <footer className="site-footer">
+        <a href="https://github.com/bmander/coinoperated">GitHub</a>
+      </footer>
     </div>
   );
 }
