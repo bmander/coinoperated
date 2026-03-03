@@ -6,11 +6,11 @@ import StatusBadge from "../components/StatusBadge";
 import useFetch from "../hooks/useFetch";
 import PledgeWidget from "../components/PledgeWidget";
 
-function MarkdownSection({ title, children }: { title: string; children: string }) {
+function MarkdownSection({ title, children, className }: { title: string; children: string; className?: string }) {
   return (
     <section className="task-detail-section">
       <h2>{title}</h2>
-      <div className="markdown-body">
+      <div className={`markdown-body${className ? ` ${className}` : ""}`}>
         <Markdown>{children}</Markdown>
       </div>
     </section>
@@ -53,10 +53,10 @@ export default function TaskDetail() {
         </p>
       </div>
 
-      <MarkdownSection title="Description">{task.description}</MarkdownSection>
+      <MarkdownSection title="Description" className="markdown-body--description">{task.description}</MarkdownSection>
 
       {task.criteria && (
-        <MarkdownSection title="Delivery Criteria">{task.criteria}</MarkdownSection>
+        <MarkdownSection title="Delivery Criteria" className="markdown-body--criteria">{task.criteria}</MarkdownSection>
       )}
 
       {task.updates.length > 0 && (
