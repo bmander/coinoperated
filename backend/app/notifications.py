@@ -102,15 +102,20 @@ async def _get_active_pledgers(db: AsyncSession, task_id) -> list[Pledge]:
     return list(result.scalars().all())
 
 
-async def _is_email_enabled(db: AsyncSession, patron_id, ntype: NotificationType) -> bool:
+async def _load_disabled_patron_ids(
+    db: AsyncSession, patron_ids: list, ntype: NotificationType
+) -> set:
+    """Batch-load patrons who have opted out of a notification type."""
+    if not patron_ids:
+        return set()
     result = await db.execute(
-        select(EmailPreference).where(
-            EmailPreference.patron_id == patron_id,
+        select(EmailPreference.patron_id).where(
+            EmailPreference.patron_id.in_(patron_ids),
             EmailPreference.notification_type == ntype,
+            EmailPreference.enabled == False,  # noqa: E712
         )
     )
-    pref = result.scalar_one_or_none()
-    return pref.enabled if pref is not None else True
+    return set(result.scalars().all())
 
 
 async def _persist_and_send(
@@ -120,6 +125,8 @@ async def _persist_and_send(
     ntype: NotificationType,
     subject: str,
     body: str,
+    *,
+    email_disabled: bool = False,
 ) -> None:
     notification = Notification(
         patron_id=patron.id,
@@ -130,7 +137,7 @@ async def _persist_and_send(
     )
     db.add(notification)
     await db.flush()
-    if await _is_email_enabled(db, patron.id, ntype):
+    if not email_disabled:
         notification.email_sent = await send_email(patron.email, subject, body)
 
 
@@ -141,9 +148,15 @@ async def _notify_pledgers(
     template_fn: Callable[[Task, Pledge], tuple[str, str]],
 ) -> None:
     pledges = await _get_active_pledgers(db, task.id)
+    disabled = await _load_disabled_patron_ids(
+        db, [p.patron.id for p in pledges], ntype
+    )
     for pledge in pledges:
         subject, body = template_fn(task, pledge)
-        await _persist_and_send(db, pledge.patron, task, ntype, subject, body)
+        await _persist_and_send(
+            db, pledge.patron, task, ntype, subject, body,
+            email_disabled=pledge.patron.id in disabled,
+        )
 
 
 # --- Public API ---
@@ -168,12 +181,22 @@ async def notify_task_declined(db: AsyncSession, task: Task) -> None:
 async def notify_charge_succeeded(
     db: AsyncSession, patron: Patron, task: Task, amount: int
 ) -> None:
+    ntype = NotificationType.charge_succeeded
+    disabled = await _load_disabled_patron_ids(db, [patron.id], ntype)
     subject, body = _charge_succeeded_email(task, amount)
-    await _persist_and_send(db, patron, task, NotificationType.charge_succeeded, subject, body)
+    await _persist_and_send(
+        db, patron, task, ntype, subject, body,
+        email_disabled=patron.id in disabled,
+    )
 
 
 async def notify_charge_failed(
     db: AsyncSession, patron: Patron, task: Task, amount: int
 ) -> None:
+    ntype = NotificationType.charge_failed
+    disabled = await _load_disabled_patron_ids(db, [patron.id], ntype)
     subject, body = _charge_failed_email(task, amount)
-    await _persist_and_send(db, patron, task, NotificationType.charge_failed, subject, body)
+    await _persist_and_send(
+        db, patron, task, ntype, subject, body,
+        email_disabled=patron.id in disabled,
+    )

@@ -98,6 +98,15 @@ async def list_my_notifications(
     return result.scalars().all()
 
 
+def _build_preference_response(
+    saved: dict[NotificationType, bool],
+) -> list[EmailPreferenceRead]:
+    return [
+        EmailPreferenceRead(notification_type=nt, enabled=saved.get(nt, True))
+        for nt in NotificationType
+    ]
+
+
 @router.get("/email-preferences", response_model=list[EmailPreferenceRead])
 async def list_email_preferences(
     patron: Annotated[Patron, Depends(get_current_patron)],
@@ -107,11 +116,7 @@ async def list_email_preferences(
         select(EmailPreference).where(EmailPreference.patron_id == patron.id)
     )
     saved = {pref.notification_type: pref.enabled for pref in result.scalars().all()}
-    # Return all notification types, defaulting to enabled if no row exists
-    return [
-        EmailPreferenceRead(notification_type=nt, enabled=saved.get(nt, True))
-        for nt in NotificationType
-    ]
+    return _build_preference_response(saved)
 
 
 @router.put("/email-preferences", response_model=list[EmailPreferenceRead])
@@ -137,8 +142,5 @@ async def update_email_preferences(
 
     await db.commit()
 
-    # Return full set of preferences
-    return [
-        EmailPreferenceRead(notification_type=nt, enabled=existing[nt].enabled if nt in existing else True)
-        for nt in NotificationType
-    ]
+    saved = {nt: existing[nt].enabled for nt in existing}
+    return _build_preference_response(saved)
