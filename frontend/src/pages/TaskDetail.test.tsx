@@ -6,8 +6,15 @@ import { makeTaskDetail, makeUpdate } from "../test/factories";
 import { renderWithRouter } from "../test/render";
 
 vi.mock("../api/tasks");
-vi.mock("../api/pledges");
-vi.mock("../api/patron");
+vi.mock("../api/pledges", () => ({
+  getMyPledge: vi.fn().mockResolvedValue(null),
+  createPledge: vi.fn(),
+  deletePledge: vi.fn(),
+  updatePledge: vi.fn(),
+}));
+vi.mock("../api/patron", () => ({
+  fetchPaymentMethods: vi.fn().mockResolvedValue([]),
+}));
 vi.mock("@stripe/stripe-js");
 
 const mockUseAuth = vi.fn();
@@ -171,5 +178,34 @@ describe("TaskDetail", () => {
     mockGetTask.mockRejectedValue(new Error("Task not found"));
     renderDetail();
     expect(await screen.findByText("Error: Task not found")).toBeInTheDocument();
+  });
+
+  it("shows Edit link for admin users", async () => {
+    mockUseAuth.mockReturnValue({
+      patron: { id: "p1", email: "admin@example.com", display_name: null, is_admin: true, is_banned: false },
+      loading: false, login: vi.fn(), logout: vi.fn(),
+    });
+    mockGetTask.mockResolvedValue(makeTaskDetail({ id: "task-xyz" }));
+    renderDetail("task-xyz");
+    const editLink = await screen.findByRole("link", { name: "Edit" });
+    expect(editLink).toHaveAttribute("href", "/tasks/task-xyz/edit");
+  });
+
+  it("hides Edit link for non-admin users", async () => {
+    mockUseAuth.mockReturnValue({
+      patron: { id: "p1", email: "user@example.com", display_name: null, is_admin: false, is_banned: false },
+      loading: false, login: vi.fn(), logout: vi.fn(),
+    });
+    mockGetTask.mockResolvedValue(makeTaskDetail());
+    renderDetail();
+    await screen.findByText("Fix the bridge");
+    expect(screen.queryByRole("link", { name: "Edit" })).not.toBeInTheDocument();
+  });
+
+  it("hides Edit link for unauthenticated users", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail());
+    renderDetail();
+    await screen.findByText("Fix the bridge");
+    expect(screen.queryByRole("link", { name: "Edit" })).not.toBeInTheDocument();
   });
 });
