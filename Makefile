@@ -7,11 +7,16 @@ STRIPE := $(or $(shell command -v stripe 2>/dev/null),$(HOME)/.local/bin/stripe)
 dev: install
 	@bash -c '\
 	export STRIPE_WEBHOOK_SECRET=$$($(STRIPE) listen --print-secret); \
-	cleanup() { kill 0; wait; }; \
-	trap cleanup EXIT INT TERM; \
+	cleanup() { \
+		trap "" INT TERM EXIT; \
+		kill $$(jobs -p) 2>/dev/null; \
+		docker compose stop -t 2 db 2>/dev/null; \
+		wait; \
+	}; \
+	trap cleanup INT TERM EXIT; \
 	docker compose up db & \
-	(cd backend && $(CURDIR)/$(VENV)/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000) & \
-	(cd frontend && npm run dev) & \
+	(cd backend && exec $(CURDIR)/$(VENV)/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000) & \
+	(cd frontend && exec npm run dev) & \
 	$(STRIPE) listen --forward-to localhost:8000/api/webhooks/stripe & \
 	wait'
 

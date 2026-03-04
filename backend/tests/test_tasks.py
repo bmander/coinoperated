@@ -28,7 +28,8 @@ def _admin_settings():
 @pytest.fixture(autouse=True)
 def _patch_admin_settings():
     """Make the default test patron (test@example.com) an admin for task CRUD tests."""
-    with patch("app.routers.tasks.settings", _admin_settings()):
+    fake = _admin_settings()
+    with patch("app.routers.tasks.settings", fake), patch("app.dependencies.settings", fake):
         yield
 
 
@@ -263,6 +264,29 @@ async def test_create_task_admin_with_optional_pledge(
 # --- PATCH /api/tasks/{id} ---
 
 
+async def test_update_task_requires_auth(client, test_session_maker):
+    from tests.conftest import create_task as create_task_db
+    task = await create_task_db(test_session_maker)
+    resp = await client.patch(
+        f"/api/tasks/{task.id}", json={"title": "Hacked"}
+    )
+    assert resp.status_code == 401
+
+
+async def test_update_task_rejects_non_admin(client, test_session_maker):
+    from tests.conftest import create_task as create_task_db
+    task = await create_task_db(test_session_maker)
+    non_admin = await create_patron_db(
+        test_session_maker, "nonadmin@example.com", "cus_nonadmin"
+    )
+    resp = await client.patch(
+        f"/api/tasks/{task.id}",
+        json={"title": "Nope"},
+        cookies=auth_cookies(non_admin),
+    )
+    assert resp.status_code == 403
+
+
 async def test_update_task_accept(authed_client):
     task = await create_task(authed_client)
     resp = await authed_client.patch(
@@ -353,8 +377,8 @@ async def test_update_task_edit_fields(authed_client):
     assert data["description"] == "Updated desc"
 
 
-async def test_update_task_not_found(client):
-    resp = await client.patch(
+async def test_update_task_not_found(authed_client):
+    resp = await authed_client.patch(
         f"/api/tasks/{uuid.uuid4()}", json={"title": "Nope"}
     )
     assert resp.status_code == 404

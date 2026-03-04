@@ -7,7 +7,7 @@ export async function fetchAdminTasks(): Promise<AdminTaskListResponse> {
 
 export async function patchTask(
   taskId: string,
-  payload: { status?: TaskStatus; evidence?: string },
+  payload: { title?: string; description?: string; criteria?: string | null; status?: TaskStatus; evidence?: string },
 ): Promise<TaskRead> {
   return fetchJson(`${API_BASE}/tasks/${taskId}`, {
     method: "PATCH",

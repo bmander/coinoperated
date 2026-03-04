@@ -2,14 +2,19 @@ import { screen } from "@testing-library/react";
 import { Route, Routes } from "react-router-dom";
 import TaskDetail from "./TaskDetail";
 import { getTask } from "../api/tasks";
-import { getMyPledge } from "../api/pledges";
-import { fetchPaymentMethods } from "../api/patron";
 import { makeTaskDetail, makeUpdate } from "../test/factories";
 import { renderWithRouter } from "../test/render";
 
 vi.mock("../api/tasks");
-vi.mock("../api/pledges");
-vi.mock("../api/patron");
+vi.mock("../api/pledges", () => ({
+  getMyPledge: vi.fn().mockResolvedValue(null),
+  createPledge: vi.fn(),
+  deletePledge: vi.fn(),
+  updatePledge: vi.fn(),
+}));
+vi.mock("../api/patron", () => ({
+  fetchPaymentMethods: vi.fn().mockResolvedValue([]),
+}));
 vi.mock("../api/admin");
 vi.mock("@stripe/stripe-js");
 
@@ -19,8 +24,6 @@ vi.mock("../contexts/AuthContext", () => ({
 }));
 
 const mockGetTask = vi.mocked(getTask);
-const mockGetMyPledge = vi.mocked(getMyPledge);
-const mockFetchPaymentMethods = vi.mocked(fetchPaymentMethods);
 
 function renderDetail(taskId = "abc-123") {
   return renderWithRouter(
@@ -180,8 +183,6 @@ describe("TaskDetail", () => {
 
   it("shows admin actions when user is admin", async () => {
     mockUseAuth.mockReturnValue({ patron: { is_admin: true }, loading: false, login: vi.fn(), logout: vi.fn() });
-    mockGetMyPledge.mockResolvedValue(null);
-    mockFetchPaymentMethods.mockResolvedValue([]);
     mockGetTask.mockResolvedValue(makeTaskDetail({ status: "proposed" }));
     renderDetail();
     expect(await screen.findByText("Admin Actions")).toBeInTheDocument();
@@ -191,8 +192,6 @@ describe("TaskDetail", () => {
 
   it("shows admin update and complete forms for underway tasks", async () => {
     mockUseAuth.mockReturnValue({ patron: { is_admin: true }, loading: false, login: vi.fn(), logout: vi.fn() });
-    mockGetMyPledge.mockResolvedValue(null);
-    mockFetchPaymentMethods.mockResolvedValue([]);
     mockGetTask.mockResolvedValue(makeTaskDetail({ status: "underway" }));
     renderDetail();
     expect(await screen.findByText("Admin Actions")).toBeInTheDocument();
@@ -216,5 +215,34 @@ describe("TaskDetail", () => {
     renderDetail();
     await screen.findByText("Description");
     expect(screen.queryByText("Admin Actions")).not.toBeInTheDocument();
+  });
+
+  it("shows Edit link for admin users", async () => {
+    mockUseAuth.mockReturnValue({
+      patron: { id: "p1", email: "admin@example.com", display_name: null, is_admin: true, is_banned: false },
+      loading: false, login: vi.fn(), logout: vi.fn(),
+    });
+    mockGetTask.mockResolvedValue(makeTaskDetail({ id: "task-xyz" }));
+    renderDetail("task-xyz");
+    const editLink = await screen.findByRole("link", { name: "Edit" });
+    expect(editLink).toHaveAttribute("href", "/tasks/task-xyz/edit");
+  });
+
+  it("hides Edit link for non-admin users", async () => {
+    mockUseAuth.mockReturnValue({
+      patron: { id: "p1", email: "user@example.com", display_name: null, is_admin: false, is_banned: false },
+      loading: false, login: vi.fn(), logout: vi.fn(),
+    });
+    mockGetTask.mockResolvedValue(makeTaskDetail());
+    renderDetail();
+    await screen.findByText("Fix the bridge");
+    expect(screen.queryByRole("link", { name: "Edit" })).not.toBeInTheDocument();
+  });
+
+  it("hides Edit link for unauthenticated users", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail());
+    renderDetail();
+    await screen.findByText("Fix the bridge");
+    expect(screen.queryByRole("link", { name: "Edit" })).not.toBeInTheDocument();
   });
 });

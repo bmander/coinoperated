@@ -96,12 +96,12 @@ async def test_charge_failed_template(test_session_maker):
 
 
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
-async def test_task_accepted_creates_notification(mock_send, client, test_session_maker):
+async def test_task_accepted_creates_notification(mock_send, admin_client, test_session_maker):
     patron = await create_patron(test_session_maker, "notif_a@example.com", "cus_notif_a")
     task = await create_task(test_session_maker)
     await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
 
-    resp = await client.patch(
+    resp = await admin_client.patch(
         f"/api/tasks/{task.id}", json={"status": "underway"}
     )
     assert resp.status_code == 200
@@ -123,12 +123,12 @@ async def test_task_accepted_creates_notification(mock_send, client, test_sessio
 
 
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
-async def test_task_review_creates_notification(mock_send, client, test_session_maker):
+async def test_task_review_creates_notification(mock_send, admin_client, test_session_maker):
     patron = await create_patron(test_session_maker, "notif_rev@example.com", "cus_notif_rev")
     task = await create_task(test_session_maker, status=TaskStatus.underway)
     await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
 
-    resp = await client.patch(
+    resp = await admin_client.patch(
         f"/api/tasks/{task.id}", json={"status": "review"}
     )
     assert resp.status_code == 200
@@ -149,7 +149,7 @@ async def test_task_review_creates_notification(mock_send, client, test_session_
 
 
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
-async def test_task_collecting_creates_completed_notification(mock_send, client, test_session_maker):
+async def test_task_collecting_creates_completed_notification(mock_send, admin_client, test_session_maker):
     patron = await create_patron(test_session_maker, "notif_b@example.com", "cus_notif_b")
     task = await create_task(
         test_session_maker,
@@ -158,7 +158,7 @@ async def test_task_collecting_creates_completed_notification(mock_send, client,
     )
     await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
 
-    resp = await client.patch(
+    resp = await admin_client.patch(
         f"/api/tasks/{task.id}", json={"status": "collecting"}
     )
     assert resp.status_code == 200
@@ -179,12 +179,12 @@ async def test_task_collecting_creates_completed_notification(mock_send, client,
 
 
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
-async def test_task_declined_creates_notification(mock_send, client, test_session_maker):
+async def test_task_declined_creates_notification(mock_send, admin_client, test_session_maker):
     patron = await create_patron(test_session_maker, "notif_c@example.com", "cus_notif_c")
     task = await create_task(test_session_maker)
     await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
 
-    resp = await client.patch(
+    resp = await admin_client.patch(
         f"/api/tasks/{task.id}", json={"status": "declined"}
     )
     assert resp.status_code == 200
@@ -203,7 +203,7 @@ async def test_task_declined_creates_notification(mock_send, client, test_sessio
 
 
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
-async def test_multiple_pledgers_get_notifications(mock_send, client, test_session_maker):
+async def test_multiple_pledgers_get_notifications(mock_send, admin_client, test_session_maker):
     patron1 = await create_patron(test_session_maker, "multi_a@example.com", "cus_multi_a")
     patron2 = await create_patron(test_session_maker, "multi_b@example.com", "cus_multi_b")
     task = await create_task(test_session_maker)
@@ -213,7 +213,7 @@ async def test_multiple_pledgers_get_notifications(mock_send, client, test_sessi
         setup_intent="si_test_2", amount=2000,
     )
 
-    resp = await client.patch(
+    resp = await admin_client.patch(
         f"/api/tasks/{task.id}", json={"status": "underway"}
     )
     assert resp.status_code == 200
@@ -233,12 +233,12 @@ async def test_multiple_pledgers_get_notifications(mock_send, client, test_sessi
 
 
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=False)
-async def test_email_failure_does_not_break_api(mock_send, client, test_session_maker):
+async def test_email_failure_does_not_break_api(mock_send, admin_client, test_session_maker):
     patron = await create_patron(test_session_maker, "fail@example.com", "cus_fail")
     task = await create_task(test_session_maker)
     await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
 
-    resp = await client.patch(
+    resp = await admin_client.patch(
         f"/api/tasks/{task.id}", json={"status": "underway"}
     )
     assert resp.status_code == 200
@@ -260,11 +260,11 @@ async def test_email_failure_does_not_break_api(mock_send, client, test_session_
 
 
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
-async def test_no_pledgers_no_notifications(mock_send, client, test_session_maker):
+async def test_no_pledgers_no_notifications(mock_send, admin_client, test_session_maker):
     await create_task(test_session_maker)
     task = await create_task(test_session_maker)
 
-    resp = await client.patch(
+    resp = await admin_client.patch(
         f"/api/tasks/{task.id}", json={"status": "underway"}
     )
     assert resp.status_code == 200
@@ -414,7 +414,7 @@ async def test_webhook_payment_failed_unknown_pledge_ignored(
 
 
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
-async def test_pending_pledger_not_notified(mock_send, client, test_session_maker):
+async def test_pending_pledger_not_notified(mock_send, admin_client, test_session_maker):
     patron = await create_patron(test_session_maker, "pending@example.com", "cus_pending")
     task = await create_task(test_session_maker)
     await create_pledge(
@@ -425,7 +425,7 @@ async def test_pending_pledger_not_notified(mock_send, client, test_session_make
         payment_method=None,
     )
 
-    resp = await client.patch(
+    resp = await admin_client.patch(
         f"/api/tasks/{task.id}", json={"status": "underway"}
     )
     assert resp.status_code == 200
@@ -495,7 +495,7 @@ async def test_send_pending_emails_mixed_success_failure(mock_send, test_session
 
 
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
-async def test_notification_persisted_before_email_sent(mock_send, client, test_session_maker):
+async def test_notification_persisted_before_email_sent(mock_send, admin_client, test_session_maker):
     """The notification row is committed to the DB before send_email runs."""
     patron = await create_patron(test_session_maker, "order@example.com", "cus_order")
     task = await create_task(test_session_maker)
@@ -514,7 +514,7 @@ async def test_notification_persisted_before_email_sent(mock_send, client, test_
 
     mock_send.side_effect = spy_send_email
 
-    resp = await client.patch(
+    resp = await admin_client.patch(
         f"/api/tasks/{task.id}", json={"status": "underway"}
     )
     assert resp.status_code == 200

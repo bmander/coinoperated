@@ -120,7 +120,7 @@ class TestEmailPreferencesEndpoints:
 class TestEmailPreferencesRespected:
     @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
     async def test_email_skipped_when_opted_out(
-        self, mock_send, client, test_session_maker, test_patron
+        self, mock_send, admin_client, client, test_session_maker, test_patron
     ):
         task = await create_task(test_session_maker)
         await create_pledge(
@@ -133,7 +133,7 @@ class TestEmailPreferencesRespected:
             enabled=False,
         )
 
-        resp = await client.patch(
+        resp = await admin_client.patch(
             f"/api/tasks/{task.id}", json={"status": "underway"}
         )
         assert resp.status_code == 200
@@ -151,7 +151,7 @@ class TestEmailPreferencesRespected:
 
     @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
     async def test_email_sent_when_opted_in(
-        self, mock_send, client, test_session_maker, test_patron
+        self, mock_send, admin_client, test_session_maker, test_patron
     ):
         task = await create_task(test_session_maker)
         await create_pledge(
@@ -164,7 +164,7 @@ class TestEmailPreferencesRespected:
             enabled=True,
         )
 
-        resp = await client.patch(
+        resp = await admin_client.patch(
             f"/api/tasks/{task.id}", json={"status": "underway"}
         )
         assert resp.status_code == 200
@@ -172,7 +172,7 @@ class TestEmailPreferencesRespected:
 
     @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
     async def test_email_sent_with_no_preference_row(
-        self, mock_send, client, test_session_maker, test_patron
+        self, mock_send, admin_client, test_session_maker, test_patron
     ):
         """Default behavior: email sent when no preference exists."""
         task = await create_task(test_session_maker)
@@ -180,7 +180,7 @@ class TestEmailPreferencesRespected:
             test_session_maker, patron_id=test_patron.id, task_id=task.id
         )
 
-        resp = await client.patch(
+        resp = await admin_client.patch(
             f"/api/tasks/{task.id}", json={"status": "underway"}
         )
         assert resp.status_code == 200
@@ -188,7 +188,7 @@ class TestEmailPreferencesRespected:
 
     @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
     async def test_opt_out_one_type_doesnt_affect_others(
-        self, mock_send, client, test_session_maker, test_patron
+        self, mock_send, admin_client, test_session_maker, test_patron
     ):
         # Opt out of task_accepted only
         await create_email_preference(
@@ -203,7 +203,7 @@ class TestEmailPreferencesRespected:
         await create_pledge(
             test_session_maker, patron_id=test_patron.id, task_id=task1.id
         )
-        await client.patch(f"/api/tasks/{task1.id}", json={"status": "underway"})
+        await admin_client.patch(f"/api/tasks/{task1.id}", json={"status": "underway"})
         mock_send.assert_not_called()
 
         # Task 2: trigger task_declined -> should send email
@@ -212,5 +212,5 @@ class TestEmailPreferencesRespected:
             test_session_maker, patron_id=test_patron.id, task_id=task2.id,
             setup_intent="si_test_2",
         )
-        await client.patch(f"/api/tasks/{task2.id}", json={"status": "declined"})
+        await admin_client.patch(f"/api/tasks/{task2.id}", json={"status": "declined"})
         mock_send.assert_called_once()

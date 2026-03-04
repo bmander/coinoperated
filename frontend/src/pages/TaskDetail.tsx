@@ -21,11 +21,12 @@ function MarkdownSection({ title, children, className }: { title: string; childr
 
 export default function TaskDetail() {
   const { taskId } = useParams<{ taskId: string }>();
+  const { patron } = useAuth();
+  const isAdmin = patron?.is_admin ?? false;
   const { data: task, loading, error, refetch } = useFetch(
     () => getTask(taskId!),
     [taskId],
   );
-  const { patron } = useAuth();
 
   if (loading) return <p className="page-message">Loading task...</p>;
   if (error) return <p className="page-message page-error">Error: {error}</p>;
@@ -36,7 +37,10 @@ export default function TaskDetail() {
       <Link to="/" className="back-link">&larr; All Tasks</Link>
 
       <div className="task-detail-header">
-        <StatusBadge status={task.status} />
+        <div className="task-detail-header-top">
+          <StatusBadge status={task.status} />
+          {isAdmin && <Link to={`/tasks/${task.id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>}
+        </div>
         <h1 className="task-detail-title">{task.title}</h1>
         <p className="task-detail-stats">
           {task.submitted_by_patron && (
@@ -84,7 +88,7 @@ export default function TaskDetail() {
         <MarkdownSection title="Completion Evidence">{task.evidence}</MarkdownSection>
       )}
 
-      {patron?.is_admin && (
+      {isAdmin && (
         <section className="task-detail-section">
           <h2>Admin Actions</h2>
           <div className="admin-actions">

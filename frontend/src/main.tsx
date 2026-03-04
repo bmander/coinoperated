@@ -12,6 +12,7 @@ import SubmitTask from './pages/SubmitTask'
 import SignIn from './pages/SignIn'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
+import EditTask from './pages/EditTask'
 import PatronProfile from './pages/PatronProfile'
 import HowItWorks from './pages/HowItWorks'
 import Swatches from './pages/Swatches'
@@ -36,6 +37,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/signin" element={<SignIn />} />
             <Route element={<RequireAdmin />}>
               <Route path="/admin" element={<Admin />} />
+              <Route path="/tasks/:taskId/edit" element={<EditTask />} />
             </Route>
           </Route>
         </Routes>

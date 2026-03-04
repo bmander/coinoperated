@@ -1,6 +1,6 @@
 import uuid
 from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -13,6 +13,8 @@ from app.auth import create_jwt
 from app.config import settings
 from app.dependencies import get_db, get_session_factory
 from app.models import Base, EmailPreference, MagicLinkToken, Notification, NotificationType, Patron, Pledge, PledgeStatus, Task
+
+ADMIN_EMAIL = "admin@test.example.com"
 
 
 @pytest.fixture(scope="session")
@@ -55,7 +57,7 @@ async def clean_tables(test_engine):
 
 
 @pytest.fixture
-async def client(test_session_maker):
+def test_app(test_session_maker):
     from app.main import create_app
 
     app = create_app()
@@ -66,9 +68,13 @@ async def client(test_session_maker):
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_session_factory] = lambda: test_session_maker
+    return app
 
+
+@pytest.fixture
+async def client(test_app):
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=test_app), base_url="http://test"
     ) as c:
         yield c
 
@@ -83,6 +89,20 @@ async def authed_client(test_patron, client):
     token = create_jwt(test_patron.id, settings.secret_key, expiry_days=30)
     client.cookies.set("session", token)
     yield client
+
+
+@pytest.fixture
+async def admin_client(test_session_maker, test_app):
+    """An HTTP client authenticated as an admin patron with settings patched."""
+    admin = await create_patron(test_session_maker, ADMIN_EMAIL, "cus_admin_conftest")
+    token = create_jwt(admin.id, settings.secret_key, expiry_days=30)
+
+    with patch.object(settings, "admin_email", ADMIN_EMAIL):
+        async with AsyncClient(
+            transport=ASGITransport(app=test_app), base_url="http://test"
+        ) as c:
+            c.cookies.set("session", token)
+            yield c
 
 
 def mock_setup_intent(si_id="si_test_123", client_secret="seti_test_secret"):
