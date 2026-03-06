@@ -1,4 +1,4 @@
-export type TaskStatus = "proposed" | "underway" | "review" | "collecting" | "completed" | "declined";
+export type TaskStatus = "ideation" | "proposed" | "underway" | "review" | "collecting" | "completed" | "declined";
 
 export interface PatronPublicRead {
   id: string;
@@ -32,8 +32,18 @@ export interface UpdateRead {
   created_at: string;
 }
 
+export interface CommentRead {
+  id: string;
+  task_id: string;
+  author_id: string;
+  author: PatronPublicRead;
+  body: string;
+  created_at: string;
+}
+
 export interface TaskDetailRead extends TaskRead {
   updates: UpdateRead[];
+  comments: CommentRead[];
 }
 
 export interface TaskListResponse {

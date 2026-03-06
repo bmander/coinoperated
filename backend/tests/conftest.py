@@ -12,7 +12,7 @@ from testcontainers.postgres import PostgresContainer
 from app.auth import create_jwt
 from app.config import settings
 from app.dependencies import get_db, get_session_factory
-from app.models import Base, EmailPreference, MagicLinkToken, Notification, NotificationType, Patron, Pledge, PledgeStatus, Task
+from app.models import Base, Comment, EmailPreference, MagicLinkToken, Notification, NotificationType, Patron, Pledge, PledgeStatus, Task
 
 ADMIN_EMAIL = "admin@test.example.com"
 
@@ -52,7 +52,7 @@ async def setup_db(test_engine):
 async def clean_tables(test_engine):
     yield
     async with test_engine.begin() as conn:
-        for table in ("email_preference", "notification", "magic_link_token", "update", "pledge", "task", "patron"):
+        for table in ("comment", "email_preference", "notification", "magic_link_token", "update", "pledge", "task", "patron"):
             await conn.execute(text(f'DELETE FROM "{table}"'))
 
 
@@ -153,7 +153,7 @@ async def create_patron(
 
 
 async def create_task(session_maker, **overrides) -> Task:
-    defaults = {"title": "Test task", "description": "A test task", "status": "proposed"}
+    defaults = {"title": "Test task", "description": "A test task", "status": "ideation"}
     defaults.update(overrides)
     async with session_maker() as session:
         task = Task(**defaults)
@@ -212,6 +212,15 @@ async def create_notification(
         await session.commit()
         await session.refresh(notification)
         return notification
+
+
+async def create_comment(session_maker, *, task_id, author_id, body="Test comment") -> Comment:
+    async with session_maker() as session:
+        comment = Comment(task_id=task_id, author_id=author_id, body=body)
+        session.add(comment)
+        await session.commit()
+        await session.refresh(comment)
+        return comment
 
 
 async def create_email_preference(

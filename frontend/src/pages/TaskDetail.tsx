@@ -6,6 +6,7 @@ import StatusBadge from "../components/StatusBadge";
 import useFetch from "../hooks/useFetch";
 import PledgeWidget from "../components/PledgeWidget";
 import AdminTaskActions from "../components/AdminTaskActions";
+import CommentSection from "../components/CommentSection";
 import { useAuth } from "../contexts/AuthContext";
 
 function MarkdownSection({ title, children, className }: { title: string; children: string; className?: string }) {
@@ -39,7 +40,9 @@ export default function TaskDetail() {
       <div className="task-detail-header">
         <div className="task-detail-header-top">
           <StatusBadge status={task.status} />
-          {isAdmin && <Link to={`/tasks/${task.id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>}
+          {(isAdmin || (patron && task.submitted_by === patron.id && task.status === "ideation")) && (
+            <Link to={`/tasks/${task.id}/edit`} className="btn btn-secondary btn-sm">Edit</Link>
+          )}
         </div>
         <h1 className="task-detail-title">{task.title}</h1>
         <p className="task-detail-stats">
@@ -49,13 +52,17 @@ export default function TaskDetail() {
               <Link to={`/patrons/${task.submitted_by_patron.id}`} className="task-detail-creator">
                 {task.submitted_by_patron.display_name ?? "Anonymous"}
               </Link>
-              {" "}&middot;{" "}
+              {task.status !== "ideation" && <>{" "}&middot;{" "}</>}
             </>
           )}
-          {formatBackers(task.pledge_count)} &middot;{" "}
-          {formatCents(task.pledge_total)} pledged
-          {task.status === "completed" && task.collected_total > 0 && (
-            <> &middot; Collected {formatCents(task.collected_total)} of {formatCents(task.pledge_total)} pledged</>
+          {task.status !== "ideation" && (
+            <>
+              {formatBackers(task.pledge_count)} &middot;{" "}
+              {formatCents(task.pledge_total)} pledged
+              {task.status === "completed" && task.collected_total > 0 && (
+                <> &middot; Collected {formatCents(task.collected_total)} of {formatCents(task.pledge_total)} pledged</>
+              )}
+            </>
           )}
         </p>
       </div>
@@ -96,6 +103,8 @@ export default function TaskDetail() {
           </div>
         </section>
       )}
+
+      <CommentSection taskId={task.id} comments={task.comments} onComment={refetch} />
 
       <PledgeWidget task={task} />
     </div>

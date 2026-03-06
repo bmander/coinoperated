@@ -1,4 +1,4 @@
-import type { TaskRead, TaskDetailRead, TaskListResponse, UpdateRead, PatronPledgeRead, NotificationRead, PatronProfileRead, EmailPreference } from "../api/types";
+import type { TaskRead, TaskDetailRead, TaskListResponse, UpdateRead, CommentRead, PatronPledgeRead, NotificationRead, PatronProfileRead, EmailPreference } from "../api/types";
 
 export function makeTask(overrides: Partial<TaskRead> = {}): TaskRead {
   return {
@@ -26,6 +26,23 @@ export function makeTaskDetail(overrides: Partial<TaskDetailRead> = {}): TaskDet
   return {
     ...makeTask(overrides),
     updates: [],
+    comments: [],
+    ...overrides,
+  };
+}
+
+export function makeComment(overrides: Partial<CommentRead> = {}): CommentRead {
+  return {
+    id: "comment-1",
+    task_id: "abc-123",
+    author_id: "patron-1",
+    author: {
+      id: "patron-1",
+      display_name: "Jane Doe",
+      created_at: "2025-01-01T00:00:00Z",
+    },
+    body: "This is a great idea!",
+    created_at: "2025-02-01T00:00:00Z",
     ...overrides,
   };
 }

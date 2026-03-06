@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import { Route, Routes } from "react-router-dom";
 import TaskDetail from "./TaskDetail";
 import { getTask } from "../api/tasks";
-import { makeTaskDetail, makeUpdate } from "../test/factories";
+import { makeTaskDetail, makeUpdate, makeComment } from "../test/factories";
 import { renderWithRouter } from "../test/render";
 
 vi.mock("../api/tasks");
@@ -16,6 +16,7 @@ vi.mock("../api/patron", () => ({
   fetchPaymentMethods: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("../api/admin");
+vi.mock("../api/comments");
 vi.mock("@stripe/stripe-js");
 
 const mockUseAuth = vi.fn();
@@ -244,5 +245,79 @@ describe("TaskDetail", () => {
     renderDetail();
     await screen.findByText("Fix the bridge");
     expect(screen.queryByRole("link", { name: "Edit" })).not.toBeInTheDocument();
+  });
+
+  it("hides pledge stats when in ideation", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "ideation", pledge_count: 0, pledge_total: 0 }));
+    renderDetail();
+    await screen.findByText("Description");
+    expect(screen.queryByText(/backers/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/pledged/)).not.toBeInTheDocument();
+  });
+
+  it("hides Pledge button for ideation tasks", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "ideation" }));
+    renderDetail();
+    await screen.findByText("Description");
+    expect(screen.queryByRole("button", { name: "Pledge" })).not.toBeInTheDocument();
+  });
+
+  it("shows Edit link for task author in ideation", async () => {
+    mockUseAuth.mockReturnValue({
+      patron: { id: "author-1", email: "author@example.com", display_name: null, is_admin: false, is_banned: false },
+      loading: false, login: vi.fn(), logout: vi.fn(),
+    });
+    mockGetTask.mockResolvedValue(makeTaskDetail({ id: "task-ideation", status: "ideation", submitted_by: "author-1" }));
+    renderDetail("task-ideation");
+    const editLink = await screen.findByRole("link", { name: "Edit" });
+    expect(editLink).toHaveAttribute("href", "/tasks/task-ideation/edit");
+  });
+
+  it("hides Edit link for non-author non-admin in ideation", async () => {
+    mockUseAuth.mockReturnValue({
+      patron: { id: "other-1", email: "other@example.com", display_name: null, is_admin: false, is_banned: false },
+      loading: false, login: vi.fn(), logout: vi.fn(),
+    });
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "ideation", submitted_by: "author-1" }));
+    renderDetail();
+    await screen.findByText("Fix the bridge");
+    expect(screen.queryByRole("link", { name: "Edit" })).not.toBeInTheDocument();
+  });
+
+  it("hides Edit link for author when not in ideation", async () => {
+    mockUseAuth.mockReturnValue({
+      patron: { id: "author-1", email: "author@example.com", display_name: null, is_admin: false, is_banned: false },
+      loading: false, login: vi.fn(), logout: vi.fn(),
+    });
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "proposed", submitted_by: "author-1" }));
+    renderDetail();
+    await screen.findByText("Fix the bridge");
+    expect(screen.queryByRole("link", { name: "Edit" })).not.toBeInTheDocument();
+  });
+
+  it("renders comments section", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({
+      comments: [
+        makeComment({ id: "c1", body: "Great idea!" }),
+      ],
+    }));
+    renderDetail();
+    expect(await screen.findByText("Comments")).toBeInTheDocument();
+    expect(screen.getByText("Great idea!")).toBeInTheDocument();
+  });
+
+  it("shows 'No comments yet.' when comments are empty", async () => {
+    mockGetTask.mockResolvedValue(makeTaskDetail({ comments: [] }));
+    renderDetail();
+    expect(await screen.findByText("No comments yet.")).toBeInTheDocument();
+  });
+
+  it("shows admin ideation actions (Move to Proposed, Decline)", async () => {
+    mockUseAuth.mockReturnValue({ patron: { is_admin: true }, loading: false, login: vi.fn(), logout: vi.fn() });
+    mockGetTask.mockResolvedValue(makeTaskDetail({ status: "ideation" }));
+    renderDetail();
+    expect(await screen.findByText("Admin Actions")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Move to Proposed" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
   });
 });

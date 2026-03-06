@@ -41,6 +41,13 @@ async def create_task(client, **overrides):
     return resp.json()
 
 
+async def propose_task(client, task_id):
+    """Move a task from ideation to proposed."""
+    resp = await client.patch(f"/api/tasks/{task_id}", json={"status": "proposed"})
+    assert resp.status_code == 200
+    return resp.json()
+
+
 async def seed_tasks(client):
     a = await create_task(client, title="Task A", description="Desc A")
     b = await create_task(client, title="Task B", description="Desc B")
@@ -115,9 +122,11 @@ async def test_get_task(authed_client):
     assert data["title"] == "Fix the bus"
     assert data["description"] == "It's broken"
     assert data["criteria"] == "Bus works"
-    assert data["status"] == "proposed"
+    assert data["status"] == "ideation"
     assert "updates" in data
     assert data["updates"] == []
+    assert "comments" in data
+    assert data["comments"] == []
 
 
 async def test_get_task_not_found(client):
@@ -144,7 +153,7 @@ async def test_create_task_basic(authed_client, test_patron):
     assert resp.status_code == 201
     data = resp.json()
     assert data["title"] == "New task"
-    assert data["status"] == "proposed"
+    assert data["status"] == "ideation"
     assert data["submitted_by"] == str(test_patron.id)
     assert data["pledge_id"] is None
     assert data["client_secret"] is None
@@ -190,15 +199,17 @@ async def test_create_task_banned_user_gets_403(client, test_session_maker):
 # --- POST /api/tasks (non-admin pledge requirement) ---
 
 
-async def test_create_task_non_admin_requires_pledge(client, test_session_maker):
+async def test_create_task_non_admin_no_pledge_required(client, test_session_maker):
     patron = await create_patron_db(test_session_maker, "user@example.com", "cus_user")
     resp = await client.post(
         "/api/tasks",
         json={"title": "My task", "description": "Do something"},
         cookies=auth_cookies(patron),
     )
-    assert resp.status_code == 400
-    assert "pledge is required" in resp.json()["detail"].lower()
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["status"] == "ideation"
+    assert data["pledge_id"] is None
 
 
 async def test_create_task_non_admin_pledge_below_minimum(client, test_session_maker):
@@ -233,7 +244,7 @@ async def test_create_task_non_admin_with_pledge(
     assert resp.status_code == 201
     data = resp.json()
     assert data["title"] == "My task"
-    assert data["status"] == "proposed"
+    assert data["status"] == "ideation"
     assert data["pledge_id"] is not None
     assert data["client_secret"] == "seti_test_secret"
     assert data["publishable_key"] == settings.stripe_publishable_key
@@ -275,7 +286,7 @@ async def test_update_task_requires_auth(client, test_session_maker):
 
 async def test_update_task_rejects_non_admin(client, test_session_maker):
     from tests.conftest import create_task as create_task_db
-    task = await create_task_db(test_session_maker)
+    task = await create_task_db(test_session_maker, status="proposed")
     non_admin = await create_patron_db(
         test_session_maker, "nonadmin@example.com", "cus_nonadmin"
     )
@@ -289,6 +300,7 @@ async def test_update_task_rejects_non_admin(client, test_session_maker):
 
 async def test_update_task_accept(authed_client):
     task = await create_task(authed_client)
+    await propose_task(authed_client, task["id"])
     resp = await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "underway"}
     )
@@ -298,8 +310,20 @@ async def test_update_task_accept(authed_client):
     assert data["underway_at"] is not None
 
 
-async def test_update_task_decline(authed_client):
+async def test_update_task_decline_from_ideation(authed_client):
     task = await create_task(authed_client)
+    resp = await authed_client.patch(
+        f"/api/tasks/{task['id']}", json={"status": "declined"}
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "declined"
+    assert data["declined_at"] is not None
+
+
+async def test_update_task_decline_from_proposed(authed_client):
+    task = await create_task(authed_client)
+    await propose_task(authed_client, task["id"])
     resp = await authed_client.patch(
         f"/api/tasks/{task['id']}", json={"status": "declined"}
     )
@@ -311,6 +335,7 @@ async def test_update_task_decline(authed_client):
 
 async def test_update_task_abandon(authed_client):
     task = await create_task(authed_client)
+    await propose_task(authed_client, task["id"])
     await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "underway"})
 
     resp = await authed_client.patch(
@@ -324,6 +349,7 @@ async def test_update_task_abandon(authed_client):
 
 async def test_update_task_review(authed_client):
     task = await create_task(authed_client)
+    await propose_task(authed_client, task["id"])
     await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "underway"})
 
     resp = await authed_client.patch(
@@ -338,6 +364,7 @@ async def test_update_task_review(authed_client):
 async def test_underway_to_collecting_invalid(authed_client):
     """Direct underway -> collecting is no longer valid; must go through review."""
     task = await create_task(authed_client)
+    await propose_task(authed_client, task["id"])
     await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "underway"})
 
     resp = await authed_client.patch(
@@ -350,7 +377,7 @@ async def test_underway_to_collecting_invalid(authed_client):
 async def test_update_task_invalid_transition(authed_client):
     task = await create_task(authed_client)
     resp = await authed_client.patch(
-        f"/api/tasks/{task['id']}", json={"status": "completed"}
+        f"/api/tasks/{task['id']}", json={"status": "underway"}
     )
     assert resp.status_code == 400
     assert "Invalid status transition" in resp.json()["detail"]
@@ -389,13 +416,14 @@ async def test_declined_is_terminal(authed_client):
     await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "declined"})
 
     resp = await authed_client.patch(
-        f"/api/tasks/{task['id']}", json={"status": "proposed"}
+        f"/api/tasks/{task['id']}", json={"status": "ideation"}
     )
     assert resp.status_code == 400
 
 
 async def test_completed_is_terminal(authed_client, test_session_maker):
     task = await create_task(authed_client)
+    await propose_task(authed_client, task["id"])
     await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "underway"})
     await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "review"})
     await backdate_review(test_session_maker, task["id"])
@@ -478,6 +506,7 @@ async def test_create_task_save_card_false(mock_si_create, client, test_session_
 async def test_review_to_collecting_too_early(authed_client, test_session_maker):
     """Cannot transition review -> collecting before 1 week."""
     task = await create_task(authed_client)
+    await propose_task(authed_client, task["id"])
     await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "underway"})
     await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "review"})
 
@@ -491,6 +520,7 @@ async def test_review_to_collecting_too_early(authed_client, test_session_maker)
 async def test_review_to_collecting_after_week(authed_client, test_session_maker):
     """Can transition review -> collecting after 1 week."""
     task = await create_task(authed_client)
+    await propose_task(authed_client, task["id"])
     await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "underway"})
     await authed_client.patch(f"/api/tasks/{task['id']}", json={"status": "review"})
     await backdate_review(test_session_maker, task["id"])
@@ -500,3 +530,138 @@ async def test_review_to_collecting_after_week(authed_client, test_session_maker
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "collecting"
+
+
+# --- Ideation phase tests ---
+
+
+async def test_ideation_to_proposed(authed_client):
+    task = await create_task(authed_client)
+    assert task["status"] == "ideation"
+    resp = await authed_client.patch(
+        f"/api/tasks/{task['id']}", json={"status": "proposed"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "proposed"
+
+
+async def test_ideation_to_declined(authed_client):
+    task = await create_task(authed_client)
+    resp = await authed_client.patch(
+        f"/api/tasks/{task['id']}", json={"status": "declined"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "declined"
+
+
+async def test_ideation_to_underway_invalid(authed_client):
+    task = await create_task(authed_client)
+    resp = await authed_client.patch(
+        f"/api/tasks/{task['id']}", json={"status": "underway"}
+    )
+    assert resp.status_code == 400
+    assert "Invalid status transition" in resp.json()["detail"]
+
+
+# --- Author editing in ideation ---
+
+
+async def test_author_can_edit_in_ideation(client, test_session_maker):
+    author = await create_patron_db(test_session_maker, "author@example.com", "cus_author")
+    # Create task as author
+    resp = await client.post(
+        "/api/tasks",
+        json={"title": "My idea", "description": "Draft"},
+        cookies=auth_cookies(author),
+    )
+    assert resp.status_code == 201
+    task = resp.json()
+    assert task["status"] == "ideation"
+
+    # Author edits title/description/criteria
+    resp = await client.patch(
+        f"/api/tasks/{task['id']}",
+        json={"title": "Updated idea", "description": "Better draft", "criteria": "New criteria"},
+        cookies=auth_cookies(author),
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["title"] == "Updated idea"
+    assert data["description"] == "Better draft"
+    assert data["criteria"] == "New criteria"
+
+
+async def test_author_cannot_change_status_in_ideation(client, test_session_maker):
+    author = await create_patron_db(test_session_maker, "author2@example.com", "cus_author2")
+    resp = await client.post(
+        "/api/tasks",
+        json={"title": "My idea", "description": "Draft"},
+        cookies=auth_cookies(author),
+    )
+    task = resp.json()
+
+    resp = await client.patch(
+        f"/api/tasks/{task['id']}",
+        json={"status": "proposed"},
+        cookies=auth_cookies(author),
+    )
+    assert resp.status_code == 403
+
+
+async def test_author_cannot_set_evidence_in_ideation(client, test_session_maker):
+    author = await create_patron_db(test_session_maker, "author_ev@example.com", "cus_author_ev")
+    resp = await client.post(
+        "/api/tasks",
+        json={"title": "My idea", "description": "Draft"},
+        cookies=auth_cookies(author),
+    )
+    task = resp.json()
+
+    resp = await client.patch(
+        f"/api/tasks/{task['id']}",
+        json={"evidence": "Sneaky evidence"},
+        cookies=auth_cookies(author),
+    )
+    assert resp.status_code == 403
+    assert "only edit title" in resp.json()["detail"].lower()
+
+
+async def test_author_cannot_edit_after_ideation(client, authed_client, test_session_maker):
+    author = await create_patron_db(test_session_maker, "author3@example.com", "cus_author3")
+    resp = await client.post(
+        "/api/tasks",
+        json={"title": "My idea", "description": "Draft"},
+        cookies=auth_cookies(author),
+    )
+    task = resp.json()
+
+    # Admin moves to proposed
+    await authed_client.patch(
+        f"/api/tasks/{task['id']}", json={"status": "proposed"}
+    )
+
+    # Author tries to edit in proposed
+    resp = await client.patch(
+        f"/api/tasks/{task['id']}",
+        json={"title": "Too late"},
+        cookies=auth_cookies(author),
+    )
+    assert resp.status_code == 403
+
+
+async def test_non_author_cannot_edit_in_ideation(client, test_session_maker):
+    author = await create_patron_db(test_session_maker, "author4@example.com", "cus_author4")
+    other = await create_patron_db(test_session_maker, "other@example.com", "cus_other")
+    resp = await client.post(
+        "/api/tasks",
+        json={"title": "My idea", "description": "Draft"},
+        cookies=auth_cookies(author),
+    )
+    task = resp.json()
+
+    resp = await client.patch(
+        f"/api/tasks/{task['id']}",
+        json={"title": "Hijacked"},
+        cookies=auth_cookies(other),
+    )
+    assert resp.status_code == 403

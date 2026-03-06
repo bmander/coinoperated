@@ -45,6 +45,25 @@ export default function AdminTaskActions({
     <>
       {error && <p className="admin-error">{error}</p>}
 
+      {task.status === "ideation" && (
+        <>
+          <button
+            className="btn btn-accept"
+            disabled={busy}
+            onClick={() => handleAction(() => patchTask(task.id, { status: "proposed" }))}
+          >
+            {busy ? <Spinner /> : "Move to Proposed"}
+          </button>
+          <button
+            className="btn btn-decline"
+            disabled={busy}
+            onClick={() => handleAction(() => patchTask(task.id, { status: "declined" }))}
+          >
+            {busy ? <Spinner /> : "Decline"}
+          </button>
+        </>
+      )}
+
       {task.status === "proposed" && (
         <>
           <button

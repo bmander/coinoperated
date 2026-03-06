@@ -3,6 +3,7 @@ import type { TaskStatus } from "../api/types";
 import { statusLabel } from "../utils/formatting";
 
 const GLOSSARY: { status: TaskStatus; description: string }[] = [
+  { status: "ideation", description: "Idea being shaped \u2014 not yet open for pledges" },
   { status: "proposed", description: "Proposed and waiting for review" },
   { status: "underway", description: "Work has begun" },
   { status: "review", description: "Complete \u2014 pledgers reviewing work" },

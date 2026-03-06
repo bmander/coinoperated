@@ -107,4 +107,28 @@ describe("AdminTaskActions", () => {
     await userEvent.click(screen.getByRole("button", { name: "Accept" }));
     expect(await screen.findByText("Server error")).toBeInTheDocument();
   });
+
+  it("shows Move to Proposed and Decline buttons for ideation tasks", () => {
+    render(<AdminTaskActions task={makeTask({ status: "ideation" })} onAction={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Move to Proposed" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
+  });
+
+  it("calls patchTask with proposed on Move to Proposed click", async () => {
+    const onAction = vi.fn();
+    mockPatchTask.mockResolvedValue(makeTask({ status: "proposed" }));
+    render(<AdminTaskActions task={makeTask({ status: "ideation", id: "t1" })} onAction={onAction} />);
+    await userEvent.click(screen.getByRole("button", { name: "Move to Proposed" }));
+    expect(mockPatchTask).toHaveBeenCalledWith("t1", { status: "proposed" });
+    expect(onAction).toHaveBeenCalled();
+  });
+
+  it("calls patchTask with declined on ideation Decline click", async () => {
+    const onAction = vi.fn();
+    mockPatchTask.mockResolvedValue(makeTask({ status: "declined" }));
+    render(<AdminTaskActions task={makeTask({ status: "ideation", id: "t1" })} onAction={onAction} />);
+    await userEvent.click(screen.getByRole("button", { name: "Decline" }));
+    expect(mockPatchTask).toHaveBeenCalledWith("t1", { status: "declined" });
+    expect(onAction).toHaveBeenCalled();
+  });
 });
