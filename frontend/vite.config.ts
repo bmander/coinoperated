@@ -6,7 +6,7 @@ import mkcert from 'vite-plugin-mkcert'
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
   base: process.env.VITE_BASE_PATH || '/',
-  plugins: [react(), ...(command === 'serve' ? [mkcert()] : [])],
+  plugins: [react(), ...(command === 'serve' && !process.env.VITEST ? [mkcert()] : [])],
   server: {
     host: '0.0.0.0',
     proxy: {
