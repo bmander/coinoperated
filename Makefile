@@ -1,7 +1,7 @@
 VENV := backend/.venv/bin
 STRIPE := $(or $(shell command -v stripe 2>/dev/null),$(HOME)/.local/bin/stripe)
 
-.PHONY: dev dev-backend dev-frontend db migrate install
+.PHONY: dev dev-backend dev-frontend db migrate install test-db
 
 # Start everything for local development
 dev: install
@@ -37,6 +37,13 @@ migrate:
 	docker compose up -d db
 	@until docker compose exec db pg_isready -U postgres > /dev/null 2>&1; do sleep 0.5; done
 	cd backend && $(CURDIR)/$(VENV)/alembic upgrade head
+
+# Create test database (idempotent, for existing setups without init script)
+test-db:
+	docker compose up -d db
+	@until docker compose exec db pg_isready -U postgres > /dev/null 2>&1; do sleep 0.5; done
+	@docker compose exec db psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'coinoperated_test'" | grep -q 1 \
+		|| docker compose exec db psql -U postgres -c "CREATE DATABASE coinoperated_test"
 
 # Install all dependencies
 install:

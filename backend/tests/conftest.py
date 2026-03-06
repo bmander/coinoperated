@@ -1,3 +1,4 @@
+import os
 import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
@@ -7,7 +8,6 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text, update as sa_update
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
-from testcontainers.postgres import PostgresContainer
 
 from app.auth import create_jwt
 from app.config import settings
@@ -16,22 +16,12 @@ from app.models import Base, Comment, EmailPreference, MagicLinkToken, Notificat
 
 ADMIN_EMAIL = "admin@test.example.com"
 
-
-@pytest.fixture(scope="session")
-def postgres_container():
-    with PostgresContainer(
-        image="postgres:16-alpine",
-        username="postgres",
-        password="postgres",
-        dbname="coinoperated_test",
-        driver="asyncpg",
-    ) as pg:
-        yield pg
+DEFAULT_TEST_DB_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/coinoperated_test"
 
 
 @pytest.fixture(scope="session")
-def test_engine(postgres_container):
-    url = postgres_container.get_connection_url()
+def test_engine():
+    url = os.environ.get("TEST_DATABASE_URL", DEFAULT_TEST_DB_URL)
     return create_async_engine(url, poolclass=NullPool)
 
 
@@ -43,6 +33,7 @@ def test_session_maker(test_engine):
 @pytest.fixture(scope="session", autouse=True)
 async def setup_db(test_engine):
     async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
     await test_engine.dispose()
