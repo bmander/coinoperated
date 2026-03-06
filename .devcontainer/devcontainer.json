@@ -4,5 +4,5 @@
     "dockerfile": "Dockerfile",
     "context": ".."
   },
-  "postCreateCommand": "cd frontend && npm install"
+  "postCreateCommand": "pip install -e backend/ && cd frontend && npm install"
 }

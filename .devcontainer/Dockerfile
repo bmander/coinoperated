@@ -28,9 +28,9 @@ RUN mkdir -p /tmp/backend/app && touch /tmp/backend/app/__init__.py \
     && rm -rf /tmp/backend
 ENV PYTHONPATH=/workspace/backend
 
-# Pre-populate npm cache so "npm install" at runtime is near-instant
-COPY frontend/package.json frontend/package-lock.json /tmp/frontend/
-RUN cd /tmp/frontend && npm ci --ignore-scripts && rm -rf /tmp/frontend
+# Pre-populate npm cache as vscode so it's usable at runtime
+COPY --chown=vscode:vscode frontend/package.json frontend/package-lock.json /tmp/frontend/
+RUN su vscode -c 'cd /tmp/frontend && npm ci --ignore-scripts' && rm -rf /tmp/frontend
 
 COPY .devcontainer/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod 755 /usr/local/bin/docker-entrypoint.sh
