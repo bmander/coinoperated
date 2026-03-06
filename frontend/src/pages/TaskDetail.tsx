@@ -71,7 +71,7 @@ export default function TaskDetail() {
           <h2>Progress Updates</h2>
           <ul className="updates-list">
             {task.updates.map((update) => (
-              <li key={update.id} className="update-item">
+              <li key={update.id}>
                 <time className="update-date">
                   {new Date(update.created_at).toLocaleDateString()}
                 </time>
