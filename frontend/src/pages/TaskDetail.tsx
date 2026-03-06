@@ -75,7 +75,7 @@ export default function TaskDetail() {
                 <time className="update-date">
                   {new Date(update.created_at).toLocaleDateString()}
                 </time>
-                <div className="markdown-body">
+                <div className="markdown-body markdown-body--updates">
                   <Markdown>{update.body}</Markdown>
                 </div>
               </li>
@@ -85,7 +85,7 @@ export default function TaskDetail() {
       )}
 
       {(task.status === "completed" || task.status === "review") && task.evidence && (
-        <MarkdownSection title="Completion Evidence">{task.evidence}</MarkdownSection>
+        <MarkdownSection title="Completion Evidence" className="markdown-body--evidence">{task.evidence}</MarkdownSection>
       )}
 
       {isAdmin && (
