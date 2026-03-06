@@ -4,9 +4,5 @@
     "dockerfile": "Dockerfile",
     "context": ".."
   },
-  "postCreateCommand": "cd backend && pip install -e '.[dev]' && cd ../frontend && npm install",
-  "mounts": [
-    "source=coinoperated-pip-cache,target=/home/vscode/.cache/pip,type=volume",
-    "source=coinoperated-npm-cache,target=/home/vscode/.npm,type=volume"
-  ]
+  "postCreateCommand": "cd frontend && npm install"
 }
