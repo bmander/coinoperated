@@ -19,7 +19,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # ADD VALUE must be committed before the new value can be used,
+    # so run it outside the main transaction.
+    op.execute("COMMIT")
     op.execute("ALTER TYPE task_status ADD VALUE 'ideation' BEFORE 'proposed'")
+    op.execute("BEGIN")
 
     op.create_table(
         "comment",
