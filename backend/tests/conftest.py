@@ -1,3 +1,4 @@
+import os
 import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
@@ -7,31 +8,20 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text, update as sa_update
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
-from testcontainers.postgres import PostgresContainer
 
 from app.auth import create_jwt
 from app.config import settings
 from app.dependencies import get_db, get_session_factory
-from app.models import Base, EmailPreference, MagicLinkToken, Notification, NotificationType, Patron, Pledge, PledgeStatus, Task
+from app.models import Base, Comment, EmailPreference, MagicLinkToken, Notification, NotificationType, Patron, Pledge, PledgeStatus, Task
 
 ADMIN_EMAIL = "admin@test.example.com"
 
-
-@pytest.fixture(scope="session")
-def postgres_container():
-    with PostgresContainer(
-        image="postgres:16-alpine",
-        username="postgres",
-        password="postgres",
-        dbname="coinoperated_test",
-        driver="asyncpg",
-    ) as pg:
-        yield pg
+DEFAULT_TEST_DB_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/coinoperated_test"
 
 
 @pytest.fixture(scope="session")
-def test_engine(postgres_container):
-    url = postgres_container.get_connection_url()
+def test_engine():
+    url = os.environ.get("TEST_DATABASE_URL", DEFAULT_TEST_DB_URL)
     return create_async_engine(url, poolclass=NullPool)
 
 
@@ -43,6 +33,7 @@ def test_session_maker(test_engine):
 @pytest.fixture(scope="session", autouse=True)
 async def setup_db(test_engine):
     async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
     await test_engine.dispose()
@@ -52,7 +43,7 @@ async def setup_db(test_engine):
 async def clean_tables(test_engine):
     yield
     async with test_engine.begin() as conn:
-        for table in ("email_preference", "notification", "magic_link_token", "update", "pledge", "task", "patron"):
+        for table in ("comment", "email_preference", "notification", "magic_link_token", "update", "pledge", "task", "patron"):
             await conn.execute(text(f'DELETE FROM "{table}"'))
 
 
@@ -153,7 +144,7 @@ async def create_patron(
 
 
 async def create_task(session_maker, **overrides) -> Task:
-    defaults = {"title": "Test task", "description": "A test task", "status": "proposed"}
+    defaults = {"title": "Test task", "description": "A test task", "status": "ideation"}
     defaults.update(overrides)
     async with session_maker() as session:
         task = Task(**defaults)
@@ -212,6 +203,15 @@ async def create_notification(
         await session.commit()
         await session.refresh(notification)
         return notification
+
+
+async def create_comment(session_maker, *, task_id, author_id, body="Test comment") -> Comment:
+    async with session_maker() as session:
+        comment = Comment(task_id=task_id, author_id=author_id, body=body)
+        session.add(comment)
+        await session.commit()
+        await session.refresh(comment)
+        return comment
 
 
 async def create_email_preference(

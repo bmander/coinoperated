@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.dependencies import get_admin_patron, get_db
-from app.models import Notification, Patron, Pledge, PledgeStatus, Task, TaskStatus, Update
+from app.models import Comment, Notification, Patron, Pledge, PledgeStatus, Task, TaskStatus, Update
 from app.routers.tasks import get_task_or_404
 from app.schemas import (
     AdminPatronListResponse,
@@ -216,6 +216,7 @@ async def delete_task(
 ):
     await get_task_or_404(db, task_id)
 
+    await db.execute(delete(Comment).where(Comment.task_id == task_id))
     await db.execute(delete(Notification).where(Notification.task_id == task_id))
     await db.execute(delete(Update).where(Update.task_id == task_id))
     await db.execute(delete(Pledge).where(Pledge.task_id == task_id))

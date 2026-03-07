@@ -143,7 +143,7 @@ class TestNotificationCreation:
     async def test_notification_created_on_task_accepted(
         self, mock_send, admin_client, client, test_session_maker, test_patron
     ):
-        task = await create_task(test_session_maker, title="Paint mural")
+        task = await create_task(test_session_maker, title="Paint mural", status=TaskStatus.proposed)
         await create_pledge(
             test_session_maker, patron_id=test_patron.id, task_id=task.id
         )
@@ -228,7 +228,7 @@ class TestNotificationCreation:
         patron2 = await create_patron(
             test_session_maker, "patron2@example.com", "cus_p2"
         )
-        task = await create_task(test_session_maker, title="Shared task")
+        task = await create_task(test_session_maker, title="Shared task", status=TaskStatus.proposed)
         await create_pledge(
             test_session_maker,
             patron_id=test_patron.id,

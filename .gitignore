@@ -3,6 +3,7 @@ node_modules/
 __pycache__/
 *.egg-info/
 .env
+.venv/
 backend/env.yaml
 backend/static/
 .playwright-mcp/

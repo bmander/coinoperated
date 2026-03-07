@@ -6,7 +6,13 @@ import stripe as stripe_module
 from app.auth import create_jwt
 from app.config import settings
 from app.models import Pledge, PledgeStatus, Task, TaskStatus
-from tests.conftest import create_patron, create_pledge, create_task, mock_setup_intent
+from tests.conftest import create_patron, create_pledge, create_task as _create_task, mock_setup_intent
+
+
+async def create_task(session_maker, **overrides):
+    """Create a task in proposed status by default (pledgeable)."""
+    overrides.setdefault("status", TaskStatus.proposed)
+    return await _create_task(session_maker, **overrides)
 
 # --- Helpers ---
 
@@ -108,6 +114,19 @@ async def test_create_pledge_task_not_pledgeable(client, test_session_maker):
         cookies=auth_cookies(patron.id),
     )
     assert resp.status_code == 400
+
+
+async def test_create_pledge_blocked_in_ideation(client, test_session_maker):
+    patron = await create_patron(test_session_maker, "ideation_pledge@example.com", "cus_ideation")
+    task = await create_task(test_session_maker, status=TaskStatus.ideation)
+
+    resp = await client.post(
+        f"/api/tasks/{task.id}/pledges",
+        json={"amount": 500},
+        cookies=auth_cookies(patron.id),
+    )
+    assert resp.status_code == 400
+    assert "not accepting pledges" in resp.json()["detail"].lower()
 
 
 # --- GET /api/tasks/{task_id}/pledges/me ---

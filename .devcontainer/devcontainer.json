@@ -1,0 +1,8 @@
+{
+  "name": "coinoperated",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "postCreateCommand": "pip install -e backend/ && cd frontend && npm install"
+}

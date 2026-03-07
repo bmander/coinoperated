@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.dependencies import get_active_patron, get_admin_patron, get_db, get_session_factory
-from app.models import Patron, Task, TaskStatus
+from app.models import Comment, Patron, Task, TaskStatus
 from app.notifications import (
     notify_task_accepted,
     notify_task_completed,
@@ -23,6 +23,7 @@ from app.services.pledges import PaymentMethodOwnershipError, create_pledge_for_
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 VALID_TRANSITIONS: dict[TaskStatus, set[TaskStatus]] = {
+    TaskStatus.ideation: {TaskStatus.proposed, TaskStatus.declined},
     TaskStatus.proposed: {TaskStatus.underway, TaskStatus.declined},
     TaskStatus.underway: {TaskStatus.review, TaskStatus.proposed},
     TaskStatus.review: {TaskStatus.collecting},
@@ -61,7 +62,10 @@ async def get_task_or_404(
 ) -> Task:
     query = select(Task).where(Task.id == task_id).options(selectinload(Task.submitted_by_patron))
     if load_updates:
-        query = query.options(selectinload(Task.updates))
+        query = query.options(
+            selectinload(Task.updates),
+            selectinload(Task.comments).selectinload(Comment.author),
+        )
     task = (await db.execute(query)).scalar_one_or_none()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -82,13 +86,6 @@ async def create_task(
     db: Annotated[AsyncSession, Depends(get_db)],
     patron: Annotated[Patron, Depends(get_active_patron)],
 ):
-    is_admin = patron.email == settings.admin_email
-
-    if not is_admin and payload.pledge_amount is None:
-        raise HTTPException(
-            status_code=400, detail="A pledge is required when submitting a task"
-        )
-
     task = Task(
         title=payload.title,
         description=payload.description,
@@ -130,16 +127,31 @@ async def create_task(
     )
 
 
+AUTHOR_EDITABLE_FIELDS = {"title", "description", "criteria"}
+
+
 @router.patch("/{task_id}", response_model=TaskRead)
 async def update_task(
     task_id: uuid.UUID,
     payload: TaskUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
     background_tasks: BackgroundTasks,
-    _admin: Annotated[Patron, Depends(get_admin_patron)],
+    patron: Annotated[Patron, Depends(get_active_patron)],
     session_factory=Depends(get_session_factory),
 ):
     task = await get_task_or_404(db, task_id)
+    is_admin = patron.email == settings.admin_email
+    is_author = task.submitted_by == patron.id
+
+    if not is_admin:
+        if not (is_author and task.status == TaskStatus.ideation):
+            raise HTTPException(status_code=403, detail="Admin access required")
+        provided_fields = set(payload.model_dump(exclude_unset=True).keys())
+        if not provided_fields.issubset(AUTHOR_EDITABLE_FIELDS):
+            allowed = ", ".join(sorted(AUTHOR_EDITABLE_FIELDS))
+            raise HTTPException(
+                status_code=403, detail=f"You can only edit {allowed} in ideation"
+            )
 
     notify_fn = None
 

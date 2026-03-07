@@ -89,4 +89,23 @@ describe("TaskBoard", () => {
       expect.objectContaining({ status: "underway" }),
     );
   });
+
+  it("filter dropdown includes Ideation option", async () => {
+    const user = userEvent.setup();
+    mockListTasks.mockResolvedValue(makeResponse([]));
+    renderBoard();
+
+    await screen.findByText("No tasks found.");
+    const callCountAfterMount = mockListTasks.mock.calls.length;
+
+    const filterSelect = screen.getByRole("combobox", { name: /filter/i });
+    await user.selectOptions(filterSelect, "ideation");
+
+    await waitFor(() =>
+      expect(mockListTasks.mock.calls.length).toBeGreaterThan(callCountAfterMount),
+    );
+    expect(mockListTasks).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "ideation" }),
+    );
+  });
 });

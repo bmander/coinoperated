@@ -66,6 +66,7 @@ class TaskRead(BaseReadSchema):
 
 class TaskDetail(TaskRead):
     updates: list["UpdateRead"] = []
+    comments: list["CommentRead"] = []
 
 
 class TaskCreateResponse(TaskRead):
@@ -219,6 +220,22 @@ class UpdateCreate(BaseModel):
 class UpdateRead(BaseReadSchema):
     id: uuid.UUID
     task_id: uuid.UUID
+    body: str
+    created_at: datetime
+
+
+# --- Comment ---
+
+
+class CommentCreate(BaseModel):
+    body: str = Field(min_length=1)
+
+
+class CommentRead(BaseReadSchema):
+    id: uuid.UUID
+    task_id: uuid.UUID
+    author_id: uuid.UUID
+    author: PatronPublicRead
     body: str
     created_at: datetime
 
