@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.models import NotificationType, PledgeStatus
+from app.models import NotificationType, PledgeStatus, TaskStatus
 from tests.conftest import (
     auth_cookies,
     create_email_preference,
@@ -122,7 +122,7 @@ class TestEmailPreferencesRespected:
     async def test_email_skipped_when_opted_out(
         self, mock_send, admin_client, client, test_session_maker, test_patron
     ):
-        task = await create_task(test_session_maker)
+        task = await create_task(test_session_maker, status=TaskStatus.proposed)
         await create_pledge(
             test_session_maker, patron_id=test_patron.id, task_id=task.id
         )
@@ -153,7 +153,7 @@ class TestEmailPreferencesRespected:
     async def test_email_sent_when_opted_in(
         self, mock_send, admin_client, test_session_maker, test_patron
     ):
-        task = await create_task(test_session_maker)
+        task = await create_task(test_session_maker, status=TaskStatus.proposed)
         await create_pledge(
             test_session_maker, patron_id=test_patron.id, task_id=task.id
         )
@@ -175,7 +175,7 @@ class TestEmailPreferencesRespected:
         self, mock_send, admin_client, test_session_maker, test_patron
     ):
         """Default behavior: email sent when no preference exists."""
-        task = await create_task(test_session_maker)
+        task = await create_task(test_session_maker, status=TaskStatus.proposed)
         await create_pledge(
             test_session_maker, patron_id=test_patron.id, task_id=task.id
         )

@@ -98,7 +98,7 @@ async def test_charge_failed_template(test_session_maker):
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
 async def test_task_accepted_creates_notification(mock_send, admin_client, test_session_maker):
     patron = await create_patron(test_session_maker, "notif_a@example.com", "cus_notif_a")
-    task = await create_task(test_session_maker)
+    task = await create_task(test_session_maker, status=TaskStatus.proposed)
     await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
 
     resp = await admin_client.patch(
@@ -206,7 +206,7 @@ async def test_task_declined_creates_notification(mock_send, admin_client, test_
 async def test_multiple_pledgers_get_notifications(mock_send, admin_client, test_session_maker):
     patron1 = await create_patron(test_session_maker, "multi_a@example.com", "cus_multi_a")
     patron2 = await create_patron(test_session_maker, "multi_b@example.com", "cus_multi_b")
-    task = await create_task(test_session_maker)
+    task = await create_task(test_session_maker, status=TaskStatus.proposed)
     await create_pledge(test_session_maker, patron_id=patron1.id, task_id=task.id)
     await create_pledge(
         test_session_maker, patron_id=patron2.id, task_id=task.id,
@@ -235,7 +235,7 @@ async def test_multiple_pledgers_get_notifications(mock_send, admin_client, test
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=False)
 async def test_email_failure_does_not_break_api(mock_send, admin_client, test_session_maker):
     patron = await create_patron(test_session_maker, "fail@example.com", "cus_fail")
-    task = await create_task(test_session_maker)
+    task = await create_task(test_session_maker, status=TaskStatus.proposed)
     await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
 
     resp = await admin_client.patch(
@@ -262,7 +262,7 @@ async def test_email_failure_does_not_break_api(mock_send, admin_client, test_se
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
 async def test_no_pledgers_no_notifications(mock_send, admin_client, test_session_maker):
     await create_task(test_session_maker)
-    task = await create_task(test_session_maker)
+    task = await create_task(test_session_maker, status=TaskStatus.proposed)
 
     resp = await admin_client.patch(
         f"/api/tasks/{task.id}", json={"status": "underway"}
@@ -416,7 +416,7 @@ async def test_webhook_payment_failed_unknown_pledge_ignored(
 @patch("app.notifications.send_email", new_callable=AsyncMock, return_value=True)
 async def test_pending_pledger_not_notified(mock_send, admin_client, test_session_maker):
     patron = await create_patron(test_session_maker, "pending@example.com", "cus_pending")
-    task = await create_task(test_session_maker)
+    task = await create_task(test_session_maker, status=TaskStatus.proposed)
     await create_pledge(
         test_session_maker,
         patron_id=patron.id,
@@ -498,7 +498,7 @@ async def test_send_pending_emails_mixed_success_failure(mock_send, test_session
 async def test_notification_persisted_before_email_sent(mock_send, admin_client, test_session_maker):
     """The notification row is committed to the DB before send_email runs."""
     patron = await create_patron(test_session_maker, "order@example.com", "cus_order")
-    task = await create_task(test_session_maker)
+    task = await create_task(test_session_maker, status=TaskStatus.proposed)
     await create_pledge(test_session_maker, patron_id=patron.id, task_id=task.id)
 
     notification_exists_at_send_time = []
