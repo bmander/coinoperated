@@ -623,7 +623,7 @@ async def test_author_cannot_set_evidence_in_ideation(client, test_session_maker
         cookies=auth_cookies(author),
     )
     assert resp.status_code == 403
-    assert "only edit title" in resp.json()["detail"].lower()
+    assert "only edit" in resp.json()["detail"].lower()
 
 
 async def test_author_cannot_edit_after_ideation(client, authed_client, test_session_maker):

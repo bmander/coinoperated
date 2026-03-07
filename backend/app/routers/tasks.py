@@ -148,8 +148,9 @@ async def update_task(
             raise HTTPException(status_code=403, detail="Admin access required")
         provided_fields = set(payload.model_dump(exclude_unset=True).keys())
         if not provided_fields.issubset(AUTHOR_EDITABLE_FIELDS):
+            allowed = ", ".join(sorted(AUTHOR_EDITABLE_FIELDS))
             raise HTTPException(
-                status_code=403, detail="You can only edit title, description, and criteria in ideation"
+                status_code=403, detail=f"You can only edit {allowed} in ideation"
             )
 
     notify_fn = None

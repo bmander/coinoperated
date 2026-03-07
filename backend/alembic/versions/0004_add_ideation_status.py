@@ -30,10 +30,13 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
 
+    op.create_index("ix_comment_task_id", "comment", ["task_id"])
+
     op.alter_column("task", "status", server_default="ideation")
 
 
 def downgrade() -> None:
     op.alter_column("task", "status", server_default="proposed")
+    op.drop_index("ix_comment_task_id", table_name="comment")
     op.drop_table("comment")
     # Note: PostgreSQL does not support removing enum values
